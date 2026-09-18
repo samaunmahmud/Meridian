@@ -1,0 +1,16 @@
+# Backend
+meridian-backend/target/
+meridian-backend/.idea/
+meridian-backend/*.iml
+
+# Frontend
+meridian-frontend/node_modules/
+meridian-frontend/dist/
+
+# Shared
+.env
+.DS_Store
+.idea/
+*.iml
+.claude/
+.mcp.json

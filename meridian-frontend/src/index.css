@@ -1,0 +1,70 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@theme {
+  --color-ink: #0b0e14;
+  --color-panel: #12161f;
+  --color-panel-2: #1a2029;
+  --color-line: #232a36;
+  --color-bone: #e7eaf0;
+  --color-muted: #8b93a3;
+  --color-dim: #5b6472;
+  --color-accent: #7c6fff;
+  --color-accent-2: #9f8fff;
+  --color-accent-dim: #241f47;
+  --color-gain: #22c55e;
+  --color-gain-dim: #0f2a1c;
+  --color-loss: #f0455a;
+  --color-loss-dim: #351019;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  margin: 0;
+  background: var(--color-ink);
+  color: var(--color-bone);
+}
+
+.font-mono {
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* Custom scrollbar to match the dark theme instead of the default light one */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--color-panel-2) 25%, var(--color-line) 37%, var(--color-panel-2) 63%);
+  background-size: 800px 100%;
+  animation: shimmer 1.6s infinite linear;
+  border-radius: 8px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in {
+  animation: fadeIn 0.25s ease-out;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.toast-in {
+  animation: toastIn 0.2s ease-out;
+}
