@@ -81,8 +81,57 @@ export function getOrders() {
   return apiFetch("/orders");
 }
 
-export function placeOrder(symbol, type, quantity) {
-  return apiFetch("/orders", { method: "POST", body: JSON.stringify({ symbol, type, quantity }) });
+export function placeOrder(symbol, type, quantity, kind = "MARKET", limitPrice = null, stopPrice = null) {
+  return apiFetch("/orders", {
+    method: "POST",
+    body: JSON.stringify({ symbol, type, kind, quantity, limitPrice, stopPrice }),
+  });
+}
+
+export function cancelOrder(id) {
+  return apiFetch(`/orders/${id}`, { method: "DELETE" });
+}
+
+export function getTransactions() {
+  return apiFetch("/portfolio/transactions");
+}
+
+export function getWallets() {
+  return apiFetch("/wallets");
+}
+
+export function convertCurrency(fromCurrency, toCurrency, amount) {
+  return apiFetch("/wallets/convert", {
+    method: "POST",
+    body: JSON.stringify({ fromCurrency, toCurrency, amount }),
+  });
+}
+
+export function depositToWallet(currency, amount) {
+  return apiFetch("/wallets/deposit", { method: "POST", body: JSON.stringify({ currency, amount }) });
+}
+
+export function withdrawFromWallet(currency, amount) {
+  return apiFetch("/wallets/withdraw", { method: "POST", body: JSON.stringify({ currency, amount }) });
+}
+
+export function getFxRates() {
+  return apiFetch("/fx-rates");
+}
+
+export function getRecurringOrders() {
+  return apiFetch("/recurring-orders");
+}
+
+export function createRecurringOrder(symbol, amount, frequency) {
+  return apiFetch("/recurring-orders", {
+    method: "POST",
+    body: JSON.stringify({ symbol, amount, frequency }),
+  });
+}
+
+export function deleteRecurringOrder(id) {
+  return apiFetch(`/recurring-orders/${id}`, { method: "DELETE" });
 }
 
 export function getAlerts() {

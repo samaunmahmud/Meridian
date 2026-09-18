@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import AccountSummary from "./AccountSummary";
 
 const NAV_ITEMS = [
@@ -30,6 +31,25 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    key: "accounts",
+    label: "Accounts",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <path d="M2 10h20" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    key: "activity",
+    label: "Activity",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M3 12h4l2-7 4 14 2-7h6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
 ];
 
 export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout, refreshKey }) {
@@ -44,14 +64,21 @@ export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout, r
           <button
             key={item.key}
             onClick={() => onTabChange(item.key)}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm mb-1 transition-colors ${
-              activeTab === item.key
-                ? "bg-accent-dim text-accent-2"
-                : "text-muted hover:bg-panel-2 hover:text-bone"
+            className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm mb-1 transition-colors ${
+              activeTab === item.key ? "text-accent-2" : "text-muted hover:bg-panel-2 hover:text-bone"
             }`}
           >
-            {item.icon}
-            {item.label}
+            {activeTab === item.key && (
+              <motion.div
+                layoutId="sidebar-active-pill"
+                className="absolute inset-0 bg-accent-dim rounded-lg"
+                transition={{ type: "spring", stiffness: 500, damping: 40 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-3">
+              {item.icon}
+              {item.label}
+            </span>
           </button>
         ))}
       </nav>

@@ -50,6 +50,7 @@ public class PortfolioService {
     private final TransactionRepository transactionRepository;
     private final PriceWebSocketHandler priceWebSocketHandler;
     private final ObjectMapper objectMapper;
+    private final FeeService feeService;
 
     public PortfolioService(PortfolioRepository portfolioRepository,
                              HoldingRepository holdingRepository,
@@ -59,7 +60,8 @@ public class PortfolioService {
                              PortfolioSnapshotRepository portfolioSnapshotRepository,
                              TransactionRepository transactionRepository,
                              PriceWebSocketHandler priceWebSocketHandler,
-                             ObjectMapper objectMapper) {
+                             ObjectMapper objectMapper,
+                             FeeService feeService) {
         this.portfolioRepository = portfolioRepository;
         this.holdingRepository = holdingRepository;
         this.orderRepository = orderRepository;
@@ -69,6 +71,12 @@ public class PortfolioService {
         this.transactionRepository = transactionRepository;
         this.priceWebSocketHandler = priceWebSocketHandler;
         this.objectMapper = objectMapper;
+        this.feeService = feeService;
+    }
+
+    // Bundles the two things a sell needs to report back that a buy doesn't:
+    // realized P&L and the commission charged.
+    private record TradeExecution(BigDecimal realizedPnL, BigDecimal fee) {
     }
 
     // Normally every user already has a portfolio (AuthService creates one at
@@ -105,19 +113,28 @@ public class PortfolioService {
         };
     }
 
+    // The order is saved first (so BUY/SELL/FEE transactions can reference
+    // its id) inside this @Transactional method — if execution then throws
+    // (e.g. insufficient funds), the whole transaction rolls back and no
+    // order row survives.
     private OrderResponse placeMarketOrder(Portfolio portfolio, Ticker ticker, OrderType type, BigDecimal quantity) {
         BigDecimal currentPrice = getCurrentPrice(ticker);
-        BigDecimal realizedPnL;
-
-        if (type == OrderType.BUY) {
-            realizedPnL = null; // buys never realize a gain/loss
-            executeBuy(portfolio, ticker, quantity, currentPrice);
-        } else {
-            realizedPnL = executeSell(portfolio, ticker, quantity, currentPrice);
-        }
-
         Instant executedAt = Instant.now();
         Order order = new Order(portfolio, ticker, type, quantity, currentPrice, executedAt);
+        order = orderRepository.save(order);
+
+        BigDecimal realizedPnL;
+        BigDecimal fee;
+        if (type == OrderType.BUY) {
+            realizedPnL = null; // buys never realize a gain/loss
+            fee = executeBuy(portfolio, ticker, quantity, currentPrice, order.getId());
+        } else {
+            TradeExecution execution = executeSell(portfolio, ticker, quantity, currentPrice, order.getId());
+            realizedPnL = execution.realizedPnL();
+            fee = execution.fee();
+        }
+
+        order.setFeeAmount(fee);
         order = orderRepository.save(order);
 
         return toResponse(order, realizedPnL);
@@ -229,16 +246,20 @@ public class PortfolioService {
         Portfolio portfolio = order.getPortfolio();
         Ticker ticker = order.getTicker();
         BigDecimal realizedPnL;
+        BigDecimal fee;
 
         if (order.getType() == OrderType.BUY) {
             realizedPnL = null;
-            executeBuy(portfolio, ticker, order.getQuantity(), fillPrice);
+            fee = executeBuy(portfolio, ticker, order.getQuantity(), fillPrice, order.getId());
         } else {
-            realizedPnL = executeSell(portfolio, ticker, order.getQuantity(), fillPrice);
+            TradeExecution execution = executeSell(portfolio, ticker, order.getQuantity(), fillPrice, order.getId());
+            realizedPnL = execution.realizedPnL();
+            fee = execution.fee();
         }
 
         Instant executedAt = Instant.now();
         order.setPrice(fillPrice);
+        order.setFeeAmount(fee);
         order.setExecutedAt(executedAt);
         order.setStatus(OrderStatus.FILLED);
         orderRepository.save(order);
@@ -264,16 +285,26 @@ public class PortfolioService {
     // can never spend money already earmarked by someone else's pending
     // LIMIT buy order — and, on the pending-fill path, this order's own
     // reservation was already released just before this call runs.
-    private void executeBuy(Portfolio portfolio, Ticker ticker, BigDecimal quantity, BigDecimal price) {
+    private BigDecimal executeBuy(Portfolio portfolio, Ticker ticker, BigDecimal quantity, BigDecimal price, Long orderId) {
         BigDecimal cost = price.multiply(quantity);
+        BigDecimal fee = feeService.commissionFor(cost);
+        BigDecimal totalDebit = cost.add(fee);
 
-        if (portfolio.getAvailableCash().compareTo(cost) < 0) {
+        if (portfolio.getAvailableCash().compareTo(totalDebit) < 0) {
             throw new InsufficientFundsException(
-                    "Insufficient funds: need " + cost + " but only " + portfolio.getAvailableCash() + " available");
+                    "Insufficient funds: need " + totalDebit + " (including fees) but only "
+                            + portfolio.getAvailableCash() + " available");
         }
 
-        portfolio.setCashBalance(portfolio.getCashBalance().subtract(cost));
+        BigDecimal afterCost = portfolio.getCashBalance().subtract(cost);
+        BigDecimal afterFee = afterCost.subtract(fee);
+        portfolio.setCashBalance(afterFee);
         portfolioRepository.save(portfolio);
+
+        transactionRepository.save(new Transaction(portfolio, TransactionType.BUY, cost.negate(), afterCost,
+                "USD", "Bought " + quantity + " " + ticker.getSymbol(), orderId));
+        transactionRepository.save(new Transaction(portfolio, TransactionType.FEE, fee.negate(), afterFee,
+                "USD", "Commission on " + ticker.getSymbol() + " order", orderId));
 
         Holding holding = holdingRepository.findByPortfolioIdAndTickerId(portfolio.getId(), ticker.getId())
                 .orElse(null);
@@ -290,13 +321,15 @@ public class PortfolioService {
             holding.setAvgCost(newAvgCost);
             holdingRepository.save(holding);
         }
+
+        return fee;
     }
 
     // Checked against availableQuantity (not raw quantity) so a MARKET sell
     // can never sell shares already earmarked by someone else's pending
     // LIMIT/STOP_LOSS sell order — and, on the pending-fill path, this
     // order's own reservation was already released just before this call runs.
-    private BigDecimal executeSell(Portfolio portfolio, Ticker ticker, BigDecimal quantity, BigDecimal price) {
+    private TradeExecution executeSell(Portfolio portfolio, Ticker ticker, BigDecimal quantity, BigDecimal price, Long orderId) {
         Holding holding = holdingRepository.findByPortfolioIdAndTickerId(portfolio.getId(), ticker.getId())
                 .orElseThrow(() -> new InsufficientSharesException(
                         "You don't own any shares of " + ticker.getSymbol()));
@@ -310,8 +343,17 @@ public class PortfolioService {
         BigDecimal realizedPnL = price.subtract(holding.getAvgCost()).multiply(quantity);
 
         BigDecimal proceeds = price.multiply(quantity);
-        portfolio.setCashBalance(portfolio.getCashBalance().add(proceeds));
+        BigDecimal fee = feeService.commissionFor(proceeds);
+
+        BigDecimal afterProceeds = portfolio.getCashBalance().add(proceeds);
+        BigDecimal afterFee = afterProceeds.subtract(fee);
+        portfolio.setCashBalance(afterFee);
         portfolioRepository.save(portfolio);
+
+        transactionRepository.save(new Transaction(portfolio, TransactionType.SELL, proceeds, afterProceeds,
+                "USD", "Sold " + quantity + " " + ticker.getSymbol(), orderId));
+        transactionRepository.save(new Transaction(portfolio, TransactionType.FEE, fee.negate(), afterFee,
+                "USD", "Commission on " + ticker.getSymbol() + " order", orderId));
 
         BigDecimal remainingQuantity = holding.getQuantity().subtract(quantity);
         if (remainingQuantity.compareTo(BigDecimal.ZERO) == 0) {
@@ -321,7 +363,7 @@ public class PortfolioService {
             holdingRepository.save(holding);
         }
 
-        return realizedPnL;
+        return new TradeExecution(realizedPnL, fee);
     }
 
     public PortfolioResponse getPortfolioValuation(User user) {
@@ -377,7 +419,7 @@ public class PortfolioService {
     private OrderResponse toResponse(Order order, BigDecimal realizedPnL) {
         return new OrderResponse(
                 order.getId(), order.getTicker().getSymbol(), order.getType(), order.getKind(), order.getStatus(),
-                order.getQuantity(), order.getLimitPrice(), order.getStopPrice(), order.getPrice(),
+                order.getQuantity(), order.getLimitPrice(), order.getStopPrice(), order.getPrice(), order.getFeeAmount(),
                 order.getCreatedAt(), order.getExecutedAt(), realizedPnL
         );
     }
@@ -402,7 +444,8 @@ public class PortfolioService {
         portfolioRepository.save(portfolio);
 
         Transaction transaction = transactionRepository.save(
-                new Transaction(portfolio, TransactionType.DEPOSIT, amount, portfolio.getCashBalance()));
+                new Transaction(portfolio, TransactionType.DEPOSIT, amount, portfolio.getCashBalance(),
+                        "USD", "Deposit", null));
         return toTransactionResponse(transaction);
     }
 
@@ -423,7 +466,8 @@ public class PortfolioService {
         portfolioRepository.save(portfolio);
 
         Transaction transaction = transactionRepository.save(
-                new Transaction(portfolio, TransactionType.WITHDRAWAL, amount, portfolio.getCashBalance()));
+                new Transaction(portfolio, TransactionType.WITHDRAWAL, amount, portfolio.getCashBalance(),
+                        "USD", "Withdrawal", null));
         return toTransactionResponse(transaction);
     }
 
@@ -437,7 +481,8 @@ public class PortfolioService {
     private TransactionResponse toTransactionResponse(Transaction transaction) {
         return new TransactionResponse(
                 transaction.getId(), transaction.getType(), transaction.getAmount(),
-                transaction.getBalanceAfter(), transaction.getCreatedAt()
+                transaction.getBalanceAfter(), transaction.getCurrency(), transaction.getDescription(),
+                transaction.getRelatedOrderId(), transaction.getCreatedAt()
         );
     }
 }

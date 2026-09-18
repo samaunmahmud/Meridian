@@ -29,6 +29,19 @@ public class Transaction {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // Which currency `amount` is denominated in — nullable so existing
+    // DEPOSIT/WITHDRAWAL rows (implicitly USD) don't need a backfill.
+    @Column
+    private String currency;
+
+    // Free-text detail for the activity feed, e.g. "Bought 2 AAPL".
+    @Column
+    private String description;
+
+    // Links a BUY/SELL/FEE row back to the order that produced it.
+    @Column(name = "related_order_id")
+    private Long relatedOrderId;
+
     public Transaction() {
     }
 
@@ -38,6 +51,14 @@ public class Transaction {
         this.amount = amount;
         this.balanceAfter = balanceAfter;
         this.createdAt = Instant.now();
+    }
+
+    public Transaction(Portfolio portfolio, TransactionType type, BigDecimal amount, BigDecimal balanceAfter,
+                        String currency, String description, Long relatedOrderId) {
+        this(portfolio, type, amount, balanceAfter);
+        this.currency = currency;
+        this.description = description;
+        this.relatedOrderId = relatedOrderId;
     }
 
     public Long getId() {
@@ -62,5 +83,17 @@ public class Transaction {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public Long getRelatedOrderId() {
+        return relatedOrderId;
     }
 }

@@ -1,17 +1,35 @@
 import { useEffect, useState } from "react";
-import { getOrders } from "../lib/api";
+import { getOrders, cancelOrder } from "../lib/api";
+import { showToast } from "../lib/toast";
 import Skeleton from "./Skeleton";
+
+const STATUS_STYLES = {
+  FILLED: "text-muted bg-panel-2",
+  PENDING: "text-accent-2 bg-accent-dim",
+  CANCELLED: "text-dim bg-panel-2",
+};
 
 export default function OrderHistory({ refreshKey }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  function load() {
     setLoading(true);
     getOrders()
       .then(setOrders)
       .finally(() => setLoading(false));
-  }, [refreshKey]);
+  }
+
+  useEffect(load, [refreshKey]);
+
+  async function handleCancel(id) {
+    try {
+      await cancelOrder(id);
+      load();
+    } catch (err) {
+      showToast("error", err.message);
+    }
+  }
 
   if (loading) {
     return (
@@ -36,10 +54,13 @@ export default function OrderHistory({ refreshKey }) {
             <tr className="text-left text-dim border-b border-line">
               <th className="font-normal pb-3">Type</th>
               <th className="font-normal pb-3">Symbol</th>
+              <th className="font-normal pb-3">Status</th>
               <th className="font-normal pb-3 text-right">Qty</th>
               <th className="font-normal pb-3 text-right">Price</th>
+              <th className="font-normal pb-3 text-right">Fee</th>
               <th className="font-normal pb-3 text-right">Realized P/L</th>
-              <th className="font-normal pb-3 text-right">Executed</th>
+              <th className="font-normal pb-3 text-right">When</th>
+              <th className="font-normal pb-3"></th>
             </tr>
           </thead>
           <tbody className="font-mono">
@@ -55,15 +76,32 @@ export default function OrderHistory({ refreshKey }) {
                   </span>
                 </td>
                 <td className="py-3 font-sans">{o.symbol}</td>
+                <td className="py-3">
+                  <span className={`font-sans text-xs font-medium px-2 py-1 rounded-md ${STATUS_STYLES[o.status] ?? "text-dim"}`}>
+                    {o.status}
+                    {o.status === "PENDING" && o.kind !== "MARKET" ? ` (${o.kind === "LIMIT" ? o.limitPrice?.toFixed(2) : o.stopPrice?.toFixed(2)})` : ""}
+                  </span>
+                </td>
                 <td className="py-3 text-right">{o.quantity}</td>
-                <td className="py-3 text-right">{o.price.toFixed(2)}</td>
+                <td className="py-3 text-right">{o.price != null ? o.price.toFixed(2) : "—"}</td>
+                <td className="py-3 text-right text-muted">{o.feeAmount != null ? o.feeAmount.toFixed(2) : "—"}</td>
                 <td className="py-3 text-right">
                   {o.realizedPnL != null
                     ? `${o.realizedPnL >= 0 ? "+" : ""}${o.realizedPnL.toFixed(2)}`
-                    : "\u2014"}
+                    : "—"}
                 </td>
                 <td className="py-3 text-right text-xs text-dim">
-                  {new Date(o.executedAt).toLocaleString()}
+                  {new Date(o.executedAt ?? o.createdAt).toLocaleString()}
+                </td>
+                <td className="py-3 text-right">
+                  {o.status === "PENDING" && (
+                    <button
+                      onClick={() => handleCancel(o.id)}
+                      className="font-sans text-xs text-dim hover:text-loss transition-colors px-2 py-1"
+                    >
+                      Cancel
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

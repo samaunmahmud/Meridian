@@ -9,6 +9,9 @@ public record TransactionResponse(
         TransactionType type,
         BigDecimal amount,
         BigDecimal balanceAfter,
+        String currency,
+        String description,
+        Long relatedOrderId,
         Instant createdAt
 ) {
 }

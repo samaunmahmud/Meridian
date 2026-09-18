@@ -27,19 +27,26 @@ public class AlphaVantageClient {
                 .body(GlobalQuoteResponse.class);
     }
 
-    // Crypto quotes come from a different Alpha Vantage endpoint than stocks
-    // (no GLOBAL_QUOTE for digital currencies) — this gives the live rate of
-    // one unit of the crypto asset (e.g. BTC) priced in a fiat market (USD).
-    public CurrencyExchangeRateResponse fetchCryptoQuote(String symbol, String market) {
+    // CURRENCY_EXCHANGE_RATE works for any from/to pair, fiat or crypto —
+    // this is the one underlying call both crypto pricing and fiat FX rates
+    // are built on.
+    public CurrencyExchangeRateResponse fetchExchangeRate(String from, String to) {
         return restClient.get()
                 .uri(uriBuilder -> uriBuilder.path("/query")
                         .queryParam("function", "CURRENCY_EXCHANGE_RATE")
-                        .queryParam("from_currency", symbol)
-                        .queryParam("to_currency", market)
+                        .queryParam("from_currency", from)
+                        .queryParam("to_currency", to)
                         .queryParam("apikey", apiKey)
                         .build())
                 .retrieve()
                 .body(CurrencyExchangeRateResponse.class);
+    }
+
+    // Crypto quotes come from the same endpoint as fiat FX rates (no
+    // GLOBAL_QUOTE for digital currencies) — this gives the live rate of
+    // one unit of the crypto asset (e.g. BTC) priced in a fiat market (USD).
+    public CurrencyExchangeRateResponse fetchCryptoQuote(String symbol, String market) {
+        return fetchExchangeRate(symbol, market);
     }
 
     // Lets a user search by company name or partial ticker (e.g. "apple" or

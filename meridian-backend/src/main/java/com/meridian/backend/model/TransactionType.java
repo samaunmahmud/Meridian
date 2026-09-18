@@ -2,5 +2,9 @@ package com.meridian.backend.model;
 
 public enum TransactionType {
     DEPOSIT,
-    WITHDRAWAL
+    WITHDRAWAL,
+    BUY,
+    SELL,
+    FEE,
+    CONVERSION
 }

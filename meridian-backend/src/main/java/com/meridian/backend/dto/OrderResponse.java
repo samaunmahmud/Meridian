@@ -16,6 +16,7 @@ public record OrderResponse(
         BigDecimal limitPrice,
         BigDecimal stopPrice,
         BigDecimal price,
+        BigDecimal feeAmount,
         Instant createdAt,
         Instant executedAt,
         BigDecimal realizedPnL

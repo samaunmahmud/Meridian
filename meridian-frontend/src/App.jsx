@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import AuthPage from "./components/AuthPage";
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
@@ -10,6 +11,9 @@ import EquityChart from "./components/EquityChart";
 import TradePanel from "./components/TradePanel";
 import OrderHistory from "./components/OrderHistory";
 import AlertsPanel from "./components/AlertsPanel";
+import AccountsPanel from "./components/AccountsPanel";
+import ActivityFeed from "./components/ActivityFeed";
+import RecurringOrdersPanel from "./components/RecurringOrdersPanel";
 import ToastContainer from "./components/ToastContainer";
 import { getSession, clearSession } from "./lib/api";
 import { usePriceSocket } from "./lib/usePriceSocket";
@@ -48,6 +52,28 @@ export default function App() {
     );
   }, [liveUpdate]);
 
+  // A pending LIMIT/STOP_LOSS order fills asynchronously, whenever a later
+  // price tick satisfies it — this is the only way the user finds out
+  // without polling. Also bump refreshKey so Order History/Portfolio pick
+  // it up immediately.
+  useEffect(() => {
+    if (!liveUpdate || liveUpdate.kind !== "ORDER_FILLED") return;
+    showToast(
+      "success",
+      `Order filled: ${liveUpdate.type === "BUY" ? "bought" : "sold"} ${liveUpdate.quantity} ${liveUpdate.symbol} @ $${liveUpdate.price.toFixed(2)}`
+    );
+    setRefreshKey((k) => k + 1);
+  }, [liveUpdate]);
+
+  useEffect(() => {
+    if (!liveUpdate || liveUpdate.kind !== "RECURRING_ORDER_EXECUTED") return;
+    showToast(
+      "success",
+      `Recurring buy executed: ${liveUpdate.quantity} ${liveUpdate.symbol} @ $${liveUpdate.price.toFixed(2)}`
+    );
+    setRefreshKey((k) => k + 1);
+  }, [liveUpdate]);
+
   function handleLogout() {
     clearSession();
     setSession(false);
@@ -79,32 +105,45 @@ export default function App() {
       <div className="flex-1 min-w-0">
         <Topbar />
 
-        {activeTab === "overview" && (
-          <main key="overview" className="grid grid-cols-[1fr_340px] gap-6 p-8 max-w-6xl fade-in">
-            <StockHero ticker={selectedTicker} liveUpdate={liveUpdate} onTrade={handleTrade} />
-            <Watchlist
-              selectedSymbol={selectedTicker?.symbol}
-              onSelect={setSelectedTicker}
-              liveUpdate={liveUpdate}
-            />
-          </main>
-        )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+          >
+            {activeTab === "overview" && (
+              <main className="grid grid-cols-[1fr_340px] gap-6 p-8 max-w-6xl">
+                <StockHero ticker={selectedTicker} liveUpdate={liveUpdate} onTrade={handleTrade} />
+                <Watchlist
+                  selectedSymbol={selectedTicker?.symbol}
+                  onSelect={setSelectedTicker}
+                  liveUpdate={liveUpdate}
+                />
+              </main>
+            )}
 
-        {activeTab === "portfolio" && (
-          <main key="portfolio" className="grid grid-cols-[1fr_340px] gap-6 p-8 max-w-6xl fade-in">
-            <div className="space-y-6">
-              <PortfolioSummary refreshKey={refreshKey} />
-              <EquityChart refreshKey={refreshKey} />
-              <OrderHistory refreshKey={refreshKey} />
-            </div>
-            <div className="space-y-6">
-              <TradePanel onOrderPlaced={handleOrderPlaced} prefill={tradePrefill} />
-              <PortfolioAllocation refreshKey={refreshKey} />
-            </div>
-          </main>
-        )}
+            {activeTab === "portfolio" && (
+              <main className="grid grid-cols-[1fr_340px] gap-6 p-8 max-w-6xl">
+                <div className="space-y-6">
+                  <PortfolioSummary refreshKey={refreshKey} />
+                  <EquityChart refreshKey={refreshKey} />
+                  <OrderHistory refreshKey={refreshKey} />
+                </div>
+                <div className="space-y-6">
+                  <TradePanel onOrderPlaced={handleOrderPlaced} prefill={tradePrefill} />
+                  <PortfolioAllocation refreshKey={refreshKey} />
+                  <RecurringOrdersPanel refreshKey={refreshKey} />
+                </div>
+              </main>
+            )}
 
-        {activeTab === "alerts" && <AlertsPanel />}
+            {activeTab === "alerts" && <AlertsPanel />}
+            {activeTab === "accounts" && <AccountsPanel />}
+            {activeTab === "activity" && <ActivityFeed refreshKey={refreshKey} />}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

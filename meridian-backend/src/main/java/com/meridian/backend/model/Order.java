@@ -48,6 +48,10 @@ public class Order {
     @Column(name = "stop_price", precision = 14, scale = 4)
     private BigDecimal stopPrice;
 
+    // Commission charged when this order fills — null until FILLED.
+    @Column(name = "fee_amount", precision = 14, scale = 4)
+    private BigDecimal feeAmount;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -133,6 +137,14 @@ public class Order {
 
     public BigDecimal getStopPrice() {
         return stopPrice;
+    }
+
+    public BigDecimal getFeeAmount() {
+        return feeAmount;
+    }
+
+    public void setFeeAmount(BigDecimal feeAmount) {
+        this.feeAmount = feeAmount;
     }
 
     public Instant getCreatedAt() {
