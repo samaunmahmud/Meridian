@@ -52,6 +52,15 @@ public class Order {
     @Column(name = "fee_amount", precision = 14, scale = 4)
     private BigDecimal feeAmount;
 
+    // Cash held back for a pending BUY: price * quantity PLUS the commission
+    // it will cost at the limit price. Stored so cancel/fill release exactly
+    // what was held. Null for orders created before this column existed.
+    @Column(name = "reserved_amount", precision = 14, scale = 4)
+    private BigDecimal reservedAmount;
+
+    @Column(name = "rejection_reason")
+    private String rejectionReason;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -145,6 +154,22 @@ public class Order {
 
     public void setFeeAmount(BigDecimal feeAmount) {
         this.feeAmount = feeAmount;
+    }
+
+    public BigDecimal getReservedAmount() {
+        return reservedAmount;
+    }
+
+    public void setReservedAmount(BigDecimal reservedAmount) {
+        this.reservedAmount = reservedAmount;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
     }
 
     public Instant getCreatedAt() {

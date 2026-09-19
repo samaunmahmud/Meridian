@@ -7,6 +7,7 @@ const STATUS_STYLES = {
   FILLED: "text-muted bg-panel-2",
   PENDING: "text-accent bg-accent-dim",
   CANCELLED: "text-dim bg-panel-2",
+  REJECTED: "text-loss bg-loss-dim",
 };
 
 export default function OrderHistory({ refreshKey }) {
@@ -77,7 +78,10 @@ export default function OrderHistory({ refreshKey }) {
                 </td>
                 <td className="py-3 font-sans">{o.symbol}</td>
                 <td className="py-3">
-                  <span className={`font-sans text-xs font-medium px-2 py-1 rounded-md ${STATUS_STYLES[o.status] ?? "text-dim"}`}>
+                  <span
+                    title={o.rejectionReason ?? undefined}
+                    className={`font-sans text-xs font-medium px-2 py-1 rounded-md ${STATUS_STYLES[o.status] ?? "text-dim"}`}
+                  >
                     {o.status}
                     {o.status === "PENDING" && o.kind !== "MARKET" ? ` (${o.kind === "LIMIT" ? o.limitPrice?.toFixed(2) : o.stopPrice?.toFixed(2)})` : ""}
                   </span>

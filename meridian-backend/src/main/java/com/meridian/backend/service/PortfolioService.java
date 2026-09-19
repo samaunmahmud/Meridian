@@ -3,6 +3,7 @@ package com.meridian.backend.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.meridian.backend.dto.HoldingResponse;
 import com.meridian.backend.dto.OrderFilledMessage;
+import com.meridian.backend.dto.OrderRejectedMessage;
 import com.meridian.backend.dto.OrderRequest;
 import com.meridian.backend.dto.OrderResponse;
 import com.meridian.backend.dto.PortfolioResponse;
@@ -176,13 +177,21 @@ public class PortfolioService {
             }
         }
 
+        BigDecimal reservedAmount = null;
         if (type == OrderType.BUY) {
-            BigDecimal reservedCost = limitPrice.multiply(quantity);
-            if (portfolio.getAvailableCash().compareTo(reservedCost) < 0) {
+            // Hold the price AND the commission. The order can fill at any
+            // price up to the limit, and the fee only grows with the price,
+            // so notional + fee at the limit is the most it can ever cost.
+            // (Reserving just the price left orders that used all the user's
+            // cash unable to ever pay their own fee.)
+            BigDecimal notional = limitPrice.multiply(quantity);
+            reservedAmount = notional.add(feeService.commissionFor(notional));
+            if (portfolio.getAvailableCash().compareTo(reservedAmount) < 0) {
                 throw new InsufficientFundsException(
-                        "Insufficient funds: need " + reservedCost + " but only " + portfolio.getAvailableCash() + " available");
+                        "Insufficient funds: need " + reservedAmount + " (including fees) but only "
+                                + portfolio.getAvailableCash() + " available");
             }
-            portfolio.setReservedCash(portfolio.getReservedCash().add(reservedCost));
+            portfolio.setReservedCash(portfolio.getReservedCash().add(reservedAmount));
             portfolioRepository.save(portfolio);
         } else {
             Holding holding = holdingRepository.findByPortfolioIdAndTickerId(portfolio.getId(), ticker.getId())
@@ -198,6 +207,7 @@ public class PortfolioService {
         }
 
         Order order = new Order(portfolio, ticker, type, kind, quantity, limitPrice, stopPrice, Instant.now());
+        order.setReservedAmount(reservedAmount);
         order = orderRepository.save(order);
 
         return toResponse(order, null);
@@ -222,8 +232,11 @@ public class PortfolioService {
     private void releaseReservation(Order order) {
         Portfolio portfolio = order.getPortfolio();
         if (order.getType() == OrderType.BUY) {
-            BigDecimal reservedCost = order.getLimitPrice().multiply(order.getQuantity());
-            portfolio.setReservedCash(portfolio.getReservedCash().subtract(reservedCost));
+            // Orders placed before reservedAmount existed only held price * quantity.
+            BigDecimal held = order.getReservedAmount() != null
+                    ? order.getReservedAmount()
+                    : order.getLimitPrice().multiply(order.getQuantity());
+            portfolio.setReservedCash(portfolio.getReservedCash().subtract(held).max(BigDecimal.ZERO));
             portfolioRepository.save(portfolio);
         } else {
             holdingRepository.findByPortfolioIdAndTickerId(portfolio.getId(), order.getTicker().getId())
@@ -247,23 +260,56 @@ public class PortfolioService {
 
         for (Long orderId : pendingIds) {
             try {
-                FillNotice notice = perOrderTransaction.execute(tx -> tryFill(orderId, currentPrice));
+                UserNotice notice = perOrderTransaction.execute(tx -> tryFill(orderId, currentPrice));
                 if (notice != null) {
-                    broadcastOrderFilled(notice);
+                    sendToUser(notice);
                 }
+            } catch (InsufficientFundsException | InsufficientSharesException | InvalidRequestException e) {
+                // A permanent problem (the order can no longer be paid for):
+                // reject it and free what it reserved, instead of retrying
+                // it on every price tick forever.
+                log.warn("Rejecting pending order {}: {}", orderId, e.getMessage());
+                rejectOrder(orderId, e.getMessage());
             } catch (RuntimeException e) {
                 log.warn("Pending order {} could not be filled; will retry on the next price update", orderId, e);
             }
         }
     }
 
-    // What to tell the user's browser once the fill has committed. Built
+    // What to tell the user's browser once a change has committed. Built
     // inside the transaction (lazy relations are only readable there) and
-    // sent after it, so nobody is told about a fill that later rolled back.
-    private record FillNotice(Long userId, OrderFilledMessage message) {
+    // sent after it, so nobody is told about something that later rolled back.
+    private record UserNotice(Long userId, Object message) {
     }
 
-    private FillNotice tryFill(Long orderId, BigDecimal currentPrice) {
+    private void rejectOrder(Long orderId, String reason) {
+        try {
+            UserNotice notice = perOrderTransaction.execute(tx -> {
+                Long portfolioId = orderRepository.findPortfolioIdById(orderId).orElse(null);
+                if (portfolioId == null) return null;
+                portfolioRepository.findByIdForUpdate(portfolioId).orElseThrow();
+                Order order = orderRepository.findById(orderId).orElse(null);
+                if (order == null || order.getStatus() != OrderStatus.PENDING) return null;
+
+                releaseReservation(order);
+                String shortReason = reason == null ? "Order could not be filled"
+                        : reason.substring(0, Math.min(reason.length(), 250));
+                order.setStatus(OrderStatus.REJECTED);
+                order.setRejectionReason(shortReason);
+                orderRepository.save(order);
+                return new UserNotice(order.getPortfolio().getUser().getId(), new OrderRejectedMessage(
+                        "ORDER_REJECTED", order.getId(), order.getTicker().getSymbol(),
+                        order.getType(), order.getQuantity(), shortReason));
+            });
+            if (notice != null) {
+                sendToUser(notice);
+            }
+        } catch (RuntimeException e) {
+            log.warn("Failed to reject pending order {}", orderId, e);
+        }
+    }
+
+    private UserNotice tryFill(Long orderId, BigDecimal currentPrice) {
         Long portfolioId = orderRepository.findPortfolioIdById(orderId).orElse(null);
         if (portfolioId == null) return null;
 
@@ -283,7 +329,7 @@ public class PortfolioService {
         if (!shouldFill) return null;
 
         fillPendingOrder(order, currentPrice);
-        return new FillNotice(order.getPortfolio().getUser().getId(), new OrderFilledMessage(
+        return new UserNotice(order.getPortfolio().getUser().getId(), new OrderFilledMessage(
                 "ORDER_FILLED", order.getId(), order.getTicker().getSymbol(),
                 order.getType(), order.getQuantity(), order.getPrice(), order.getExecutedAt()));
     }
@@ -310,11 +356,11 @@ public class PortfolioService {
         log.info("Filled pending {} {} order {} for {} at {}", order.getKind(), order.getType(), order.getId(), ticker.getSymbol(), fillPrice);
     }
 
-    private void broadcastOrderFilled(FillNotice notice) {
+    private void sendToUser(UserNotice notice) {
         try {
             priceWebSocketHandler.broadcastToUser(notice.userId(), objectMapper.writeValueAsString(notice.message()));
         } catch (Exception e) {
-            log.warn("Failed to broadcast order fill for order {}", notice.message().orderId(), e);
+            log.warn("Failed to send order notification to user {}", notice.userId(), e);
         }
     }
 
@@ -457,7 +503,7 @@ public class PortfolioService {
         return new OrderResponse(
                 order.getId(), order.getTicker().getSymbol(), order.getType(), order.getKind(), order.getStatus(),
                 order.getQuantity(), order.getLimitPrice(), order.getStopPrice(), order.getPrice(), order.getFeeAmount(),
-                order.getCreatedAt(), order.getExecutedAt(), realizedPnL
+                order.getCreatedAt(), order.getExecutedAt(), realizedPnL, order.getRejectionReason()
         );
     }
 

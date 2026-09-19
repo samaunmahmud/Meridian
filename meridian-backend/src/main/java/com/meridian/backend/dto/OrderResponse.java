@@ -19,6 +19,7 @@ public record OrderResponse(
         BigDecimal feeAmount,
         Instant createdAt,
         Instant executedAt,
-        BigDecimal realizedPnL
+        BigDecimal realizedPnL,
+        String rejectionReason
 ) {
 }

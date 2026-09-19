@@ -77,6 +77,17 @@ export default function App() {
     setRefreshKey((k) => k + 1);
   }, [liveUpdate]);
 
+  // The server gives up on a pending order it can no longer pay for and
+  // frees the cash/shares it had reserved — tell the user why.
+  useEffect(() => {
+    if (!liveUpdate || liveUpdate.kind !== "ORDER_REJECTED") return;
+    showToast(
+      "error",
+      `Order rejected: ${liveUpdate.type === "BUY" ? "buy" : "sell"} ${liveUpdate.quantity} ${liveUpdate.symbol} — ${liveUpdate.reason}`
+    );
+    setRefreshKey((k) => k + 1);
+  }, [liveUpdate]);
+
   useEffect(() => {
     if (!liveUpdate || liveUpdate.kind !== "RECURRING_ORDER_EXECUTED") return;
     showToast(
