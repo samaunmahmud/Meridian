@@ -3,10 +3,18 @@
 #   docker compose up -d --build
 # and open http://localhost (or the WEB_PORT you set).
 # (meridian-backend/docker-compose.yml is only the MySQL container for local development.)
+# Keep container logs from filling the disk: at most 3 files of 10 MB per service.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   mysql:
     image: mysql:8.4
     restart: unless-stopped
+    logging: *default-logging
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-meridian}
@@ -23,6 +31,8 @@ services:
   backend:
     build: ./meridian-backend
     restart: unless-stopped
+    logging: *default-logging
+    stop_grace_period: 30s
     depends_on:
       mysql:
         condition: service_healthy
@@ -55,6 +65,7 @@ services:
   web:
     build: ./meridian-frontend
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       backend:
         condition: service_healthy
