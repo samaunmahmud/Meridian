@@ -70,25 +70,45 @@ public class WalletService {
     public List<WalletResponse> getWallets(User user) {
         Portfolio portfolio = getOrCreatePortfolio(user);
         List<WalletResponse> wallets = new ArrayList<>();
-        wallets.add(new WalletResponse(SupportedCurrency.USD, portfolio.getCashBalance()));
-
-        List<Wallet> stored = walletRepository.findByPortfolioId(portfolio.getId());
         for (SupportedCurrency currency : SupportedCurrency.values()) {
-            if (currency == SupportedCurrency.USD) continue;
-            BigDecimal balance = stored.stream()
-                    .filter(w -> w.getCurrency() == currency)
-                    .findFirst()
-                    .map(Wallet::getBalance)
-                    .orElse(BigDecimal.ZERO);
-            wallets.add(new WalletResponse(currency, balance));
+            wallets.add(walletResponse(portfolio, currency));
         }
         return wallets;
+    }
+
+    private WalletResponse walletResponse(Portfolio portfolio, SupportedCurrency currency) {
+        BigDecimal balance = balanceOf(portfolio, currency);
+        BigDecimal reserved = reservedOf(portfolio, currency);
+        return new WalletResponse(currency, balance, reserved, balance.subtract(reserved));
     }
 
     private BigDecimal balanceOf(Portfolio portfolio, SupportedCurrency currency) {
         return currency == SupportedCurrency.USD
                 ? portfolio.getCashBalance()
                 : getOrCreateWallet(portfolio, currency).getBalance();
+    }
+
+    // Held back by open limit orders. Only `available` (balance - reserved)
+    // may be spent, converted or withdrawn.
+    private BigDecimal reservedOf(Portfolio portfolio, SupportedCurrency currency) {
+        return currency == SupportedCurrency.USD
+                ? portfolio.getReservedCash()
+                : getOrCreateWallet(portfolio, currency).getReservedBalance();
+    }
+
+    private BigDecimal availableOf(Portfolio portfolio, SupportedCurrency currency) {
+        return balanceOf(portfolio, currency).subtract(reservedOf(portfolio, currency));
+    }
+
+    private void setReserved(Portfolio portfolio, SupportedCurrency currency, BigDecimal newReserved) {
+        if (currency == SupportedCurrency.USD) {
+            portfolio.setReservedCash(newReserved);
+            portfolioRepository.save(portfolio);
+        } else {
+            Wallet wallet = getOrCreateWallet(portfolio, currency);
+            wallet.setReservedBalance(newReserved);
+            walletRepository.save(wallet);
+        }
     }
 
     private void setBalance(Portfolio portfolio, SupportedCurrency currency, BigDecimal newBalance) {
@@ -103,16 +123,34 @@ public class WalletService {
     }
 
     // Used when a trade settles in a non-USD wallet. Callers already hold the
-    // portfolio lock (they are inside placeOrder's transaction).
+    // portfolio lock (they are inside placeOrder's transaction). Only the
+    // available balance can be spent: money reserved by another open order is
+    // off limits (a filling order releases its own reservation first).
     public BigDecimal debitWallet(Portfolio portfolio, SupportedCurrency currency, BigDecimal amount) {
-        BigDecimal available = balanceOf(portfolio, currency);
+        BigDecimal available = availableOf(portfolio, currency);
         if (available.compareTo(amount) < 0) {
             throw new InsufficientFundsException(
                     "Insufficient " + currency + " balance: need " + amount + " but only " + available + " available");
         }
-        BigDecimal newBalance = available.subtract(amount);
+        BigDecimal newBalance = balanceOf(portfolio, currency).subtract(amount);
         setBalance(portfolio, currency, newBalance);
         return newBalance;
+    }
+
+    // Holds `amount` back for an open limit buy so it cannot be spent twice.
+    // Same locking rules as debitWallet.
+    public void reserve(Portfolio portfolio, SupportedCurrency currency, BigDecimal amount) {
+        BigDecimal available = availableOf(portfolio, currency);
+        if (available.compareTo(amount) < 0) {
+            throw new InsufficientFundsException(
+                    "Insufficient " + currency + " balance: need " + amount + " (including fees and the exchange spread) but only "
+                            + available + " available");
+        }
+        setReserved(portfolio, currency, reservedOf(portfolio, currency).add(amount));
+    }
+
+    public void release(Portfolio portfolio, SupportedCurrency currency, BigDecimal amount) {
+        setReserved(portfolio, currency, reservedOf(portfolio, currency).subtract(amount).max(BigDecimal.ZERO));
     }
 
     public BigDecimal creditWallet(Portfolio portfolio, SupportedCurrency currency, BigDecimal amount) {
@@ -134,7 +172,7 @@ public class WalletService {
         }
 
         Portfolio portfolio = lockPortfolio(user);
-        BigDecimal available = balanceOf(portfolio, request.fromCurrency());
+        BigDecimal available = availableOf(portfolio, request.fromCurrency());
         if (available.compareTo(request.amount()) < 0) {
             throw new InsufficientFundsException(
                     "Insufficient " + request.fromCurrency() + " balance: need " + request.amount()
@@ -146,7 +184,7 @@ public class WalletService {
         BigDecimal amountCredited = request.amount().multiply(appliedRate).setScale(4, RoundingMode.HALF_UP);
         BigDecimal fee = request.amount().multiply(rawRate).setScale(4, RoundingMode.HALF_UP).subtract(amountCredited);
 
-        BigDecimal newFromBalance = available.subtract(request.amount());
+        BigDecimal newFromBalance = balanceOf(portfolio, request.fromCurrency()).subtract(request.amount());
         setBalance(portfolio, request.fromCurrency(), newFromBalance);
         transactionRepository.save(new Transaction(
                 portfolio, TransactionType.CONVERSION, request.amount().negate(), newFromBalance,
@@ -173,7 +211,7 @@ public class WalletService {
 
         transactionRepository.save(new Transaction(portfolio, TransactionType.DEPOSIT, amount, newBalance,
                 currency.name(), "Deposit", null));
-        return new WalletResponse(currency, newBalance);
+        return walletResponse(portfolio, currency);
     }
 
     @Transactional
@@ -183,17 +221,17 @@ public class WalletService {
         }
 
         Portfolio portfolio = lockPortfolio(user);
-        BigDecimal available = balanceOf(portfolio, currency);
+        BigDecimal available = availableOf(portfolio, currency);
         if (available.compareTo(amount) < 0) {
             throw new InsufficientFundsException(
                     "Insufficient " + currency + " balance: need " + amount + " but only " + available + " available");
         }
 
-        BigDecimal newBalance = available.subtract(amount);
+        BigDecimal newBalance = balanceOf(portfolio, currency).subtract(amount);
         setBalance(portfolio, currency, newBalance);
 
         transactionRepository.save(new Transaction(portfolio, TransactionType.WITHDRAWAL, amount.negate(), newBalance,
                 currency.name(), "Withdrawal", null));
-        return new WalletResponse(currency, newBalance);
+        return walletResponse(portfolio, currency);
     }
 }

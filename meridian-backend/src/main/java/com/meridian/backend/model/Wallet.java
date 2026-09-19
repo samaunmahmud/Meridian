@@ -28,6 +28,10 @@ public class Wallet {
     @Column(nullable = false, precision = 14, scale = 4)
     private BigDecimal balance;
 
+    // Held back by open limit orders that pay from this wallet.
+    @Column(name = "reserved_balance", nullable = false, precision = 14, scale = 4)
+    private BigDecimal reservedBalance = BigDecimal.ZERO;
+
     public Wallet() {
     }
 
@@ -55,5 +59,17 @@ public class Wallet {
 
     public void setBalance(BigDecimal balance) {
         this.balance = balance;
+    }
+
+    public BigDecimal getReservedBalance() {
+        return reservedBalance;
+    }
+
+    public void setReservedBalance(BigDecimal reservedBalance) {
+        this.reservedBalance = reservedBalance;
+    }
+
+    public BigDecimal getAvailableBalance() {
+        return balance.subtract(reservedBalance);
     }
 }

@@ -14,7 +14,7 @@ public record OrderRequest(
         BigDecimal limitPrice,
         BigDecimal stopPrice,
         // Wallet to pay from (buy) or be paid into (sell). Null = USD.
-        // Only market orders can settle in another currency.
+        // A limit buy reserves the money in this wallet until it fills or is cancelled.
         SupportedCurrency settlementCurrency
 ) {
     // Convenience for the common USD case.

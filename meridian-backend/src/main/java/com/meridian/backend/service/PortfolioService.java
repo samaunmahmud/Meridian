@@ -131,14 +131,11 @@ public class PortfolioService {
         BigDecimal quantity = request.quantity();
 
         SupportedCurrency settlement = request.settlementCurrency() == null ? SupportedCurrency.USD : request.settlementCurrency();
-        if (kind != OrderKind.MARKET && settlement != SupportedCurrency.USD) {
-            throw new InvalidRequestException("Limit and stop-loss orders settle in USD; only market orders can use a " + settlement + " wallet");
-        }
 
         return switch (kind) {
             case MARKET -> placeMarketOrder(portfolio, ticker, request.type(), quantity, settlement);
-            case LIMIT -> placePendingOrder(portfolio, ticker, request.type(), OrderKind.LIMIT, quantity, request.limitPrice(), null);
-            case STOP_LOSS -> placePendingOrder(portfolio, ticker, request.type(), OrderKind.STOP_LOSS, quantity, null, request.stopPrice());
+            case LIMIT -> placePendingOrder(portfolio, ticker, request.type(), OrderKind.LIMIT, quantity, request.limitPrice(), null, settlement);
+            case STOP_LOSS -> placePendingOrder(portfolio, ticker, request.type(), OrderKind.STOP_LOSS, quantity, null, request.stopPrice(), settlement);
         };
     }
 
@@ -171,8 +168,15 @@ public class PortfolioService {
     // until checkPendingOrders() sees a matching price. The funds/shares
     // they'd need are reserved right away so they can't also be promised to
     // a different order placed in the meantime.
+    //
+    // `settlement` is the wallet the order pays from (buy) or into (sell) when
+    // it fills. A buy reserves its money in that wallet's own currency, worked
+    // out at today's exchange rate; if the rate moves against the user before
+    // the order fills and the wallet can no longer cover it, the fill is
+    // rejected (see checkPendingOrders) rather than overdrawing the wallet.
     private OrderResponse placePendingOrder(Portfolio portfolio, Ticker ticker, OrderType type, OrderKind kind,
-                                             BigDecimal quantity, BigDecimal limitPrice, BigDecimal stopPrice) {
+                                             BigDecimal quantity, BigDecimal limitPrice, BigDecimal stopPrice,
+                                             SupportedCurrency settlement) {
         if (kind == OrderKind.LIMIT) {
             if (limitPrice == null || limitPrice.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new InvalidRequestException("A limit order requires a positive limit price");
@@ -194,15 +198,27 @@ public class PortfolioService {
             // (Reserving just the price left orders that used all the user's
             // cash unable to ever pay their own fee.)
             BigDecimal notional = limitPrice.multiply(quantity);
-            reservedAmount = notional.add(feeService.commissionFor(notional));
-            if (portfolio.getAvailableCash().compareTo(reservedAmount) < 0) {
-                throw new InsufficientFundsException(
-                        "Insufficient funds: need " + reservedAmount + " (including fees) but only "
-                                + portfolio.getAvailableCash() + " available");
+            BigDecimal totalUsd = notional.add(feeService.commissionFor(notional));
+            if (settlement == SupportedCurrency.USD) {
+                reservedAmount = totalUsd;
+                if (portfolio.getAvailableCash().compareTo(reservedAmount) < 0) {
+                    throw new InsufficientFundsException(
+                            "Insufficient funds: need " + reservedAmount + " (including fees) but only "
+                                    + portfolio.getAvailableCash() + " available");
+                }
+                portfolio.setReservedCash(portfolio.getReservedCash().add(reservedAmount));
+                portfolioRepository.save(portfolio);
+            } else {
+                // Rounded up, exactly as the fill will round it.
+                reservedAmount = totalUsd.divide(usdPerUnit(settlement), 4, RoundingMode.UP);
+                walletService.reserve(portfolio, settlement, reservedAmount);
             }
-            portfolio.setReservedCash(portfolio.getReservedCash().add(reservedAmount));
-            portfolioRepository.save(portfolio);
         } else {
+            // Nothing to reserve in cash, but fail now (not at fill time) if
+            // the wallet's exchange rate isn't known.
+            if (settlement != SupportedCurrency.USD) {
+                usdPerUnit(settlement);
+            }
             Holding holding = holdingRepository.findByPortfolioIdAndTickerId(portfolio.getId(), ticker.getId())
                     .orElseThrow(() -> new InsufficientSharesException(
                             "You don't own any shares of " + ticker.getSymbol()));
@@ -216,7 +232,10 @@ public class PortfolioService {
         }
 
         Order order = new Order(portfolio, ticker, type, kind, quantity, limitPrice, stopPrice, Instant.now());
-        order.setReservedAmount(reservedAmount);
+        order.setReservedAmount(reservedAmount); // in the settlement currency
+        if (settlement != SupportedCurrency.USD) {
+            order.setSettlementCurrency(settlement);
+        }
         order = orderRepository.save(order);
 
         return toResponse(order, null);
@@ -241,12 +260,17 @@ public class PortfolioService {
     private void releaseReservation(Order order) {
         Portfolio portfolio = order.getPortfolio();
         if (order.getType() == OrderType.BUY) {
-            // Orders placed before reservedAmount existed only held price * quantity.
-            BigDecimal held = order.getReservedAmount() != null
-                    ? order.getReservedAmount()
-                    : order.getLimitPrice().multiply(order.getQuantity());
-            portfolio.setReservedCash(portfolio.getReservedCash().subtract(held).max(BigDecimal.ZERO));
-            portfolioRepository.save(portfolio);
+            SupportedCurrency currency = settlementOf(order);
+            if (currency == SupportedCurrency.USD) {
+                // Orders placed before reservedAmount existed only held price * quantity.
+                BigDecimal held = order.getReservedAmount() != null
+                        ? order.getReservedAmount()
+                        : order.getLimitPrice().multiply(order.getQuantity());
+                portfolio.setReservedCash(portfolio.getReservedCash().subtract(held).max(BigDecimal.ZERO));
+                portfolioRepository.save(portfolio);
+            } else {
+                walletService.release(portfolio, currency, order.getReservedAmount());
+            }
         } else {
             holdingRepository.findByPortfolioIdAndTickerId(portfolio.getId(), order.getTicker().getId())
                     .ifPresent(holding -> {
@@ -348,22 +372,35 @@ public class PortfolioService {
 
         Portfolio portfolio = order.getPortfolio();
         Ticker ticker = order.getTicker();
-        BigDecimal fee;
 
-        // Pending (limit / stop) orders always settle in USD.
-        if (order.getType() == OrderType.BUY) {
-            fee = executeBuy(portfolio, ticker, order.getQuantity(), fillPrice, order.getId(), SupportedCurrency.USD).fee();
-        } else {
-            fee = executeSell(portfolio, ticker, order.getQuantity(), fillPrice, order.getId(), SupportedCurrency.USD).fee();
-        }
+        // Settles in the wallet chosen when the order was placed.
+        SupportedCurrency settlement = settlementOf(order);
+        TradeExecution execution = order.getType() == OrderType.BUY
+                ? executeBuy(portfolio, ticker, order.getQuantity(), fillPrice, order.getId(), settlement)
+                : executeSell(portfolio, ticker, order.getQuantity(), fillPrice, order.getId(), settlement);
 
         order.setPrice(fillPrice);
-        order.setFeeAmount(fee);
+        order.setFeeAmount(execution.fee());
+        if (settlement != SupportedCurrency.USD) {
+            order.setSettlementAmount(execution.settlementAmount()); // what actually moved, at the fill-time rate
+        }
         order.setExecutedAt(Instant.now());
         order.setStatus(OrderStatus.FILLED);
         orderRepository.save(order);
 
         log.info("Filled pending {} {} order {} for {} at {}", order.getKind(), order.getType(), order.getId(), ticker.getSymbol(), fillPrice);
+    }
+
+    // Orders that settled in USD before settlement currencies existed have none stored.
+    private static SupportedCurrency settlementOf(Order order) {
+        return order.getSettlementCurrency() == null ? SupportedCurrency.USD : order.getSettlementCurrency();
+    }
+
+    // USD received for 1 unit of `currency` after the exchange spread — the
+    // rate every trade paid from a non-USD wallet is converted at.
+    private BigDecimal usdPerUnit(SupportedCurrency currency) {
+        return fxRateService.getRate(currency, SupportedCurrency.USD)
+                .multiply(BigDecimal.ONE.subtract(FeeService.FX_SPREAD));
     }
 
     private void sendToUser(UserNotice notice) {
@@ -410,8 +447,7 @@ public class PortfolioService {
                     "USD", "Commission on " + ticker.getSymbol() + " order", orderId));
             settled = totalDebit;
         } else {
-            BigDecimal usdPerUnit = fxRateService.getRate(settlement, SupportedCurrency.USD)
-                    .multiply(BigDecimal.ONE.subtract(FeeService.FX_SPREAD));
+            BigDecimal usdPerUnit = usdPerUnit(settlement);
             BigDecimal totalPaid = totalDebit.divide(usdPerUnit, 4, RoundingMode.UP);
             BigDecimal feePaid = fee.divide(usdPerUnit, 4, RoundingMode.HALF_UP);
             BigDecimal costPaid = totalPaid.subtract(feePaid);

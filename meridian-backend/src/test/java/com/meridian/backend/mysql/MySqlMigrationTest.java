@@ -90,6 +90,8 @@ class MySqlMigrationTest {
         jdbc.execute("drop table flyway_schema_history");
         jdbc.execute(OLD_ORDER_STATUS);
         jdbc.update("insert into users (email, password_hash, created_at) values ('old@example.com', 'x', now(6))");
+        jdbc.update("insert into portfolio (user_id, cash_balance, reserved_cash) select id, 100, 0 from users");
+        jdbc.update("insert into wallets (portfolio_id, currency, balance) select id, 'EUR', 50 from portfolio");
 
         try (ConfigurableApplicationContext app = MySqlTestDatabase.boot()) {
             JdbcTemplate live = app.getBean(JdbcTemplate.class);
@@ -101,6 +103,8 @@ class MySqlMigrationTest {
                     + "where table_schema = database() and table_name = 'orders' and column_name = 'status'",
                     String.class).contains("'REJECTED'"));
             assertEquals(1, live.queryForObject("select count(*) from users where email = 'old@example.com'", Integer.class));
+            // a wallet that existed before the reserved_balance column starts with nothing reserved
+            assertEquals(0, live.queryForObject("select count(*) from wallets where reserved_balance <> 0 or balance <> 50", Integer.class));
         }
 
         // Starting again changes nothing.

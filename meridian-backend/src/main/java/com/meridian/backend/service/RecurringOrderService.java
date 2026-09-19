@@ -14,6 +14,7 @@ import com.meridian.backend.model.OrderType;
 import com.meridian.backend.model.Portfolio;
 import com.meridian.backend.model.PriceHistory;
 import com.meridian.backend.model.RecurringOrder;
+import com.meridian.backend.model.SupportedCurrency;
 import com.meridian.backend.model.Ticker;
 import com.meridian.backend.model.User;
 import com.meridian.backend.repository.PortfolioRepository;
@@ -24,6 +25,8 @@ import com.meridian.backend.websocket.PriceWebSocketHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -40,23 +43,33 @@ public class RecurringOrderService {
     private final TickerRepository tickerRepository;
     private final PriceHistoryRepository priceHistoryRepository;
     private final PortfolioService portfolioService;
+    private final FxRateService fxRateService;
     private final PriceWebSocketHandler priceWebSocketHandler;
     private final ObjectMapper objectMapper;
+    // Each due order runs in its own transaction: the scheduler thread has no
+    // database session of its own (so lazy relations such as the portfolio
+    // can only be read inside a transaction), and one order failing must not
+    // roll back the others.
+    private final TransactionTemplate perOrderTransaction;
 
     public RecurringOrderService(RecurringOrderRepository recurringOrderRepository,
                                   PortfolioRepository portfolioRepository,
                                   TickerRepository tickerRepository,
                                   PriceHistoryRepository priceHistoryRepository,
                                   PortfolioService portfolioService,
+                                  FxRateService fxRateService,
                                   PriceWebSocketHandler priceWebSocketHandler,
-                                  ObjectMapper objectMapper) {
+                                  ObjectMapper objectMapper,
+                                  PlatformTransactionManager transactionManager) {
         this.recurringOrderRepository = recurringOrderRepository;
         this.portfolioRepository = portfolioRepository;
         this.tickerRepository = tickerRepository;
         this.priceHistoryRepository = priceHistoryRepository;
         this.portfolioService = portfolioService;
+        this.fxRateService = fxRateService;
         this.priceWebSocketHandler = priceWebSocketHandler;
         this.objectMapper = objectMapper;
+        this.perOrderTransaction = new TransactionTemplate(transactionManager);
     }
 
     private Portfolio requirePortfolio(User user) {
@@ -77,7 +90,8 @@ public class RecurringOrderService {
         Portfolio portfolio = requirePortfolio(user);
 
         RecurringOrder recurringOrder = recurringOrderRepository.save(
-                new RecurringOrder(portfolio, ticker, request.amount(), request.frequency(), Instant.now()));
+                new RecurringOrder(portfolio, ticker, request.amount(), request.settlementCurrency(),
+                        request.frequency(), Instant.now()));
         return toResponse(recurringOrder);
     }
 
@@ -95,24 +109,36 @@ public class RecurringOrderService {
         recurringOrderRepository.delete(recurringOrder);
     }
 
-    // Called by the scheduler. Deliberately NOT @Transactional at this
-    // level: each order's execution (a call into PortfolioService.placeOrder,
-    // itself @Transactional) must run as its own independent transaction, so
-    // one order failing (e.g. insufficient funds) can't mark a shared
-    // transaction rollback-only and silently undo every other order in the
-    // same batch.
+    // What to tell the user's browser once an execution has committed.
+    private record Executed(Long userId, Long recurringOrderId, OrderResponse order) {
+    }
+
+    // Called by the scheduler. Each due order is executed in its own
+    // transaction (see perOrderTransaction), so one failing (e.g. insufficient
+    // funds) can't undo the others, and the order it places and the advance of
+    // its next run time commit together or not at all. The websocket message
+    // goes out only after the commit.
     public void runDue() {
-        List<RecurringOrder> due = recurringOrderRepository.findByActiveTrueAndNextRunAtLessThanEqual(Instant.now());
-        for (RecurringOrder recurringOrder : due) {
+        List<Long> dueIds = recurringOrderRepository.findByActiveTrueAndNextRunAtLessThanEqual(Instant.now())
+                .stream().map(RecurringOrder::getId).toList();
+        for (Long id : dueIds) {
             try {
-                executeOne(recurringOrder);
+                Executed executed = perOrderTransaction.execute(tx -> executeOne(id));
+                if (executed != null) {
+                    broadcastExecuted(executed);
+                }
             } catch (Exception e) {
-                log.warn("Recurring order {} failed to execute", recurringOrder.getId(), e);
+                log.warn("Recurring order {} failed to execute", id, e);
             }
         }
     }
 
-    private void executeOne(RecurringOrder recurringOrder) {
+    private Executed executeOne(Long id) {
+        RecurringOrder recurringOrder = recurringOrderRepository.findById(id).orElse(null);
+        if (recurringOrder == null || !recurringOrder.isActive()) {
+            return null;
+        }
+
         Ticker ticker = recurringOrder.getTicker();
         BigDecimal price = priceHistoryRepository.findFirstByTickerIdOrderByRecordedAtDesc(ticker.getId())
                 .map(PriceHistory::getPrice)
@@ -120,40 +146,43 @@ public class RecurringOrderService {
 
         if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
             log.warn("No price available for recurring order {} ({})", recurringOrder.getId(), ticker.getSymbol());
-            return;
+            return null;
         }
 
-        BigDecimal quantity = recurringOrder.getAmount().divide(price, 4, RoundingMode.HALF_UP);
+        // The amount is in the wallet's currency; shares are priced in USD.
+        SupportedCurrency currency = recurringOrder.getSettlementCurrency();
+        BigDecimal amountUsd = recurringOrder.getAmount().multiply(fxRateService.getRate(currency, SupportedCurrency.USD));
+        BigDecimal quantity = amountUsd.divide(price, 4, RoundingMode.HALF_UP);
         if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
-            return;
+            return null;
         }
 
         User user = recurringOrder.getPortfolio().getUser();
-        OrderRequest orderRequest = new OrderRequest(ticker.getSymbol(), OrderType.BUY, OrderKind.MARKET, quantity, null, null);
+        OrderRequest orderRequest = new OrderRequest(ticker.getSymbol(), OrderType.BUY, OrderKind.MARKET, quantity, null, null, currency);
         OrderResponse order = portfolioService.placeOrder(orderRequest, user);
 
         recurringOrder.advanceNextRun();
         recurringOrderRepository.save(recurringOrder);
 
-        broadcastExecuted(recurringOrder, order);
+        return new Executed(user.getId(), recurringOrder.getId(), order);
     }
 
-    private void broadcastExecuted(RecurringOrder recurringOrder, OrderResponse order) {
+    private void broadcastExecuted(Executed executed) {
         try {
+            OrderResponse order = executed.order();
             RecurringOrderExecutedMessage message = new RecurringOrderExecutedMessage(
-                    "RECURRING_ORDER_EXECUTED", recurringOrder.getId(), order.symbol(), order.quantity(),
+                    "RECURRING_ORDER_EXECUTED", executed.recurringOrderId(), order.symbol(), order.quantity(),
                     order.price(), order.executedAt());
-            String json = objectMapper.writeValueAsString(message);
-            priceWebSocketHandler.broadcastToUser(recurringOrder.getPortfolio().getUser().getId(), json);
+            priceWebSocketHandler.broadcastToUser(executed.userId(), objectMapper.writeValueAsString(message));
         } catch (Exception e) {
-            log.warn("Failed to broadcast recurring order execution for {}", recurringOrder.getId(), e);
+            log.warn("Failed to broadcast recurring order execution for {}", executed.recurringOrderId(), e);
         }
     }
 
     private RecurringOrderResponse toResponse(RecurringOrder recurringOrder) {
         return new RecurringOrderResponse(
                 recurringOrder.getId(), recurringOrder.getTicker().getSymbol(), recurringOrder.getAmount(),
-                recurringOrder.getFrequency(), recurringOrder.getNextRunAt(), recurringOrder.isActive(),
+                recurringOrder.getSettlementCurrency(), recurringOrder.getFrequency(), recurringOrder.getNextRunAt(), recurringOrder.isActive(),
                 recurringOrder.getCreatedAt()
         );
     }

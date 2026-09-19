@@ -22,7 +22,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Market orders paid from / credited to a EUR wallet instead of USD cash. */
+/** Market orders paid from / credited to a EUR wallet instead of USD cash. (Pending orders: PendingOrderCurrencyTest.) */
 class SettlementCurrencyTest extends IntegrationTestBase {
 
     @Autowired PortfolioService portfolioService;
@@ -104,17 +104,6 @@ class SettlementCurrencyTest extends IntegrationTestBase {
         assertThatThrownBy(() -> portfolioService.placeOrder(market(ticker, OrderType.SELL, "1", SupportedCurrency.EUR), user))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("commission");
-    }
-
-    @Test
-    void limitOrdersCannotSettleInAnotherCurrency() {
-        User user = newUser("1000.00");
-        Ticker ticker = newTicker("100.00");
-
-        assertThatThrownBy(() -> portfolioService.placeOrder(new OrderRequest(ticker.getSymbol(), OrderType.BUY,
-                OrderKind.LIMIT, BigDecimal.ONE, new BigDecimal("90.00"), null, SupportedCurrency.EUR), user))
-                .isInstanceOf(InvalidRequestException.class)
-                .hasMessageContaining("settle in USD");
     }
 
     @Test
