@@ -15,3 +15,9 @@ export function formatMoney(amount, currency = "USD") {
 export function currencySymbol(currency = "USD") {
   return SYMBOLS[currency] ?? `${currency} `;
 }
+
+// Plain number with thousands separators (no currency sign), e.g. prices.
+export function formatNumber(value, digits = 2) {
+  if (value == null || Number.isNaN(value)) return "—";
+  return value.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}

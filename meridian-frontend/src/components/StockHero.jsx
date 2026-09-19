@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { getPrices } from "../lib/api";
+import { formatNumber } from "../lib/formatMoney";
 import CandlestickChart from "./CandlestickChart";
+import Icon from "./Icon";
+import PriceChart from "./PriceChart";
 import TickerAvatar from "./TickerAvatar";
 import Skeleton from "./Skeleton";
 import { useAnimatedNumber } from "../lib/useAnimatedNumber";
@@ -11,10 +14,36 @@ const RANGES = [
   { key: "all", label: "All" },
 ];
 
+const CHART_TYPES = [
+  { key: "line", label: "Line" },
+  { key: "candles", label: "Candles" },
+];
+
+function Segmented({ options, value, onChange, label }) {
+  return (
+    <div role="group" aria-label={label} className="flex gap-0.5 bg-panel-2 rounded-xl p-1 text-[13px]">
+      {options.map((o) => (
+        <button
+          key={o.key}
+          type="button"
+          aria-pressed={value === o.key}
+          onClick={() => onChange(o.key)}
+          className={`px-3.5 py-1.5 rounded-[9px] transition-colors ${
+            value === o.key ? "bg-accent-dim text-accent font-semibold" : "text-muted font-medium hover:text-bone"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function StockHero({ ticker, liveUpdate, onTrade }) {
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState("all");
+  const [chartType, setChartType] = useState("line");
 
   useEffect(() => {
     if (!ticker) return;
@@ -47,9 +76,9 @@ export default function StockHero({ ticker, liveUpdate, onTrade }) {
 
   if (loading) {
     return (
-      <section className="bg-panel border border-line rounded-2xl p-7 space-y-4">
+      <section className="bg-panel border border-line rounded-[20px] p-5 sm:p-7 space-y-4">
         <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-full" />
+          <Skeleton className="h-11 w-11 rounded-full" />
           <div className="space-y-1.5">
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-3 w-24" />
@@ -61,69 +90,91 @@ export default function StockHero({ ticker, liveUpdate, onTrade }) {
     );
   }
 
+  const windowStats = latest
+    ? [
+        { label: "Window high", value: `$${formatNumber(Math.max(...visible.map((p) => p.price)))}` },
+        { label: "Window low", value: `$${formatNumber(Math.min(...visible.map((p) => p.price)))}` },
+        { label: "Window start", value: `$${formatNumber(first.price)}` },
+        { label: "Price updates", value: String(visible.length) },
+      ]
+    : [];
+
   return (
-    <section className="bg-panel border border-line rounded-2xl p-7 fade-in transition-shadow hover:shadow-lg hover:shadow-black/20">
-      <div className="flex justify-between items-start mb-1">
-        <div className="flex items-center gap-3">
-          <TickerAvatar symbol={ticker.symbol} size={40} />
+    <section className="bg-panel border border-line rounded-[20px] p-5 sm:p-7 fade-in">
+      <div className="flex flex-wrap justify-between items-start gap-4 mb-5">
+        <div className="flex items-center gap-3.5">
+          <TickerAvatar symbol={ticker.symbol} size={48} />
           <div>
-            <div className="text-[17px] font-semibold leading-tight">{ticker.name}</div>
+            <div className="text-lg font-semibold leading-tight">{ticker.name}</div>
             <div className="text-[13px] text-muted">
               {ticker.symbol} &middot; {ticker.exchange}
             </div>
           </div>
         </div>
-        <div className="flex gap-1 bg-panel-2 rounded-lg p-1 text-xs">
-          {RANGES.map((r) => (
-            <button
-              key={r.key}
-              onClick={() => setRange(r.key)}
-              className={`px-2.5 py-1 rounded-md transition-colors ${
-                range === r.key ? "bg-line text-bone" : "text-dim"
+
+        {latest && (
+          <div className="sm:text-right">
+            <div className="text-[34px] font-mono font-medium leading-none" style={{ letterSpacing: "-0.04em" }}>
+              ${formatNumber(animatedPrice)}
+            </div>
+            <div
+              className={`inline-flex items-center gap-1 text-xs font-mono font-medium mt-2 px-2.5 py-1 rounded-full ${
+                isUp ? "text-gain bg-gain-dim" : "text-loss bg-loss-dim"
               }`}
             >
-              {r.label}
-            </button>
-          ))}
-        </div>
+              <Icon name={isUp ? "up" : "down"} size={12} strokeWidth={2.2} />
+              {isUp ? "+" : ""}
+              {formatNumber(delta)} ({isUp ? "+" : ""}
+              {deltaPct}%)
+            </div>
+          </div>
+        )}
       </div>
 
       {latest ? (
         <>
-          <div className="flex items-end justify-between mt-4 mb-2">
-            <div>
-              <div className="text-[38px] font-mono font-medium leading-none">
-                {animatedPrice.toFixed(2)}
-              </div>
-              <div
-                className={`text-sm font-mono mt-2 inline-block px-2 py-0.5 rounded-md ${
-                  isUp ? "text-gain bg-gain-dim" : "text-loss bg-loss-dim"
-                }`}
-              >
-                {isUp ? "+" : ""}{delta.toFixed(2)} ({isUp ? "+" : ""}{deltaPct}%)
-              </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div className="flex flex-wrap gap-2">
+              <Segmented options={RANGES} value={range} onChange={setRange} label="Price window" />
+              <Segmented options={CHART_TYPES} value={chartType} onChange={setChartType} label="Chart type" />
             </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => onTrade(ticker.symbol, "BUY")}
-                className="px-5 py-2.5 rounded-lg bg-gain text-ink text-sm font-medium hover:brightness-110 active:scale-[0.97] transition-all"
-              >
-                Buy
-              </button>
-              <button
-                onClick={() => onTrade(ticker.symbol, "SELL")}
-                className="px-5 py-2.5 rounded-lg bg-panel-2 border border-line text-bone text-sm font-medium hover:bg-line active:scale-[0.97] transition-all"
-              >
-                Sell
-              </button>
+            <div className="flex items-center gap-2 text-xs text-muted">
+              <span className="w-2 h-2 rounded-full bg-gain shrink-0" />
+              Updated {new Date(latest.recordedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
             </div>
           </div>
-          <div className="text-xs text-dim mb-2">
-            Last updated: {new Date(latest.recordedAt).toLocaleString()}
-          </div>
 
-          <CandlestickChart points={visible} />
+          {chartType === "line" ? (
+            <PriceChart points={visible} positive={isUp} />
+          ) : (
+            <CandlestickChart points={visible} />
+          )}
+
+          <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-4 bg-panel-2 rounded-[20px] px-5 py-4 mt-5">
+            {windowStats.map((s) => (
+              <div key={s.label}>
+                <dt className="text-xs font-medium text-muted mb-1">{s.label}</dt>
+                <dd className="font-mono font-medium text-sm">{s.value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className="grid grid-cols-2 gap-3 mt-5">
+            <button
+              onClick={() => onTrade(ticker.symbol, "BUY")}
+              className="h-12 rounded-[14px] bg-accent text-accent-ink text-[15px] font-semibold flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all"
+            >
+              <Icon name="up" size={16} strokeWidth={2.2} />
+              Buy {ticker.symbol}
+            </button>
+            <button
+              onClick={() => onTrade(ticker.symbol, "SELL")}
+              className="h-12 rounded-[14px] bg-loss-dim text-loss text-[15px] font-semibold flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all"
+            >
+              <Icon name="down" size={16} strokeWidth={2.2} />
+              Sell
+            </button>
+          </div>
         </>
       ) : (
         <div className="text-sm text-dim mt-8">No price data yet — the scheduler hasn't polled this ticker.</div>

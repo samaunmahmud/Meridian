@@ -1,22 +1,35 @@
-const INDICES = [
-  { name: "S&P 500", value: "5,842.11", delta: "+0.62%", up: true },
-  { name: "Dow Jones", value: "41,203.4", delta: "+0.28%", up: true },
-  { name: "Nasdaq", value: "18,412.9", delta: "+0.94%", up: true },
-  { name: "FTSE 100", value: "8,204.6", delta: "-0.15%", up: false },
-];
+import Icon from "./Icon";
+import Logo from "./Logo";
+import ThemeToggle from "./ThemeToggle";
 
-export default function Topbar() {
+// Desktop: page title (Fraunces) on the left, theme toggle on the right.
+// Mobile: the sidebar is hidden, so the wordmark, theme toggle and log-out
+// live here and the page title drops onto its own row underneath.
+export default function Topbar({ title, onLogout }) {
   return (
-    <div className="flex px-8 py-4 border-b border-line overflow-x-auto">
-      {INDICES.map((idx, i) => (
-        <div key={i} className={`px-5 first:pl-0 ${i > 0 ? "border-l border-line" : ""}`}>
-          <div className="text-xs text-dim mb-1">{idx.name}</div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-sm font-mono">{idx.value}</span>
-            <span className={`text-xs font-mono ${idx.up ? "text-gain" : "text-loss"}`}>{idx.delta}</span>
-          </div>
-        </div>
-      ))}
-    </div>
+    <header className="px-4 sm:px-6 lg:px-8 pt-3 pb-3 lg:py-0 lg:h-[72px] flex flex-wrap lg:flex-nowrap items-center justify-between gap-y-3">
+      <div className="lg:hidden order-1">
+        <Logo size={22} />
+      </div>
+
+      <div className="order-2 lg:order-3 flex items-center gap-2">
+        <ThemeToggle />
+        <button
+          type="button"
+          onClick={onLogout}
+          aria-label="Log out"
+          className="lg:hidden w-10 h-10 rounded-xl bg-panel border border-line text-muted flex items-center justify-center hover:text-bone transition-colors"
+        >
+          <Icon name="logout" size={17} />
+        </button>
+      </div>
+
+      <h1
+        className="order-3 lg:order-1 w-full lg:w-auto font-display text-[28px] lg:text-[30px] font-normal leading-none"
+        style={{ letterSpacing: "-0.03em" }}
+      >
+        {title}
+      </h1>
+    </header>
   );
 }

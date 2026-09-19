@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import AuthPage from "./components/AuthPage";
-import Sidebar from "./components/Sidebar";
+import Sidebar, { MobileNav } from "./components/Sidebar";
 import Topbar from "./components/Topbar";
+import OverviewStrip from "./components/OverviewStrip";
 import StockHero from "./components/StockHero";
 import Watchlist from "./components/Watchlist";
 import PortfolioSummary from "./components/PortfolioSummary";
@@ -18,6 +19,17 @@ import ToastContainer from "./components/ToastContainer";
 import { getSession, clearSession } from "./lib/api";
 import { usePriceSocket } from "./lib/usePriceSocket";
 import { showToast } from "./lib/toast";
+
+const TITLES = {
+  overview: "Overview",
+  portfolio: "Portfolio",
+  alerts: "Alerts",
+  accounts: "Accounts",
+  activity: "Activity",
+};
+
+// Shared page gutter: 16px on phones, 24px on tablets, 32px on desktop.
+const PAGE_PADDING = "px-4 sm:px-6 lg:px-8 pb-8 max-w-[1240px]";
 
 export default function App() {
   const [session, setSession] = useState(undefined);
@@ -102,8 +114,8 @@ export default function App() {
         refreshKey={refreshKey}
       />
 
-      <div className="flex-1 min-w-0">
-        <Topbar />
+      <div className="flex-1 min-w-0 pb-24 lg:pb-0">
+        <Topbar title={TITLES[activeTab]} onLogout={handleLogout} />
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -114,24 +126,28 @@ export default function App() {
             transition={{ duration: 0.18, ease: "easeOut" }}
           >
             {activeTab === "overview" && (
-              <main className="grid grid-cols-[1fr_340px] gap-6 p-8 max-w-6xl">
-                <StockHero ticker={selectedTicker} liveUpdate={liveUpdate} onTrade={handleTrade} />
-                <Watchlist
-                  selectedSymbol={selectedTicker?.symbol}
-                  onSelect={setSelectedTicker}
-                  liveUpdate={liveUpdate}
-                />
+              <main className={`${PAGE_PADDING} space-y-6`}>
+                <OverviewStrip refreshKey={refreshKey} />
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6">
+                  <StockHero ticker={selectedTicker} liveUpdate={liveUpdate} onTrade={handleTrade} />
+                  <Watchlist
+                    selectedSymbol={selectedTicker?.symbol}
+                    onSelect={setSelectedTicker}
+                    liveUpdate={liveUpdate}
+                  />
+                </div>
               </main>
             )}
 
             {activeTab === "portfolio" && (
-              <main className="grid grid-cols-[1fr_340px] gap-6 p-8 max-w-6xl">
-                <div className="space-y-6">
-                  <PortfolioSummary refreshKey={refreshKey} />
-                  <EquityChart refreshKey={refreshKey} />
+              <main className={`${PAGE_PADDING} grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6`}>
+                <div className="space-y-6 min-w-0">
+                  <PortfolioSummary refreshKey={refreshKey}>
+                    <EquityChart refreshKey={refreshKey} />
+                  </PortfolioSummary>
                   <OrderHistory refreshKey={refreshKey} />
                 </div>
-                <div className="space-y-6">
+                <div className="space-y-6 min-w-0">
                   <TradePanel onOrderPlaced={handleOrderPlaced} prefill={tradePrefill} />
                   <PortfolioAllocation refreshKey={refreshKey} />
                   <RecurringOrdersPanel refreshKey={refreshKey} />
@@ -145,6 +161,8 @@ export default function App() {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      <MobileNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 }

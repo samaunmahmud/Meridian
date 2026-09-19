@@ -2,8 +2,13 @@ import { useEffect, useState } from "react";
 import { getWallets, depositToWallet, withdrawFromWallet } from "../lib/api";
 import { formatMoney, currencySymbol } from "../lib/formatMoney";
 import { showToast } from "../lib/toast";
+import Icon from "./Icon";
 import Skeleton from "./Skeleton";
 import ConvertModal from "./ConvertModal";
+
+const CURRENCY_NAME = { USD: "US Dollar", EUR: "Euro", GBP: "British Pound" };
+// Which categorical theme colour (--c-s1…) tints each currency badge.
+const CURRENCY_SLOT = { USD: 1, EUR: 3, GBP: 2 };
 
 function WalletCard({ wallet, onChanged }) {
   const [mode, setMode] = useState(null); // null | "deposit" | "withdraw"
@@ -33,14 +38,30 @@ function WalletCard({ wallet, onChanged }) {
   }
 
   return (
-    <div className="bg-panel border border-line rounded-2xl p-5 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20">
-      <div className="flex items-center justify-between mb-3">
-        <div className="w-9 h-9 rounded-full bg-panel-2 flex items-center justify-center text-sm font-mono text-muted">
-          {currencySymbol(wallet.currency)}
+    <div className="bg-panel border border-line rounded-[20px] p-6 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10">
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-[42px] h-[42px] rounded-full flex items-center justify-center font-display font-semibold text-xl"
+            style={{
+              color: `var(--c-s${CURRENCY_SLOT[wallet.currency] ?? 8})`,
+              backgroundColor: `color-mix(in srgb, var(--c-s${CURRENCY_SLOT[wallet.currency] ?? 8}) 16%, transparent)`,
+            }}
+          >
+            {currencySymbol(wallet.currency).trim()}
+          </div>
+          <div>
+            <div className="text-[15px] font-semibold leading-tight">{CURRENCY_NAME[wallet.currency] ?? wallet.currency}</div>
+            <div className="text-xs font-mono text-muted">{wallet.currency}</div>
+          </div>
         </div>
-        <div className="text-xs text-dim">{wallet.currency}</div>
+        {wallet.currency === "USD" && (
+          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-accent-dim text-accent">Primary</span>
+        )}
       </div>
-      <div className="text-2xl font-mono font-medium mb-4">{formatMoney(wallet.balance, wallet.currency)}</div>
+      <div className="font-display text-[38px] leading-none mb-5" style={{ letterSpacing: "-0.04em" }}>
+        {formatMoney(wallet.balance, wallet.currency)}
+      </div>
 
       {mode ? (
         <form onSubmit={handleSubmit} className="flex gap-2">
@@ -52,12 +73,12 @@ function WalletCard({ wallet, onChanged }) {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
-            className="flex-1 min-w-0 bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm font-mono outline-none focus:border-accent transition-colors"
+            className="flex-1 min-w-0 bg-panel-2 border border-line rounded-xl px-3 py-2 text-sm font-mono outline-none focus:border-accent transition-colors"
           />
           <button
             type="submit"
             disabled={submitting}
-            className="px-3 py-2 rounded-lg bg-accent hover:bg-accent-2 text-white text-xs font-medium disabled:opacity-50 transition-colors shrink-0"
+            className="px-3 py-2 rounded-xl bg-accent hover:brightness-110 text-accent-ink text-xs font-medium disabled:opacity-50 transition-colors shrink-0"
           >
             {submitting ? "..." : "Confirm"}
           </button>
@@ -69,14 +90,16 @@ function WalletCard({ wallet, onChanged }) {
         <div className="flex gap-2">
           <button
             onClick={() => setMode("deposit")}
-            className="flex-1 py-1.5 rounded-lg bg-panel-2 border border-line text-xs font-medium hover:bg-line transition-colors"
+            className="flex-1 h-10 rounded-xl bg-accent-dim text-accent text-[13px] font-medium flex items-center justify-center gap-1.5 hover:brightness-110 transition-all"
           >
+            <Icon name="plus" size={15} strokeWidth={2.2} />
             Deposit
           </button>
           <button
             onClick={() => setMode("withdraw")}
-            className="flex-1 py-1.5 rounded-lg bg-panel-2 border border-line text-xs font-medium hover:bg-line transition-colors"
+            className="flex-1 h-10 rounded-xl bg-panel-2 text-bone text-[13px] font-medium flex items-center justify-center gap-1.5 hover:brightness-110 transition-all"
           >
+            <Icon name="up" size={15} strokeWidth={2} />
             Withdraw
           </button>
         </div>
@@ -96,25 +119,26 @@ export default function AccountsPanel() {
   useEffect(load, []);
 
   return (
-    <main className="p-8 max-w-6xl fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <div className="text-lg font-semibold">Accounts</div>
+    <main className="px-4 sm:px-6 lg:px-8 pb-8 max-w-[1240px] fade-in">
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-sm text-muted">Your balances by currency.</p>
         <button
           onClick={() => setShowConvert(true)}
-          className="px-4 py-2 rounded-lg bg-accent hover:bg-accent-2 transition-colors text-white text-sm font-medium active:scale-[0.98]"
+          className="h-10 px-4 rounded-xl bg-accent hover:brightness-110 transition-all text-accent-ink text-sm font-semibold active:scale-[0.98] flex items-center gap-2"
         >
+          <Icon name="swap" size={15} strokeWidth={2.2} />
           Convert currency
         </button>
       </div>
 
       {!wallets ? (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-40" />
+            <Skeleton key={i} className="h-44" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {wallets.map((w) => (
             <WalletCard key={w.currency} wallet={w} onChanged={load} />
           ))}

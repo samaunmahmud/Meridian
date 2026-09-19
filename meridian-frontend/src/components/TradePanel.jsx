@@ -84,20 +84,20 @@ export default function TradePanel({ onOrderPlaced, prefill }) {
   }
 
   return (
-    <section className="bg-panel border border-line rounded-2xl p-6">
-      <div className="text-sm font-medium mb-4">Place an order</div>
+    <section className="bg-panel border border-line rounded-[20px] p-6">
+      <div className="text-base font-semibold mb-4">Trade</div>
 
-      <div className="relative bg-panel-2 rounded-lg p-1 mb-3 grid grid-cols-2">
+      <div className="relative bg-panel-2 rounded-xl p-1 mb-3 grid grid-cols-2">
         <div
           className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-md transition-transform duration-200 ${
-            type === "BUY" ? "bg-gain translate-x-0" : "bg-loss translate-x-[calc(100%+8px)]"
+            type === "BUY" ? "bg-accent translate-x-0" : "bg-loss translate-x-[calc(100%+8px)]"
           }`}
         />
         <button
           type="button"
           onClick={() => setType("BUY")}
           className={`relative z-10 py-2 text-sm font-medium transition-colors ${
-            type === "BUY" ? "text-ink" : "text-muted"
+            type === "BUY" ? "text-accent-ink" : "text-muted"
           }`}
         >
           Buy
@@ -106,14 +106,14 @@ export default function TradePanel({ onOrderPlaced, prefill }) {
           type="button"
           onClick={() => setType("SELL")}
           className={`relative z-10 py-2 text-sm font-medium transition-colors ${
-            type === "SELL" ? "text-ink" : "text-muted"
+            type === "SELL" ? "text-on-loss" : "text-muted"
           }`}
         >
           Sell
         </button>
       </div>
 
-      <div className="flex gap-1 bg-panel-2 rounded-lg p-1 mb-4 text-xs">
+      <div className="flex gap-1 bg-panel-2 rounded-xl p-1 mb-4 text-xs">
         {KINDS.map((k) => {
           const disabled = k.key === "STOP_LOSS" && type === "BUY";
           return (
@@ -123,7 +123,7 @@ export default function TradePanel({ onOrderPlaced, prefill }) {
               disabled={disabled}
               onClick={() => setKind(k.key)}
               className={`flex-1 px-2 py-1.5 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
-                kind === k.key ? "bg-line text-bone" : "text-dim"
+                kind === k.key ? "bg-accent-dim text-accent" : "text-dim"
               }`}
             >
               {k.label}
@@ -138,7 +138,7 @@ export default function TradePanel({ onOrderPlaced, prefill }) {
           <select
             value={symbol}
             onChange={(e) => setSymbol(e.target.value)}
-            className="w-full bg-panel-2 border border-line rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+            className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors"
           >
             {tickers.map((t) => (
               <option key={t.symbol} value={t.symbol}>
@@ -156,7 +156,7 @@ export default function TradePanel({ onOrderPlaced, prefill }) {
             step="0.0001"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            className="w-full bg-panel-2 border border-line rounded-lg px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
+            className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
           />
         </div>
 
@@ -170,7 +170,7 @@ export default function TradePanel({ onOrderPlaced, prefill }) {
               value={limitPrice}
               onChange={(e) => setLimitPrice(e.target.value)}
               placeholder={lastPrice ? lastPrice.toFixed(2) : "0.00"}
-              className="w-full bg-panel-2 border border-line rounded-lg px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
+              className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
             />
           </div>
         )}
@@ -185,7 +185,7 @@ export default function TradePanel({ onOrderPlaced, prefill }) {
               value={stopPrice}
               onChange={(e) => setStopPrice(e.target.value)}
               placeholder={lastPrice ? lastPrice.toFixed(2) : "0.00"}
-              className="w-full bg-panel-2 border border-line rounded-lg px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
+              className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
             />
           </div>
         )}
@@ -199,8 +199,8 @@ export default function TradePanel({ onOrderPlaced, prefill }) {
         <button
           type="submit"
           disabled={submitting || !symbol}
-          className={`w-full py-2.5 rounded-lg text-sm font-medium text-ink disabled:opacity-50 transition-all active:scale-[0.98] ${
-            type === "BUY" ? "bg-gain hover:brightness-110" : "bg-loss hover:brightness-110"
+          className={`w-full h-12 rounded-[14px] text-[15px] font-semibold disabled:opacity-50 transition-all active:scale-[0.98] ${
+            type === "BUY" ? "bg-accent text-accent-ink hover:brightness-110" : "bg-loss text-on-loss hover:brightness-110"
           }`}
         >
           {submitting ? "Placing order..." : `${type === "BUY" ? "Buy" : "Sell"} ${symbol}`}

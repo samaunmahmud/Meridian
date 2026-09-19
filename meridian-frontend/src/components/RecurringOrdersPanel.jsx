@@ -56,13 +56,13 @@ export default function RecurringOrdersPanel({ refreshKey }) {
   }
 
   return (
-    <section className="bg-panel border border-line rounded-2xl p-6">
-      <div className="text-sm font-medium mb-4">Recurring buys</div>
+    <section className="bg-panel border border-line rounded-[20px] p-6">
+      <div className="text-base font-semibold mb-4">Recurring buys</div>
 
       {!loading && orders.length > 0 && (
         <div className="space-y-1 mb-4">
           {orders.map((o) => (
-            <div key={o.id} className="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-panel-2">
+            <div key={o.id} className="flex items-center justify-between py-2 px-2 rounded-xl hover:bg-panel-2">
               <div className="text-sm">
                 <span className="font-medium">{o.symbol}</span>{" "}
                 <span className="text-dim font-mono">
@@ -85,7 +85,7 @@ export default function RecurringOrdersPanel({ refreshKey }) {
           <select
             value={symbol}
             onChange={(e) => setSymbol(e.target.value)}
-            className="bg-panel-2 border border-line rounded-lg px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+            className="bg-panel-2 border border-line rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
           >
             {tickers.map((t) => (
               <option key={t.symbol} value={t.symbol}>
@@ -100,18 +100,18 @@ export default function RecurringOrdersPanel({ refreshKey }) {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Amount ($)"
-            className="bg-panel-2 border border-line rounded-lg px-3 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
+            className="bg-panel-2 border border-line rounded-xl px-3 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
           />
         </div>
 
-        <div className="flex gap-1 bg-panel-2 rounded-lg p-1 text-xs">
+        <div className="flex gap-1 bg-panel-2 rounded-xl p-1 text-xs">
           {FREQUENCIES.map((f) => (
             <button
               key={f.key}
               type="button"
               onClick={() => setFrequency(f.key)}
               className={`flex-1 py-1.5 rounded-md transition-colors ${
-                frequency === f.key ? "bg-line text-bone" : "text-dim"
+                frequency === f.key ? "bg-accent-dim text-accent" : "text-dim"
               }`}
             >
               {f.label}
@@ -122,7 +122,7 @@ export default function RecurringOrdersPanel({ refreshKey }) {
         <button
           type="submit"
           disabled={submitting || !symbol || !amount}
-          className="w-full py-2.5 rounded-lg bg-accent hover:bg-accent-2 transition-all active:scale-[0.98] text-white text-sm font-medium disabled:opacity-50"
+          className="w-full py-2.5 rounded-xl bg-accent hover:brightness-110 transition-all active:scale-[0.98] text-accent-ink text-sm font-medium disabled:opacity-50"
         >
           {submitting ? "Setting up..." : "Set up recurring buy"}
         </button>

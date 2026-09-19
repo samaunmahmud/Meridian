@@ -1,19 +1,30 @@
 import { useEffect, useState } from "react";
 import { getPortfolio } from "../lib/api";
+import { formatMoney, formatNumber } from "../lib/formatMoney";
 import { useAnimatedNumber } from "../lib/useAnimatedNumber";
+import Icon from "./Icon";
 import Skeleton from "./Skeleton";
+import TickerAvatar from "./TickerAvatar";
 
-function StatCard({ label, value, sub, animated }) {
+function StatCard({ label, value, sub, display, className = "" }) {
   return (
-    <div className="bg-panel border border-line rounded-2xl p-5 flex-1 transition-all hover:border-line hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20">
-      <div className="text-xs text-dim mb-2">{label}</div>
-      <div className="text-2xl font-mono">{animated}</div>
-      {sub && <div className="text-xs text-dim mt-1">{sub}</div>}
+    <div className={`bg-panel border border-line rounded-[20px] p-4 sm:p-5 min-w-0 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 ${className}`}>
+      <div className="text-xs font-medium text-muted mb-2.5">{label}</div>
+      <div
+        className={`leading-none truncate ${display ? "font-display text-[28px]" : "font-mono text-2xl"}`}
+        style={display ? { letterSpacing: "-0.04em" } : undefined}
+      >
+        {value}
+      </div>
+      {sub && <div className="text-xs text-dim mt-2">{sub}</div>}
     </div>
   );
 }
 
-export default function PortfolioSummary({ refreshKey }) {
+// Stats row + (optional children, e.g. the equity chart) + holdings table.
+// Everything comes from one /portfolio call, so `children` is rendered
+// between the stats and the table instead of fetching twice.
+export default function PortfolioSummary({ refreshKey, children }) {
   const [portfolio, setPortfolio] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,10 +42,10 @@ export default function PortfolioSummary({ refreshKey }) {
   if (loading) {
     return (
       <div className="space-y-5">
-        <div className="flex gap-4">
-          <Skeleton className="h-24 flex-1" />
-          <Skeleton className="h-24 flex-1" />
-          <Skeleton className="h-24 flex-1" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+          <Skeleton className="h-24 col-span-2 sm:col-span-1" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
         </div>
         <Skeleton className="h-40 w-full" />
       </div>
@@ -47,50 +58,76 @@ export default function PortfolioSummary({ refreshKey }) {
 
   return (
     <div className="space-y-5 fade-in">
-      <div className="flex gap-4">
-        <StatCard label="Total value" animated={`$${animatedTotal.toFixed(2)}`} />
-        <StatCard label="Cash balance" animated={`$${animatedCash.toFixed(2)}`} />
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+        <StatCard display className="col-span-2 sm:col-span-1" label="Total value" value={formatMoney(animatedTotal)} />
         <StatCard
-          label="Invested"
-          animated={`$${animatedInvested.toFixed(2)}`}
-          sub={`${holdingsPct}% of portfolio`}
+          label="Cash balance"
+          value={formatMoney(animatedCash)}
+          sub={portfolio.reservedCash > 0 ? `${formatMoney(portfolio.reservedCash)} reserved by open orders` : "Fully available"}
         />
+        <StatCard label="Invested" value={formatMoney(animatedInvested)} sub={`${holdingsPct}% of portfolio`} />
       </div>
 
-      <section className="bg-panel border border-line rounded-2xl p-6">
-        <div className="text-sm font-medium mb-4">Holdings</div>
+      {children}
+
+      <section className="bg-panel border border-line rounded-[20px] p-5 sm:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-base font-semibold">Holdings</div>
+          <div className="text-[13px] text-muted">
+            {portfolio.holdings.length} {portfolio.holdings.length === 1 ? "position" : "positions"}
+          </div>
+        </div>
+
         {portfolio.holdings.length === 0 ? (
           <div className="text-sm text-dim">No holdings yet — place a trade to get started.</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-dim border-b border-line">
-                <th className="font-normal pb-3">Symbol</th>
-                <th className="font-normal pb-3 text-right">Qty</th>
-                <th className="font-normal pb-3 text-right">Avg cost</th>
-                <th className="font-normal pb-3 text-right">Price</th>
-                <th className="font-normal pb-3 text-right">Value</th>
-                <th className="font-normal pb-3 text-right">Gain/Loss</th>
-              </tr>
-            </thead>
-            <tbody className="font-mono">
-              {portfolio.holdings.map((h) => {
-                const isUp = h.gainLoss >= 0;
-                return (
-                  <tr key={h.symbol} className="border-b border-line/60 last:border-0">
-                    <td className="py-3 font-sans font-medium">{h.symbol}</td>
-                    <td className="py-3 text-right">{h.quantity}</td>
-                    <td className="py-3 text-right text-muted">{h.avgCost.toFixed(2)}</td>
-                    <td className="py-3 text-right">{h.currentPrice.toFixed(2)}</td>
-                    <td className="py-3 text-right">{h.marketValue.toFixed(2)}</td>
-                    <td className={`py-3 text-right ${isUp ? "text-gain" : "text-loss"}`}>
-                      {isUp ? "+" : ""}{h.gainLoss.toFixed(2)} ({isUp ? "+" : ""}{h.gainLossPct.toFixed(2)}%)
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto no-scrollbar -mx-1 px-1">
+            <table className="w-full text-sm min-w-[560px]">
+              <thead>
+                <tr className="text-left text-dim text-xs">
+                  <th className="font-medium pb-3">Asset</th>
+                  <th className="font-medium pb-3 text-right">Qty</th>
+                  <th className="font-medium pb-3 text-right">Avg cost</th>
+                  <th className="font-medium pb-3 text-right">Price</th>
+                  <th className="font-medium pb-3 text-right">Value</th>
+                  <th className="font-medium pb-3 text-right">P&amp;L</th>
+                </tr>
+              </thead>
+              <tbody className="font-mono">
+                {portfolio.holdings.map((h) => {
+                  const isUp = h.gainLoss >= 0;
+                  return (
+                    <tr key={h.symbol} className="border-t border-line/70">
+                      <td className="py-3.5 font-sans">
+                        <div className="flex items-center gap-3">
+                          <TickerAvatar symbol={h.symbol} size={36} />
+                          <div className="min-w-0">
+                            <div className="font-semibold text-sm">{h.symbol}</div>
+                            <div className="text-xs text-muted truncate max-w-[160px]">{h.name}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3.5 text-right">{h.quantity}</td>
+                      <td className="py-3.5 text-right text-muted">{formatNumber(h.avgCost)}</td>
+                      <td className="py-3.5 text-right">{formatNumber(h.currentPrice)}</td>
+                      <td className="py-3.5 text-right font-medium">{formatNumber(h.marketValue)}</td>
+                      <td className={`py-3.5 text-right ${isUp ? "text-gain" : "text-loss"}`}>
+                        <div className="font-medium inline-flex items-center gap-1 justify-end">
+                          <Icon name={isUp ? "up" : "down"} size={12} strokeWidth={2.2} />
+                          {isUp ? "+" : ""}
+                          {formatNumber(h.gainLoss)}
+                        </div>
+                        <div className="text-xs">
+                          {isUp ? "+" : ""}
+                          {h.gainLossPct.toFixed(2)}%
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>

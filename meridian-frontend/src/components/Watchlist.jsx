@@ -3,7 +3,9 @@ import { getTickers, getPrices } from "../lib/api";
 import Sparkline from "./Sparkline";
 import TickerAvatar from "./TickerAvatar";
 import Skeleton from "./Skeleton";
+import Icon from "./Icon";
 import AddTickerModal from "./AddTickerModal";
+import { formatNumber } from "../lib/formatMoney";
 
 export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
   const [rows, setRows] = useState([]);
@@ -64,14 +66,15 @@ export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
 
   return (
     <>
-      <div className="bg-panel border border-line rounded-2xl p-5 fade-in">
-        <div className="flex items-center justify-between mb-1 px-1">
-          <div className="text-sm font-medium">Markets</div>
+      <div className="bg-panel border border-line rounded-[20px] p-4 sm:p-5 fade-in h-fit">
+        <div className="flex items-center justify-between mb-1 px-1.5">
+          <div className="text-base font-semibold">Watchlist</div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="text-xs text-accent-2 hover:text-accent transition-colors font-medium"
+            className="flex items-center gap-1 text-[13px] text-accent hover:brightness-110 transition-all font-medium"
           >
-            + Add stock
+            <Icon name="plus" size={14} strokeWidth={2.2} />
+            Add
           </button>
         </div>
 
@@ -97,31 +100,32 @@ export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
             {filtered.map((row, i) => {
               const isUp = row.delta >= 0;
               const isSelected = row.symbol === selectedSymbol;
+              const previous = row.latest ? row.latest.price - row.delta : 0;
+              const pct = previous ? (row.delta / previous) * 100 : 0;
               return (
                 <button
                   key={row.symbol}
                   onClick={() => onSelect(row)}
-                  className={`w-full flex items-center gap-3 py-3 px-2 rounded-lg text-left transition-colors ${
-                    i > 0 ? "border-t border-line/60" : ""
-                  } ${isSelected ? "bg-accent-dim" : "hover:bg-panel-2"}`}
+                  aria-pressed={isSelected}
+                  className={`w-full flex items-center gap-3 h-[58px] px-2.5 rounded-[14px] text-left transition-colors ${
+                    isSelected ? "bg-panel-2" : "hover:bg-panel-2/60"
+                  }`}
                 >
-                  <TickerAvatar symbol={row.symbol} size={30} />
+                  <TickerAvatar symbol={row.symbol} size={36} />
 
                   <div className="flex-1 min-w-0">
-                    <div className={`text-[13.5px] font-medium truncate ${isSelected ? "text-accent-2" : "text-bone"}`}>
-                      {row.symbol}
-                    </div>
-                    <div className="text-[11px] text-dim">{row.exchange}</div>
+                    <div className="text-sm font-semibold truncate">{row.symbol}</div>
+                    <div className="text-xs text-muted truncate">{row.name}</div>
                   </div>
 
-                  <Sparkline values={row.sparkline} positive={isUp} />
+                  <Sparkline values={row.sparkline} positive={isUp} width={52} height={22} />
 
-                  <div className="text-right w-20">
-                    <div className="text-[13.5px] font-mono">
-                      {row.latest ? row.latest.price.toFixed(2) : "\u2014"}
+                  <div className="text-right w-[84px] shrink-0">
+                    <div className="text-[13px] font-mono font-medium">
+                      {row.latest ? `$${formatNumber(row.latest.price)}` : "\u2014"}
                     </div>
                     <div className={`text-xs font-mono ${isUp ? "text-gain" : "text-loss"}`}>
-                      {row.latest ? `${isUp ? "+" : ""}${row.delta.toFixed(2)}` : ""}
+                      {row.latest ? `${isUp ? "+" : ""}${pct.toFixed(2)}%` : ""}
                     </div>
                   </div>
                 </button>

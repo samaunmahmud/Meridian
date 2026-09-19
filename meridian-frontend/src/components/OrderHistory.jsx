@@ -5,7 +5,7 @@ import Skeleton from "./Skeleton";
 
 const STATUS_STYLES = {
   FILLED: "text-muted bg-panel-2",
-  PENDING: "text-accent-2 bg-accent-dim",
+  PENDING: "text-accent bg-accent-dim",
   CANCELLED: "text-dim bg-panel-2",
 };
 
@@ -33,7 +33,7 @@ export default function OrderHistory({ refreshKey }) {
 
   if (loading) {
     return (
-      <section className="bg-panel border border-line rounded-2xl p-6 space-y-3">
+      <section className="bg-panel border border-line rounded-[20px] p-6 space-y-3">
         <Skeleton className="h-4 w-28" />
         {[1, 2, 3].map((i) => (
           <Skeleton key={i} className="h-8 w-full" />
@@ -43,8 +43,8 @@ export default function OrderHistory({ refreshKey }) {
   }
 
   return (
-    <section className="bg-panel border border-line rounded-2xl p-6 fade-in">
-      <div className="text-sm font-medium mb-4">Order history</div>
+    <section className="bg-panel border border-line rounded-[20px] p-6 fade-in">
+      <div className="text-base font-semibold mb-4">Order history</div>
 
       {orders.length === 0 ? (
         <div className="text-sm text-dim">No orders placed yet.</div>

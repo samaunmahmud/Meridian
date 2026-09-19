@@ -52,9 +52,9 @@ export default function AlertsPanel() {
   }
 
   return (
-    <div className="grid grid-cols-[1fr_340px] gap-6 p-8 max-w-6xl fade-in">
-      <section className="bg-panel border border-line rounded-2xl p-6">
-        <div className="text-sm font-medium mb-4">Your alerts</div>
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 px-4 sm:px-6 lg:px-8 pb-8 max-w-[1240px] fade-in">
+      <section className="bg-panel border border-line rounded-[20px] p-6">
+        <div className="text-base font-semibold mb-4">Your alerts</div>
 
         {loading ? (
           <div className="space-y-3">
@@ -69,7 +69,7 @@ export default function AlertsPanel() {
             {alerts.map((a) => (
               <div
                 key={a.id}
-                className={`flex items-center justify-between py-3 px-2 rounded-lg ${
+                className={`flex items-center justify-between py-3 px-2 rounded-xl ${
                   a.triggered ? "opacity-50" : ""
                 }`}
               >
@@ -99,15 +99,15 @@ export default function AlertsPanel() {
         )}
       </section>
 
-      <section className="bg-panel border border-line rounded-2xl p-6 h-fit">
-        <div className="text-sm font-medium mb-4">New alert</div>
+      <section className="bg-panel border border-line rounded-[20px] p-6 h-fit">
+        <div className="text-base font-semibold mb-4">New alert</div>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="text-xs text-dim block mb-1.5">Symbol</label>
             <select
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
-              className="w-full bg-panel-2 border border-line rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+              className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors"
             >
               {tickers.map((t) => (
                 <option key={t.symbol} value={t.symbol}>
@@ -117,7 +117,7 @@ export default function AlertsPanel() {
             </select>
           </div>
 
-          <div className="relative bg-panel-2 rounded-lg p-1 grid grid-cols-2">
+          <div className="relative bg-panel-2 rounded-xl p-1 grid grid-cols-2">
             <div
               className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-md bg-accent transition-transform duration-200 ${
                 direction === "ABOVE" ? "translate-x-0" : "translate-x-[calc(100%+8px)]"
@@ -127,7 +127,7 @@ export default function AlertsPanel() {
               type="button"
               onClick={() => setDirection("ABOVE")}
               className={`relative z-10 py-2 text-sm font-medium transition-colors ${
-                direction === "ABOVE" ? "text-white" : "text-muted"
+                direction === "ABOVE" ? "text-accent-ink" : "text-muted"
               }`}
             >
               Above
@@ -136,7 +136,7 @@ export default function AlertsPanel() {
               type="button"
               onClick={() => setDirection("BELOW")}
               className={`relative z-10 py-2 text-sm font-medium transition-colors ${
-                direction === "BELOW" ? "text-white" : "text-muted"
+                direction === "BELOW" ? "text-accent-ink" : "text-muted"
               }`}
             >
               Below
@@ -152,14 +152,14 @@ export default function AlertsPanel() {
               value={targetPrice}
               onChange={(e) => setTargetPrice(e.target.value)}
               placeholder="0.00"
-              className="w-full bg-panel-2 border border-line rounded-lg px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
+              className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
             />
           </div>
 
           <button
             type="submit"
             disabled={submitting || !symbol || !targetPrice}
-            className="w-full py-2.5 rounded-lg bg-accent hover:bg-accent-2 transition-all active:scale-[0.98] text-white text-sm font-medium disabled:opacity-50"
+            className="w-full py-2.5 rounded-xl bg-accent hover:brightness-110 transition-all active:scale-[0.98] text-accent-ink text-sm font-medium disabled:opacity-50"
           >
             {submitting ? "Creating..." : "Create alert"}
           </button>

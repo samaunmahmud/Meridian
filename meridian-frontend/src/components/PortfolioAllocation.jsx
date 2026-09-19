@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import { getPortfolio } from "../lib/api";
-import TickerAvatar from "./TickerAvatar";
+import { formatMoney } from "../lib/formatMoney";
 
-const SEGMENT_COLORS = ["#7c6fff", "#22c55e", "#eab308", "#06b6d4", "#ec4899", "#f97316"];
+const SIZE = 150;
+const STROKE = 18;
+const RADIUS = (SIZE - STROKE) / 2;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+const GAP = 2; // px of empty arc between segments
 
 export default function PortfolioAllocation({ refreshKey }) {
   const [portfolio, setPortfolio] = useState(null);
@@ -14,38 +18,65 @@ export default function PortfolioAllocation({ refreshKey }) {
   if (!portfolio || portfolio.totalValue <= 0) return null;
 
   const segments = [
-    { label: "Cash", value: portfolio.cashBalance, color: "#3a4150" },
     ...portfolio.holdings.map((h, i) => ({
       label: h.symbol,
       value: h.marketValue,
-      color: SEGMENT_COLORS[i % SEGMENT_COLORS.length],
+      color: `var(--c-s${(i % 8) + 1})`,
     })),
-  ];
+    { label: "Cash", value: portfolio.cashBalance, color: "var(--c-cash)" },
+  ].filter((s) => s.value > 0);
+
+  let offset = 0;
 
   return (
-    <section className="bg-panel border border-line rounded-2xl p-6">
-      <div className="text-sm font-medium mb-4">Allocation</div>
+    <section className="bg-panel border border-line rounded-[20px] p-5 sm:p-6">
+      <div className="text-base font-semibold mb-5">Allocation</div>
 
-      <div className="flex h-2.5 rounded-full overflow-hidden mb-4">
-        {segments.map((s, i) => (
-          <div
-            key={i}
-            style={{ width: `${(s.value / portfolio.totalValue) * 100}%`, backgroundColor: s.color }}
-            className="transition-all duration-500"
-          />
-        ))}
+      <div className="flex justify-center mb-5">
+        <div className="relative" style={{ width: SIZE, height: SIZE }}>
+          <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label="Portfolio allocation">
+            <g transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}>
+              {segments.map((s) => {
+                const length = (s.value / portfolio.totalValue) * CIRCUMFERENCE;
+                const visible = Math.max(length - GAP, 0);
+                const circle = (
+                  <circle
+                    key={s.label}
+                    cx={SIZE / 2}
+                    cy={SIZE / 2}
+                    r={RADIUS}
+                    fill="none"
+                    stroke={s.color}
+                    strokeWidth={STROKE}
+                    strokeDasharray={`${visible} ${CIRCUMFERENCE - visible}`}
+                    strokeDashoffset={-offset}
+                    className="transition-all duration-500"
+                  />
+                );
+                offset += length;
+                return circle;
+              })}
+            </g>
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <div className="font-display text-[32px] leading-none" style={{ letterSpacing: "-0.04em" }}>
+              {portfolio.holdings.length}
+            </div>
+            <div className="text-xs text-muted mt-1">{portfolio.holdings.length === 1 ? "position" : "positions"}</div>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-2.5">
-        {segments.map((s, i) => (
-          <div key={i} className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
+        {segments.map((s) => (
+          <div key={s.label} className="flex items-center justify-between text-sm gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
               <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-              <span className="text-muted">{s.label}</span>
+              <span className="font-medium truncate">{s.label}</span>
             </div>
-            <div className="flex items-center gap-2 font-mono text-xs">
-              <span className="text-dim">{((s.value / portfolio.totalValue) * 100).toFixed(1)}%</span>
-              <span>${s.value.toFixed(2)}</span>
+            <div className="flex items-center gap-3 font-mono text-[13px] shrink-0">
+              <span className="text-muted">{formatMoney(s.value)}</span>
+              <span className="text-dim w-12 text-right">{((s.value / portfolio.totalValue) * 100).toFixed(1)}%</span>
             </div>
           </div>
         ))}

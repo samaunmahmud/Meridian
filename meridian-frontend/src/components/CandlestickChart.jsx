@@ -26,7 +26,7 @@ function deriveCandles(points) {
 function Candle(props) {
   const { x, y, width, height, payload } = props;
   const { open, close, high, low, isUp } = payload;
-  const color = isUp ? "#22c55e" : "#f0455a";
+  const color = isUp ? "var(--c-gain)" : "var(--c-loss)";
 
   const span = high - low || 1;
   const yFor = (value) => y + (1 - (value - low) / span) * height;
@@ -69,9 +69,9 @@ export default function CandlestickChart({ points, height = 260 }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={candles} margin={{ top: 10, right: 8, left: 8, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-line)" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--c-line)" vertical={false} />
         <YAxis domain={domain} hide />
-        <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+        <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--c-line)", opacity: 0.35 }} />
         <Bar dataKey="range" shape={<Candle />} isAnimationActive={false} />
       </ComposedChart>
     </ResponsiveContainer>

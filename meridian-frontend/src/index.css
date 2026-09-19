@@ -1,35 +1,118 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ------------------------------------------------------------------
+   Meridian design tokens — one set of names, two themes.
+   The active theme is the data-theme attribute on <html> (set before
+   first paint by the script in index.html, toggled by lib/useTheme.js).
+   Charts and SVGs read these variables directly: var(--c-gain) etc.
+------------------------------------------------------------------- */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: #090c0e;
+  --c-surface: #10161a;
+  --c-surface-2: #172026;
+  --c-line: #222c32;
+  --c-text: #edf2f1;
+  --c-muted: #8e9da3;
+  --c-dim: #5d6b71;
+  --c-accent: #35c9d8;
+  --c-accent-ink: #04262b;
+  --c-accent-soft: #0f2d33;
+  --c-gain: #3ddc97;
+  --c-gain-soft: #0f2b22;
+  --c-loss: #ff6b7a;
+  --c-loss-soft: #341219;
+  --c-on-loss: #2a0a10;
+  --c-cash: #4a575d;
+  /* categorical series colours (allocation, avatars) */
+  --c-s1: #35c9d8;
+  --c-s2: #f5b53f;
+  --c-s3: #8b7cf6;
+  --c-s4: #4c9aff;
+  --c-s5: #f0708a;
+  --c-s6: #76b900;
+  --c-s7: #f7931a;
+  --c-s8: #a8b0b5;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --c-bg: #f5f3ee;
+  --c-surface: #ffffff;
+  --c-surface-2: #efece5;
+  --c-line: #e3dfd5;
+  --c-text: #12181b;
+  --c-muted: #5b686d;
+  --c-dim: #78848a;
+  --c-accent: #0b7f8e;
+  --c-accent-ink: #ffffff;
+  --c-accent-soft: #dceef0;
+  --c-gain: #0b8455;
+  --c-gain-soft: #ddf1e8;
+  --c-loss: #d0394b;
+  --c-loss-soft: #fadde0;
+  --c-on-loss: #ffffff;
+  --c-cash: #a9b2b5;
+  --c-s1: #0b7f8e;
+  --c-s2: #c98a0a;
+  --c-s3: #6b5bd6;
+  --c-s4: #2563eb;
+  --c-s5: #d14868;
+  --c-s6: #4e7a00;
+  --c-s7: #b8650a;
+  --c-s8: #5c6770;
+}
+
+/* Existing utility names (bg-ink, bg-panel, text-bone …) keep working —
+   they now resolve through the theme variables above. */
+@theme inline {
+  --color-ink: var(--c-bg);
+  --color-panel: var(--c-surface);
+  --color-panel-2: var(--c-surface-2);
+  --color-line: var(--c-line);
+  --color-bone: var(--c-text);
+  --color-muted: var(--c-muted);
+  --color-dim: var(--c-dim);
+  --color-accent: var(--c-accent);
+  --color-accent-ink: var(--c-accent-ink);
+  --color-accent-dim: var(--c-accent-soft);
+  --color-gain: var(--c-gain);
+  --color-gain-dim: var(--c-gain-soft);
+  --color-loss: var(--c-loss);
+  --color-loss-dim: var(--c-loss-soft);
+  --color-on-loss: var(--c-on-loss);
+}
 
 @theme {
-  --color-ink: #0b0e14;
-  --color-panel: #12161f;
-  --color-panel-2: #1a2029;
-  --color-line: #232a36;
-  --color-bone: #e7eaf0;
-  --color-muted: #8b93a3;
-  --color-dim: #5b6472;
-  --color-accent: #7c6fff;
-  --color-accent-2: #9f8fff;
-  --color-accent-dim: #241f47;
-  --color-gain: #22c55e;
-  --color-gain-dim: #0f2a1c;
-  --color-loss: #f0455a;
-  --color-loss-dim: #351019;
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
 }
 
 body {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-sans);
   margin: 0;
-  background: var(--color-ink);
-  color: var(--color-bone);
+  background: var(--c-bg);
+  color: var(--c-text);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.font-mono {
-  font-family: "JetBrains Mono", monospace;
+::selection {
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
 }
 
-/* Custom scrollbar to match the dark theme instead of the default light one */
+/* Big display figures: Fraunces with lining numerals and tight tracking */
+.font-display {
+  font-variant-numeric: lining-nums;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -38,7 +121,7 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-line);
+  background: var(--c-line);
   border-radius: 4px;
 }
 
@@ -47,7 +130,7 @@ body {
   100% { background-position: 400px 0; }
 }
 .skeleton {
-  background: linear-gradient(90deg, var(--color-panel-2) 25%, var(--color-line) 37%, var(--color-panel-2) 63%);
+  background: linear-gradient(90deg, var(--c-surface-2) 25%, var(--c-line) 37%, var(--c-surface-2) 63%);
   background-size: 800px 100%;
   animation: shimmer 1.6s infinite linear;
   border-radius: 8px;
@@ -67,4 +150,8 @@ body {
 }
 .toast-in {
   animation: toastIn 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in, .toast-in, .skeleton { animation: none; }
 }

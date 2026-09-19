@@ -46,7 +46,7 @@ export default function AddTickerModal({ onClose, onAdded }) {
       onClick={onClose}
     >
       <div
-        className="bg-panel border border-line rounded-2xl w-full max-w-md p-5 fade-in"
+        className="bg-panel border border-line rounded-[20px] w-full max-w-md p-5 fade-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-3">
@@ -61,7 +61,7 @@ export default function AddTickerModal({ onClose, onAdded }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by company name or symbol..."
-          className="w-full bg-panel-2 border border-line rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors mb-3"
+          className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors mb-3"
         />
 
         <div className="max-h-80 overflow-y-auto space-y-1">
@@ -74,7 +74,7 @@ export default function AddTickerModal({ onClose, onAdded }) {
           {results.map((r) => (
             <div
               key={r.symbol}
-              className="flex items-center justify-between px-2 py-2.5 rounded-lg hover:bg-panel-2"
+              className="flex items-center justify-between px-2 py-2.5 rounded-xl hover:bg-panel-2"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <TickerAvatar symbol={r.symbol} size={30} />
@@ -86,7 +86,7 @@ export default function AddTickerModal({ onClose, onAdded }) {
               <button
                 onClick={() => handleAdd(r)}
                 disabled={addingSymbol === r.symbol}
-                className="text-xs bg-accent hover:bg-accent-2 transition-colors text-white px-3 py-1.5 rounded-md disabled:opacity-50 shrink-0"
+                className="text-xs bg-accent hover:brightness-110 transition-colors text-accent-ink px-3 py-1.5 rounded-md disabled:opacity-50 shrink-0"
               >
                 {addingSymbol === r.symbol ? "Adding..." : "Add"}
               </button>

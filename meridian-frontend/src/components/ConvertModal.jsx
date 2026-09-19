@@ -58,7 +58,7 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 z-40 flex items-start justify-center pt-24" onClick={onClose}>
-      <div className="bg-panel border border-line rounded-2xl w-full max-w-md p-5 fade-in" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-panel border border-line rounded-[20px] w-full max-w-md p-5 fade-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm font-medium">Convert currency</div>
           <button onClick={onClose} className="text-dim hover:text-bone text-lg leading-none">
@@ -73,7 +73,7 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
               <select
                 value={fromCurrency}
                 onChange={(e) => setFromCurrency(e.target.value)}
-                className="w-full bg-panel-2 border border-line rounded-lg px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+                className="w-full bg-panel-2 border border-line rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
               >
                 {CURRENCIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -85,7 +85,7 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
               <select
                 value={toCurrency}
                 onChange={(e) => setToCurrency(e.target.value)}
-                className="w-full bg-panel-2 border border-line rounded-lg px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+                className="w-full bg-panel-2 border border-line rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
               >
                 {CURRENCIES.filter((c) => c !== fromCurrency).map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -106,7 +106,7 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
-              className="w-full bg-panel-2 border border-line rounded-lg px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
+              className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
             />
           </div>
 
@@ -119,7 +119,7 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
           <button
             type="submit"
             disabled={submitting || !amount}
-            className="w-full py-2.5 rounded-lg bg-accent hover:bg-accent-2 transition-all active:scale-[0.98] text-white text-sm font-medium disabled:opacity-50"
+            className="w-full py-2.5 rounded-xl bg-accent hover:brightness-110 transition-all active:scale-[0.98] text-accent-ink text-sm font-medium disabled:opacity-50"
           >
             {submitting ? "Converting..." : "Convert"}
           </button>

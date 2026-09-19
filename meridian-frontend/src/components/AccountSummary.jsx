@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getPortfolio } from "../lib/api";
+import { formatMoney } from "../lib/formatMoney";
 import { useAnimatedNumber } from "../lib/useAnimatedNumber";
 import Skeleton from "./Skeleton";
 
@@ -15,7 +16,7 @@ export default function AccountSummary({ refreshKey }) {
 
   if (!portfolio) {
     return (
-      <div className="px-5 pt-5 pb-4 border-b border-line space-y-2">
+      <div className="bg-panel-2 rounded-[20px] p-4 space-y-2.5">
         <Skeleton className="h-3 w-20" />
         <Skeleton className="h-7 w-32" />
         <Skeleton className="h-3 w-28" />
@@ -28,25 +29,17 @@ export default function AccountSummary({ refreshKey }) {
   const isUp = sinceStart >= 0;
 
   return (
-    <div className="px-5 pt-5 pb-4 border-b border-line">
-      <div className="text-xs text-dim mb-1.5">Account value</div>
-      <div className="text-2xl font-mono font-medium mb-1.5">
-        ${animatedTotal.toFixed(2)}
+    <div className="bg-panel-2 rounded-[20px] p-4">
+      <div className="text-xs font-medium text-muted mb-1.5">Total balance</div>
+      <div className="font-display text-[28px] leading-none" style={{ letterSpacing: "-0.045em" }}>
+        {formatMoney(animatedTotal)}
       </div>
-      <div className={`text-xs font-mono mb-4 ${isUp ? "text-gain" : "text-loss"}`}>
-        {isUp ? "+" : ""}{sinceStart.toFixed(2)} ({isUp ? "+" : ""}{sinceStartPct}%) since start
+      <div className={`text-xs font-mono font-medium mt-2.5 ${isUp ? "text-gain" : "text-loss"}`}>
+        {isUp ? "+" : ""}
+        {formatMoney(sinceStart)} ({isUp ? "+" : ""}
+        {sinceStartPct}%)
       </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <div className="bg-panel-2 rounded-lg p-2.5">
-          <div className="text-[10px] text-dim mb-0.5">Cash</div>
-          <div className="text-xs font-mono">${portfolio.cashBalance.toFixed(0)}</div>
-        </div>
-        <div className="bg-panel-2 rounded-lg p-2.5">
-          <div className="text-[10px] text-dim mb-0.5">Invested</div>
-          <div className="text-xs font-mono">${portfolio.holdingsValue.toFixed(0)}</div>
-        </div>
-      </div>
+      <div className="text-[11px] text-dim mt-0.5">since start</div>
     </div>
   );
 }

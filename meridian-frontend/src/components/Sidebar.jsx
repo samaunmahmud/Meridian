@@ -1,101 +1,97 @@
 import { motion } from "framer-motion";
 import AccountSummary from "./AccountSummary";
+import Icon from "./Icon";
+import Logo from "./Logo";
 
-const NAV_ITEMS = [
-  {
-    key: "overview",
-    label: "Overview",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <path d="M3 12l4-4 4 4 6-6 4 4" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    key: "portfolio",
-    label: "Portfolio",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <rect x="3" y="7" width="18" height="13" rx="2" />
-        <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    key: "alerts",
-    label: "Alerts",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    key: "accounts",
-    label: "Accounts",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <rect x="2" y="5" width="20" height="14" rx="2" />
-        <path d="M2 10h20" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    key: "activity",
-    label: "Activity",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <path d="M3 12h4l2-7 4 14 2-7h6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
+export const NAV_ITEMS = [
+  { key: "overview", label: "Overview", icon: "dash" },
+  { key: "portfolio", label: "Portfolio", icon: "pie" },
+  { key: "alerts", label: "Alerts", icon: "bell" },
+  { key: "accounts", label: "Accounts", icon: "wallet" },
+  { key: "activity", label: "Activity", icon: "pulse" },
 ];
 
 export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout, refreshKey }) {
   return (
-    <aside className="w-64 shrink-0 bg-panel border-r border-line flex flex-col h-screen sticky top-0">
-      <div className="px-6 py-5 text-xl font-semibold tracking-tight">meridian</div>
+    <aside className="hidden lg:flex w-[248px] shrink-0 bg-panel border-r border-line flex-col h-screen sticky top-0 px-4 pt-6 pb-5 gap-6">
+      <div className="px-2">
+        <Logo size={24} />
+      </div>
 
       <AccountSummary refreshKey={refreshKey} />
 
-      <nav className="flex-1 px-3 pt-3">
-        {NAV_ITEMS.map((item) => (
-          <button
-            key={item.key}
-            onClick={() => onTabChange(item.key)}
-            className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm mb-1 transition-colors ${
-              activeTab === item.key ? "text-accent-2" : "text-muted hover:bg-panel-2 hover:text-bone"
-            }`}
-          >
-            {activeTab === item.key && (
-              <motion.div
-                layoutId="sidebar-active-pill"
-                className="absolute inset-0 bg-accent-dim rounded-lg"
-                transition={{ type: "spring", stiffness: 500, damping: 40 }}
-              />
-            )}
-            <span className="relative z-10 flex items-center gap-3">
-              {item.icon}
-              {item.label}
-            </span>
-          </button>
-        ))}
+      <nav className="flex flex-col gap-1" aria-label="Main">
+        {NAV_ITEMS.map((item) => {
+          const active = activeTab === item.key;
+          return (
+            <button
+              key={item.key}
+              onClick={() => onTabChange(item.key)}
+              aria-current={active ? "page" : undefined}
+              className={`relative h-11 w-full flex items-center gap-3 px-3 rounded-xl text-sm transition-colors ${
+                active ? "text-accent font-semibold" : "text-muted font-medium hover:bg-panel-2 hover:text-bone"
+              }`}
+            >
+              {active && (
+                <motion.div
+                  layoutId="sidebar-active-pill"
+                  className="absolute inset-0 bg-accent-dim rounded-xl"
+                  transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-3">
+                <Icon name={item.icon} size={18} />
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
       </nav>
 
-      <div className="px-3 pb-5 pt-3 border-t border-line">
-        <div className="px-3 py-2 text-xs text-dim truncate mb-1">{userEmail}</div>
+      <div className="flex-1" />
+
+      <div className="flex items-center gap-2.5 px-1 pt-1">
+        <div className="w-[34px] h-[34px] rounded-full bg-accent-dim text-accent flex items-center justify-center text-sm font-semibold shrink-0">
+          {(userEmail?.[0] ?? "?").toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0 text-xs text-muted truncate" title={userEmail}>
+          {userEmail}
+        </div>
         <button
           onClick={onLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted hover:bg-panel-2 hover:text-bone transition-colors"
+          aria-label="Log out"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-dim hover:text-bone hover:bg-panel-2 transition-colors"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M16 17l5-5-5-5M21 12H9" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Log out
+          <Icon name="logout" size={16} />
         </button>
       </div>
     </aside>
+  );
+}
+
+// Below the lg breakpoint the sidebar is replaced by a bottom tab bar.
+export function MobileNav({ activeTab, onTabChange }) {
+  return (
+    <nav
+      aria-label="Main"
+      className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-panel border-t border-line grid grid-cols-5 pt-2 pb-[max(env(safe-area-inset-bottom),10px)]"
+    >
+      {NAV_ITEMS.map((item) => {
+        const active = activeTab === item.key;
+        return (
+          <button
+            key={item.key}
+            onClick={() => onTabChange(item.key)}
+            aria-current={active ? "page" : undefined}
+            className={`flex flex-col items-center gap-1 py-1 transition-colors ${
+              active ? "text-accent" : "text-dim"
+            }`}
+          >
+            <Icon name={item.icon} size={22} strokeWidth={active ? 2 : 1.8} />
+            <span className={`text-[10.5px] ${active ? "font-semibold" : "font-medium"}`}>{item.label}</span>
+          </button>
+        );
+      })}
+    </nav>
   );
 }
