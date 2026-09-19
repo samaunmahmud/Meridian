@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { socketUrl } from "./config";
 
 // Returns the most recent WebSocket message, whatever kind it is
 // ({ kind: "PRICE_UPDATE", ... } or { kind: "ALERT_TRIGGERED", ... }).
@@ -22,7 +23,7 @@ export function usePriceSocket(userKey) {
     function connect() {
       // Browsers send the session cookie with the handshake automatically —
       // no token in the URL (URLs end up in logs and browser history).
-      ws = new WebSocket("ws://localhost:8080/ws/prices");
+      ws = new WebSocket(socketUrl());
 
       ws.onopen = () => {
         attempts = 0;

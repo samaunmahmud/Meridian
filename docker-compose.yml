@@ -1,0 +1,55 @@
+# The whole app: MySQL + the Spring Boot backend + nginx serving the site.
+#   cp .env.example .env     # then fill in the secrets
+#   docker compose up -d --build
+# and open http://localhost (or the WEB_PORT you set).
+# (meridian-backend/docker-compose.yml is only the MySQL container for local development.)
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-meridian}
+      MYSQL_USER: ${MYSQL_USER:-meridian}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+    volumes:
+      - meridian-mysqldata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  backend:
+    build: ./meridian-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-meridian}
+      MYSQL_USER: ${MYSQL_USER:-meridian}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY:-}
+      MARKETDATA_PROVIDER: ${MARKETDATA_PROVIDER:-alphavantage}
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY:-}
+      MARKETDATA_DAILY_REQUEST_BUDGET: ${MARKETDATA_DAILY_REQUEST_BUDGET:-0}
+      # The address people type in the browser: it is the only origin allowed to call the API.
+      CORS_ALLOWED_ORIGINS: ${PUBLIC_URL:-http://localhost}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      # nginx (the web service) sets the real client address; see nginx.conf.
+      FORWARD_HEADERS_STRATEGY: framework
+
+  web:
+    build: ./meridian-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-80}:80"
+
+volumes:
+  meridian-mysqldata:

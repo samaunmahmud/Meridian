@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8080/api";
+import { API_BASE as BASE_URL } from "./config";
 
 // Sessions live in an HttpOnly cookie that the server sets on login. Page
 // scripts can't read it (so an XSS bug can't steal it), and this file never

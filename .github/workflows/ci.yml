@@ -72,3 +72,12 @@ jobs:
           cache-dependency-path: meridian-frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  docker-images:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Only checks that both images still build; nothing is pushed anywhere.
+      - run: docker build ./meridian-backend
+      - run: docker build ./meridian-frontend
