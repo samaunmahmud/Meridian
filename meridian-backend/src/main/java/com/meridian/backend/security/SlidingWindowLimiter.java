@@ -1,75 +1,49 @@
 package com.meridian.backend.security;
 
-import java.time.Clock;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HexFormat;
 
-// Counts events per key over a rolling time window: "at most `max` events in
-// the last `window`". In memory, so limits are per server instance — running
-// several instances would need a shared store such as Redis.
+// "At most `max` events per key in the last `window`", counted in the
+// database (see RateLimitStore) so the limit is shared by every server
+// instance and survives a restart. `name` keeps different limiters that use
+// the same key (an email, an IP) from counting each other's events.
 public class SlidingWindowLimiter {
 
-    private static final int SWEEP_ABOVE_KEYS = 10_000;
-
+    private final RateLimitStore store;
+    private final String name;
     private final int max;
     private final Duration window;
-    private final Clock clock;
-    private final ConcurrentHashMap<String, Deque<Instant>> events = new ConcurrentHashMap<>();
 
-    public SlidingWindowLimiter(int max, Duration window, Clock clock) {
+    public SlidingWindowLimiter(RateLimitStore store, String name, int max, Duration window) {
+        this.store = store;
+        this.name = name;
         this.max = max;
         this.window = window;
-        this.clock = clock;
     }
 
     public void record(String key) {
-        Instant now = clock.instant();
-        events.compute(key, (k, deque) -> {
-            Deque<Instant> d = deque == null ? new ArrayDeque<>() : deque;
-            prune(d, now);
-            d.addLast(now);
-            return d;
-        });
-        if (events.size() > SWEEP_ABOVE_KEYS) {
-            sweep(now);
-        }
+        store.record(bucket(key), window);
     }
 
-    /** 0 if another event is allowed now; otherwise seconds until the oldest counted event expires. */
+    /** 0 if another event is allowed now; otherwise seconds until one will be. */
     public long retryAfterSeconds(String key) {
-        Instant now = clock.instant();
-        long[] result = {0};
-        events.computeIfPresent(key, (k, d) -> {
-            prune(d, now);
-            if (d.size() >= max) {
-                long seconds = Duration.between(now, d.peekFirst().plus(window)).toSeconds() + 1;
-                result[0] = Math.max(1, seconds);
-            }
-            return d.isEmpty() ? null : d;
-        });
-        return result[0];
+        return store.retryAfterSeconds(bucket(key), max, window);
     }
 
     public void reset(String key) {
-        events.remove(key);
+        store.reset(bucket(key));
     }
 
-    private void prune(Deque<Instant> d, Instant now) {
-        Instant cutoff = now.minus(window);
-        while (!d.isEmpty() && !d.peekFirst().isAfter(cutoff)) {
-            d.removeFirst();
+    // Hashed so raw emails and IPs are not duplicated into the events table.
+    private String bucket(String key) {
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest((name + '\0' + key).getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e); // SHA-256 is required on every JVM
         }
-    }
-
-    private void sweep(Instant now) {
-        events.entrySet().removeIf(e -> {
-            synchronized (e.getValue()) {
-                prune(e.getValue(), now);
-                return e.getValue().isEmpty();
-            }
-        });
     }
 }

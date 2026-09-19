@@ -1,10 +1,10 @@
 package com.meridian.backend.service;
 
 import com.meridian.backend.exception.TooManyRequestsException;
+import com.meridian.backend.security.RateLimitStore;
 import com.meridian.backend.security.SlidingWindowLimiter;
 import org.springframework.stereotype.Component;
 
-import java.time.Clock;
 import java.time.Duration;
 
 // Slows down password guessing and account spam:
@@ -13,9 +13,11 @@ import java.time.Duration;
 //    what stops an attacker from simply trying again)
 //  - 20 failed logins from one IP in 15 minutes locks that IP out
 //  - 10 registrations from one IP per hour
-// A successful login clears that email's failures. The client IP is the
-// direct connection address; if you put a reverse proxy in front, configure
-// it to pass the real address through (server.forward-headers-strategy).
+// The counts live in the database, so they are shared by every server
+// instance and survive restarts. A successful login clears that email's
+// failures. The client IP is the direct connection address; if you put a
+// reverse proxy in front, configure it to pass the real address through
+// (server.forward-headers-strategy).
 @Component
 public class LoginAttemptService {
 
@@ -23,10 +25,10 @@ public class LoginAttemptService {
     private final SlidingWindowLimiter ipFailures;
     private final SlidingWindowLimiter registrations;
 
-    public LoginAttemptService(Clock clock) {
-        this.accountFailures = new SlidingWindowLimiter(5, Duration.ofMinutes(15), clock);
-        this.ipFailures = new SlidingWindowLimiter(20, Duration.ofMinutes(15), clock);
-        this.registrations = new SlidingWindowLimiter(10, Duration.ofHours(1), clock);
+    public LoginAttemptService(RateLimitStore store) {
+        this.accountFailures = new SlidingWindowLimiter(store, "login-account", 5, Duration.ofMinutes(15));
+        this.ipFailures = new SlidingWindowLimiter(store, "login-ip", 20, Duration.ofMinutes(15));
+        this.registrations = new SlidingWindowLimiter(store, "registration-ip", 10, Duration.ofHours(1));
     }
 
     private static String key(String email) {

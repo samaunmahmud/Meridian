@@ -1,5 +1,6 @@
 package com.meridian.backend.mysql;
 
+import jakarta.persistence.EntityManagerFactory;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +51,9 @@ class MySqlMigrationTest {
         try (ConfigurableApplicationContext app = MySqlTestDatabase.boot()) {
             JdbcTemplate jdbc = app.getBean(JdbcTemplate.class);
             assertEquals(migrationFileCount(), appliedMigrations(jdbc));
-            assertEquals(13, jdbc.queryForObject("select count(*) from information_schema.tables "
+            // one table per entity
+            int entities = app.getBean(EntityManagerFactory.class).getMetamodel().getEntities().size();
+            assertEquals(entities, jdbc.queryForObject("select count(*) from information_schema.tables "
                     + "where table_schema = database() and table_name <> 'flyway_schema_history'", Integer.class));
         }
     }

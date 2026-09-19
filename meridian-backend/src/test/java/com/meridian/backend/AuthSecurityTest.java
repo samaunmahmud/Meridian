@@ -228,4 +228,20 @@ class AuthSecurityTest {
         mvc.perform(jsonPost("/api/auth/register", ip, Map.of("email", newEmail(), "password", "correct-horse-battery"), true))
                 .andExpect(status().isTooManyRequests());
     }
+
+    @Test
+    void signUpsThatFailStillCountTowardsTheLimit() throws Exception {
+        // register() is transactional and throws on a duplicate email; the
+        // attempt must stay counted even though that transaction rolls back.
+        String ip = newIp();
+        String email = newEmail();
+        assertThat(register(email, ip).getResponse().getStatus()).isEqualTo(200);
+        for (int i = 0; i < 9; i++) {
+            int status = register(email, ip).getResponse().getStatus();
+            assertThat(status).isNotIn(200, 429); // rejected as a duplicate, not yet rate limited
+        }
+
+        mvc.perform(jsonPost("/api/auth/register", ip, Map.of("email", newEmail(), "password", "correct-horse-battery"), true))
+                .andExpect(status().isTooManyRequests());
+    }
 }
