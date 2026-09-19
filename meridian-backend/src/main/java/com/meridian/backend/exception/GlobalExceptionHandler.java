@@ -42,6 +42,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(Map.of("message", ex.getMessage()));
     }
 
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<Map<String, String>> handleTooManyRequests(TooManyRequestsException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(Map.of("message", ex.getMessage()));
+    }
+
     // Catch-all for anything unexpected — never leak internal exception
     // details (stack traces, class names) to the client.
     @ExceptionHandler(Exception.class)

@@ -1,4 +1,4 @@
-package com.meridian.backend.marketdata;
+package com.meridian.backend;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -6,11 +6,11 @@ import java.time.Instant;
 import java.time.ZoneId;
 
 /** A clock the test moves by hand. */
-class MutableClock extends Clock {
+public class MutableClock extends Clock {
     private Instant now;
     private final ZoneId zone;
 
-    MutableClock(Instant start) {
+    public MutableClock(Instant start) {
         this(start, ZoneId.of("UTC"));
     }
 
@@ -19,7 +19,7 @@ class MutableClock extends Clock {
         this.zone = zone;
     }
 
-    void advance(Duration d) {
+    public void advance(Duration d) {
         now = now.plus(d);
     }
 

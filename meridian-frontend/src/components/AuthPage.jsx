@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { login, register, setSession } from "../lib/api";
+import { login, register } from "../lib/api";
 import Icon from "./Icon";
 import Logo from "./Logo";
 import ThemeToggle from "./ThemeToggle";
@@ -69,7 +69,6 @@ export default function AuthPage({ onAuthenticated }) {
     setSubmitting(true);
     try {
       const response = mode === "login" ? await login(email, password) : await register(email, password);
-      setSession(response.token, response.email);
       onAuthenticated(response.email);
     } catch (err) {
       setError(err.message);

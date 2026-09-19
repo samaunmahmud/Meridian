@@ -1,37 +1,32 @@
 const BASE_URL = "http://localhost:8080/api";
 
-export function getToken() {
-  return localStorage.getItem("meridian_token");
-}
-
-export function setSession(token, email) {
-  localStorage.setItem("meridian_token", token);
-  localStorage.setItem("meridian_email", email);
-}
-
-export function getSession() {
-  const token = localStorage.getItem("meridian_token");
-  const email = localStorage.getItem("meridian_email");
-  return token && email ? { token, email } : null;
-}
-
-export function clearSession() {
+// Sessions live in an HttpOnly cookie that the server sets on login. Page
+// scripts can't read it (so an XSS bug can't steal it), and this file never
+// touches a token: every request just asks the browser to include cookies.
+// Older versions kept a token in localStorage — clear any that's left over.
+try {
   localStorage.removeItem("meridian_token");
   localStorage.removeItem("meridian_email");
+} catch {
+  // storage unavailable (private mode etc.) — nothing to clean up
 }
 
 async function apiFetch(path, options = {}) {
-  const token = getToken();
-  const headers = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...options,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      // Custom header the server requires on cookie-authenticated requests
+      // that change data: another website can't add it, so it can't forge them.
+      "X-Requested-With": "meridian",
+      ...options.headers,
+    },
+  });
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
-
-  if (res.status === 401) {
-    clearSession();
+  // A 401 on a normal call means the session ended. On the auth calls it just
+  // means "wrong password" / "not signed in", which the caller handles itself.
+  if (res.status === 401 && !path.startsWith("/auth/")) {
     window.dispatchEvent(new Event("meridian:session-expired"));
     throw new Error("Your session has expired. Please log in again.");
   }
@@ -43,6 +38,15 @@ async function apiFetch(path, options = {}) {
 
   const text = await res.text();
   return text ? JSON.parse(text) : null;
+}
+
+/** Who is signed in? Rejects if nobody is. Used once on page load. */
+export function getMe() {
+  return apiFetch("/auth/me");
+}
+
+export function logout() {
+  return apiFetch("/auth/logout", { method: "POST" });
 }
 
 export function register(email, password) {

@@ -16,7 +16,7 @@ import AccountsPanel from "./components/AccountsPanel";
 import ActivityFeed from "./components/ActivityFeed";
 import RecurringOrdersPanel from "./components/RecurringOrdersPanel";
 import ToastContainer from "./components/ToastContainer";
-import { getSession, clearSession } from "./lib/api";
+import { getMe, logout } from "./lib/api";
 import { usePriceSocket } from "./lib/usePriceSocket";
 import { showToast } from "./lib/toast";
 
@@ -38,11 +38,22 @@ export default function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [tradePrefill, setTradePrefill] = useState(null);
 
-  const liveUpdate = usePriceSocket();
+  const liveUpdate = usePriceSocket(session ? session.email : null);
 
+  // Ask the server whether the session cookie is still valid (the page can't
+  // read the cookie itself).
   useEffect(() => {
-    const existing = getSession();
-    setSession(existing ? { email: existing.email } : false);
+    let cancelled = false;
+    getMe()
+      .then((me) => {
+        if (!cancelled) setSession({ email: me.email });
+      })
+      .catch(() => {
+        if (!cancelled) setSession(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -97,9 +108,12 @@ export default function App() {
     setRefreshKey((k) => k + 1);
   }, [liveUpdate]);
 
+  // The cookie is HttpOnly, so only the server can delete it. If that call
+  // fails, stay signed in and say so rather than pretending to log out.
   function handleLogout() {
-    clearSession();
-    setSession(false);
+    logout()
+      .then(() => setSession(false))
+      .catch(() => showToast("error", "Could not log out. Check your connection and try again."));
   }
 
   function handleOrderPlaced() {

@@ -3,6 +3,7 @@ package com.meridian.backend.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.meridian.backend.security.JwtAuthFilter;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -28,9 +29,16 @@ public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final ObjectMapper objectMapper;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, ObjectMapper objectMapper) {
+    // Origins allowed to call the API from a browser (comma-separated). The
+    // session cookie is only sent to these origins, so it must be a specific
+    // list — never "*". Set CORS_ALLOWED_ORIGINS for your real domain.
+    private final List<String> allowedOrigins;
+
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter, ObjectMapper objectMapper,
+                          @Value("${cors.allowed-origins:http://localhost:5173,http://localhost:5174}") List<String> allowedOrigins) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.objectMapper = objectMapper;
+        this.allowedOrigins = allowedOrigins;
     }
 
     // BCrypt is a one-way hashing algorithm designed specifically for
@@ -44,7 +52,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174"));
+        config.setAllowedOrigins(allowedOrigins);
+        config.setAllowCredentials(true); // needed for the session cookie to be sent cross-origin
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
 
@@ -70,6 +79,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tickers/**", "/api/prices/**").permitAll()

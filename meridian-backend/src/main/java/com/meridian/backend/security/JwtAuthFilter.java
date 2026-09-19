@@ -22,12 +22,26 @@ import java.util.List;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
+    // Cookie-authenticated requests that change data must carry this header.
+    // A page on another website can make the browser send our cookie, but it
+    // cannot add a custom header without our server's CORS permission — so its
+    // forged requests are refused (this is the "custom header" CSRF defence,
+    // on top of the cookie's SameSite setting).
+    public static final String CSRF_HEADER = "X-Requested-With";
+
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
+    private final AuthCookies authCookies;
 
-    public JwtAuthFilter(JwtUtil jwtUtil, UserRepository userRepository) {
+    public JwtAuthFilter(JwtUtil jwtUtil, UserRepository userRepository, AuthCookies authCookies) {
         this.jwtUtil = jwtUtil;
         this.userRepository = userRepository;
+        this.authCookies = authCookies;
+    }
+
+    private static boolean changesData(HttpServletRequest request) {
+        String method = request.getMethod();
+        return !(method.equals("GET") || method.equals("HEAD") || method.equals("OPTIONS") || method.equals("TRACE"));
     }
 
     @Override
@@ -35,11 +49,28 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                      @NonNull HttpServletResponse response,
                                      @NonNull FilterChain filterChain) throws ServletException, IOException {
 
+        String token = null;
+        boolean viaCookie = false;
+
         String authHeader = request.getHeader("Authorization");
-
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7); // strip the "Bearer " prefix
+            token = authHeader.substring(7); // strip the "Bearer " prefix
+        } else {
+            token = authCookies.extractToken(request);
+            viaCookie = token != null;
+        }
 
+        if (viaCookie && changesData(request)) {
+            String header = request.getHeader(CSRF_HEADER);
+            if (header == null || header.isBlank()) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"message\":\"Missing " + CSRF_HEADER + " header\"}");
+                return;
+            }
+        }
+
+        if (token != null) {
             try {
                 String email = jwtUtil.extractEmail(token);
                 User user = userRepository.findByEmail(email).orElse(null);

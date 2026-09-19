@@ -25,6 +25,10 @@ public class JwtUtil {
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
     }
 
+    public long lifetimeSeconds() {
+        return EXPIRATION_MS / 1000;
+    }
+
     public String generateToken(String email) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + EXPIRATION_MS);
