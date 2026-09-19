@@ -42,6 +42,16 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Versioned database migrations (src/main/resources/db/migration) -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
+
         <!-- WebSocket support for live price push -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
