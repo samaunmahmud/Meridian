@@ -1,7 +1,5 @@
 package com.meridian.backend.security;
 
-import com.meridian.backend.model.User;
-import com.meridian.backend.repository.UserRepository;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
@@ -22,13 +20,11 @@ import java.util.Map;
 @Component
 public class WebSocketAuthInterceptor implements HandshakeInterceptor {
 
-    private final JwtUtil jwtUtil;
-    private final UserRepository userRepository;
+    private final SessionAuthenticator sessions;
     private final AuthCookies authCookies;
 
-    public WebSocketAuthInterceptor(JwtUtil jwtUtil, UserRepository userRepository, AuthCookies authCookies) {
-        this.jwtUtil = jwtUtil;
-        this.userRepository = userRepository;
+    public WebSocketAuthInterceptor(SessionAuthenticator sessions, AuthCookies authCookies) {
+        this.sessions = sessions;
         this.authCookies = authCookies;
     }
 
@@ -44,17 +40,9 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
             return true; // allow anonymous connections too — they just won't receive personal alerts
         }
 
-        try {
-            String email = jwtUtil.extractEmail(token);
-            User user = userRepository.findByEmail(email).orElse(null);
-            if (user != null) {
-                attributes.put("userId", user.getId());
-            }
-        } catch (Exception e) {
-            // Invalid/expired token on a WebSocket handshake — just treat as anonymous
-            // rather than rejecting the connection outright.
-        }
-
+        // An invalid/expired/superseded token on a handshake is treated as
+        // anonymous rather than rejecting the connection outright.
+        sessions.authenticate(token).ifPresent(user -> attributes.put("userId", user.getId()));
         return true;
     }
 

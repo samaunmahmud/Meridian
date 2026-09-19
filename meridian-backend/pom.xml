@@ -52,6 +52,12 @@
             <artifactId>flyway-mysql</artifactId>
         </dependency>
 
+        <!-- Sending email (password reset, address verification) over SMTP -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- WebSocket support for live price push -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

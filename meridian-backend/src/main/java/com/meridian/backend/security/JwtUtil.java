@@ -41,15 +41,18 @@ public class JwtUtil {
                 .compact();
     }
 
-    // Returns the email embedded in the token IF the signature and expiry
-    // are valid. Throws an exception otherwise (an expired or tampered
-    // token is rejected automatically by the jjwt library).
-    public String extractEmail(String token) {
-        Claims claims = Jwts.parser()
+    // Returns the token's contents IF the signature and expiry are valid.
+    // Throws otherwise (an expired or tampered token is rejected
+    // automatically by the jjwt library).
+    public Claims parse(String token) {
+        return Jwts.parser()
                 .verifyWith(key)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-        return claims.getSubject();
+    }
+
+    public String extractEmail(String token) {
+        return parse(token).getSubject();
     }
 }

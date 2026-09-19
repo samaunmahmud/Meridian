@@ -23,7 +23,7 @@ public class AuthService {
     private static final BigDecimal STARTING_CASH = new BigDecimal("10000.00");
 
     /** A signed-in session: the token goes into an HttpOnly cookie, the email into the response body. */
-    public record AuthResult(String token, String email) {
+    public record AuthResult(String token, String email, boolean emailVerified) {
     }
 
     private final UserRepository userRepository;
@@ -31,6 +31,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final LoginAttemptService loginAttempts;
+    private final AccountService accountService;
 
     // Compared against when the email doesn't exist, so "no such account" takes
     // as long as "wrong password" — otherwise response time would reveal which
@@ -38,12 +39,14 @@ public class AuthService {
     private final String dummyHash;
 
     public AuthService(UserRepository userRepository, PortfolioRepository portfolioRepository,
-                        PasswordEncoder passwordEncoder, JwtUtil jwtUtil, LoginAttemptService loginAttempts) {
+                        PasswordEncoder passwordEncoder, JwtUtil jwtUtil, LoginAttemptService loginAttempts,
+                        AccountService accountService) {
         this.userRepository = userRepository;
         this.portfolioRepository = portfolioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.loginAttempts = loginAttempts;
+        this.accountService = accountService;
         this.dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
@@ -55,9 +58,7 @@ public class AuthService {
         if (request.email() == null || !request.email().matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
             throw new InvalidRequestException("Please provide a valid email address");
         }
-        if (request.password() == null || request.password().length() < 8) {
-            throw new InvalidRequestException("Password must be at least 8 characters");
-        }
+        PasswordPolicy.validate(request.password());
         if (userRepository.existsByEmail(request.email())) {
             throw new EmailAlreadyExistsException(request.email());
         }
@@ -71,8 +72,9 @@ public class AuthService {
         // Every new account gets its own portfolio immediately, seeded with
         // virtual starting cash, so there's nothing left in a half-set-up state.
         portfolioRepository.save(new Portfolio(user, STARTING_CASH));
+        accountService.sendVerification(user); // emailed once this transaction commits
 
-        return new AuthResult(jwtUtil.generateToken(user.getEmail()), user.getEmail());
+        return new AuthResult(jwtUtil.generateToken(user.getEmail()), user.getEmail(), user.isEmailVerified());
     }
 
     public AuthResult login(LoginRequest request, String clientIp) {
@@ -91,6 +93,6 @@ public class AuthService {
         }
 
         loginAttempts.recordSuccess(request.email());
-        return new AuthResult(jwtUtil.generateToken(user.getEmail()), user.getEmail());
+        return new AuthResult(jwtUtil.generateToken(user.getEmail()), user.getEmail(), user.isEmailVerified());
     }
 }

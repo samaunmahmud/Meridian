@@ -103,6 +103,8 @@ class MySqlMigrationTest {
                     + "where table_schema = database() and table_name = 'orders' and column_name = 'status'",
                     String.class).contains("'REJECTED'"));
             assertEquals(1, live.queryForObject("select count(*) from users where email = 'old@example.com'", Integer.class));
+            // accounts that existed before email verification start unverified, with no session cutoff
+            assertEquals(0, live.queryForObject("select count(*) from users where email_verified <> 0 or password_changed_at is not null", Integer.class));
             // a wallet that existed before the reserved_balance column starts with nothing reserved
             assertEquals(0, live.queryForObject("select count(*) from wallets where reserved_balance <> 0 or balance <> 50", Integer.class));
         }

@@ -57,6 +57,22 @@ export function login(email, password) {
   return apiFetch("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
 }
 
+export function forgotPassword(email) {
+  return apiFetch("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) });
+}
+
+export function resetPassword(token, password) {
+  return apiFetch("/auth/reset-password", { method: "POST", body: JSON.stringify({ token, password }) });
+}
+
+export function verifyEmail(token) {
+  return apiFetch("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) });
+}
+
+export function resendVerification() {
+  return apiFetch("/auth/resend-verification", { method: "POST" });
+}
+
 export function getTickers() {
   return apiFetch("/tickers");
 }

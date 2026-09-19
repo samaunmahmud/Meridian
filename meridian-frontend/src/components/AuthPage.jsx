@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { login, register } from "../lib/api";
+import { useEffect, useState } from "react";
+import { forgotPassword, login, register, resetPassword } from "../lib/api";
 import Icon from "./Icon";
 import Logo from "./Logo";
 import ThemeToggle from "./ThemeToggle";
@@ -55,21 +55,57 @@ function Field({ label, icon, trailing, ...inputProps }) {
   );
 }
 
-export default function AuthPage({ onAuthenticated }) {
-  const [mode, setMode] = useState("login");
+// Modes: "login" and "register" (the two tabs), "forgot" (ask for a reset
+// link) and "reset" (choose a new password; only when the page was opened from
+// the link in the reset email, which App passes in as `resetToken`).
+export default function AuthPage({ onAuthenticated, resetToken = null, onResetDone, notice = null }) {
+  const [mode, setMode] = useState(resetToken ? "reset" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
+  const [info, setInfo] = useState(null);
+
+  // `notice` is the result of opening an email link (e.g. "Your email address
+  // is confirmed."); it can arrive after this page has already appeared.
+  useEffect(() => {
+    if (!notice) return;
+    if (notice.kind === "error") setError(notice.message);
+    else setInfo(notice.message);
+  }, [notice]);
   const [submitting, setSubmitting] = useState(false);
+
+  function goTo(next) {
+    setMode(next);
+    setError(null);
+    setInfo(null);
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
+    setInfo(null);
     setSubmitting(true);
     try {
-      const response = mode === "login" ? await login(email, password) : await register(email, password);
-      onAuthenticated(response.email);
+      if (mode === "forgot") {
+        const response = await forgotPassword(email);
+        setInfo(response.message);
+      } else if (mode === "reset") {
+        if (password !== confirm) {
+          setError("The two passwords don't match.");
+          return;
+        }
+        await resetPassword(resetToken, password);
+        setPassword("");
+        setConfirm("");
+        setMode("login");
+        setInfo("Your password has been changed. Log in with the new one.");
+        onResetDone?.();
+      } else {
+        const response = mode === "login" ? await login(email, password) : await register(email, password);
+        onAuthenticated(response);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -78,6 +114,17 @@ export default function AuthPage({ onAuthenticated }) {
   }
 
   const isLogin = mode === "login";
+  const isTab = mode === "login" || mode === "register";
+  const COPY = {
+    login: { title: "Welcome back", subtitle: "Log in to your Meridian account.", button: "Log in" },
+    register: { title: "Create your account", subtitle: "Start with $10,000 in virtual cash.", button: "Create account" },
+    forgot: {
+      title: "Reset your password",
+      subtitle: "Enter your email and we'll send you a link to choose a new password.",
+      button: "Send reset link",
+    },
+    reset: { title: "Choose a new password", subtitle: "Use at least 8 characters. You'll be signed out on any other device.", button: "Change password" },
+  }[mode];
 
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-ink text-bone">
@@ -121,6 +168,7 @@ export default function AuthPage({ onAuthenticated }) {
             <Logo size={26} />
           </div>
 
+          {isTab ? (
           <div role="tablist" className="grid grid-cols-2 gap-1 p-1 rounded-[14px] bg-panel-2 mb-7">
             {[
               { key: "login", label: "Log in" },
@@ -131,10 +179,7 @@ export default function AuthPage({ onAuthenticated }) {
                 type="button"
                 role="tab"
                 aria-selected={mode === t.key}
-                onClick={() => {
-                  setMode(t.key);
-                  setError(null);
-                }}
+                onClick={() => goTo(t.key)}
                 className={`h-10 rounded-[10px] text-sm font-semibold transition-colors ${
                   mode === t.key ? "bg-panel border border-line text-bone" : "text-muted hover:text-bone"
                 }`}
@@ -143,31 +188,42 @@ export default function AuthPage({ onAuthenticated }) {
               </button>
             ))}
           </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => goTo("login")}
+              className="text-sm text-muted hover:text-bone transition-colors mb-7 inline-flex items-center gap-1.5"
+            >
+              ← Back to log in
+            </button>
+          )}
 
           <h1 className="font-display font-normal text-[38px] leading-none" style={{ letterSpacing: "-0.035em" }}>
-            {isLogin ? "Welcome back" : "Create your account"}
+            {COPY.title}
           </h1>
-          <p className="text-[15px] text-muted mt-2 mb-8">
-            {isLogin ? "Log in to your Meridian account." : "Start with $10,000 in virtual cash."}
-          </p>
+          <p className="text-[15px] text-muted mt-2 mb-8">{COPY.subtitle}</p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {mode !== "reset" && (
+              <Field
+                label="Email"
+                icon="mail"
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
+            )}
+            {mode !== "forgot" && (
             <Field
-              label="Email"
-              icon="mail"
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-            />
-            <Field
-              label="Password"
+              label={mode === "reset" ? "New password" : "Password"}
               icon="lock"
               type={showPassword ? "text" : "password"}
               required
               autoComplete={isLogin ? "current-password" : "new-password"}
+              minLength={isLogin ? undefined : 8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={isLogin ? "Your password" : "At least 8 characters"}
@@ -182,6 +238,35 @@ export default function AuthPage({ onAuthenticated }) {
                 </button>
               }
             />
+            )}
+
+            {mode === "reset" && (
+              <Field
+                label="Confirm new password"
+                icon="lock"
+                type={showPassword ? "text" : "password"}
+                required
+                autoComplete="new-password"
+                minLength={8}
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="Type it again"
+              />
+            )}
+
+            {isLogin && (
+              <div className="-mt-2 text-right">
+                <button type="button" onClick={() => goTo("forgot")} className="text-[13px] text-accent hover:underline">
+                  Forgot password?
+                </button>
+              </div>
+            )}
+
+            {info && (
+              <div role="status" className="text-sm text-gain bg-gain-dim border border-gain/30 p-3 rounded-xl">
+                {info}
+              </div>
+            )}
 
             {error && (
               <div role="alert" className="text-sm text-loss bg-loss-dim border border-loss/30 p-3 rounded-xl">
@@ -194,7 +279,7 @@ export default function AuthPage({ onAuthenticated }) {
               disabled={submitting}
               className="w-full h-[52px] rounded-[14px] bg-accent text-accent-ink text-base font-semibold hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-50"
             >
-              {submitting ? "Please wait…" : isLogin ? "Log in" : "Create account"}
+              {submitting ? "Please wait…" : COPY.button}
             </button>
           </form>
 

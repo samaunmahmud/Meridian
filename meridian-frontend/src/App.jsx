@@ -16,7 +16,8 @@ import AccountsPanel from "./components/AccountsPanel";
 import ActivityFeed from "./components/ActivityFeed";
 import RecurringOrdersPanel from "./components/RecurringOrdersPanel";
 import ToastContainer from "./components/ToastContainer";
-import { getMe, logout } from "./lib/api";
+import VerifyEmailBanner from "./components/VerifyEmailBanner";
+import { getMe, logout, verifyEmail } from "./lib/api";
 import { usePriceSocket } from "./lib/usePriceSocket";
 import { showToast } from "./lib/toast";
 
@@ -31,8 +32,22 @@ const TITLES = {
 // Shared page gutter: 16px on phones, 24px on tablets, 32px on desktop.
 const PAGE_PADDING = "px-4 sm:px-6 lg:px-8 pb-8 max-w-[1240px]";
 
+// Links in emails open the site as /?reset=<token> or /?verify=<token>. Read
+// them once, when the page loads, and take the token out of the address bar
+// straight away so it isn't left in the browser history or a copied URL.
+const LINK_PARAMS = (() => {
+  const params = new URLSearchParams(window.location.search);
+  const found = { reset: params.get("reset"), verify: params.get("verify") };
+  if (found.reset || found.verify) {
+    window.history.replaceState({}, "", window.location.pathname);
+  }
+  return found;
+})();
+
 export default function App() {
   const [session, setSession] = useState(undefined);
+  const [resetToken, setResetToken] = useState(LINK_PARAMS.reset);
+  const [linkNotice, setLinkNotice] = useState(null); // result of opening an email-verification link
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedTicker, setSelectedTicker] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -46,7 +61,7 @@ export default function App() {
     let cancelled = false;
     getMe()
       .then((me) => {
-        if (!cancelled) setSession({ email: me.email });
+        if (!cancelled) setSession({ email: me.email, emailVerified: me.emailVerified });
       })
       .catch(() => {
         if (!cancelled) setSession(false);
@@ -55,6 +70,27 @@ export default function App() {
       cancelled = true;
     };
   }, []);
+
+  // Opened from the "confirm your email" link.
+  useEffect(() => {
+    if (!LINK_PARAMS.verify) return;
+    verifyEmail(LINK_PARAMS.verify)
+      .then((response) => {
+        setLinkNotice({ kind: "success", message: response.message });
+        getMe()
+          .then((me) => setSession({ email: me.email, emailVerified: me.emailVerified }))
+          .catch(() => {}); // not signed in: they will see the confirmation on the login page
+      })
+      .catch((err) => setLinkNotice({ kind: "error", message: err.message }));
+  }, []);
+
+  // Once signed in, show the result of that link as a toast.
+  useEffect(() => {
+    if (session && linkNotice) {
+      showToast(linkNotice.kind, linkNotice.message);
+      setLinkNotice(null);
+    }
+  }, [session, linkNotice]);
 
   useEffect(() => {
     function handleExpired() {
@@ -126,7 +162,28 @@ export default function App() {
   }
 
   if (session === undefined) return null;
-  if (!session) return <AuthPage onAuthenticated={(email) => setSession({ email })} />;
+  // Opening a reset link always shows the "choose a new password" form, even
+  // if someone is signed in (the reset ends their session anyway).
+  if (resetToken) {
+    return (
+      <AuthPage
+        resetToken={resetToken}
+        onAuthenticated={() => {}}
+        onResetDone={() => {
+          setResetToken(null);
+          setSession(false);
+        }}
+      />
+    );
+  }
+  if (!session) {
+    return (
+      <AuthPage
+        notice={linkNotice}
+        onAuthenticated={(response) => setSession({ email: response.email, emailVerified: response.emailVerified })}
+      />
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-ink text-bone">
@@ -141,6 +198,7 @@ export default function App() {
 
       <div className="flex-1 min-w-0 pb-24 lg:pb-0">
         <Topbar title={TITLES[activeTab]} onLogout={handleLogout} />
+        {session.emailVerified === false && <VerifyEmailBanner email={session.email} />}
 
         <AnimatePresence mode="wait">
           <motion.div

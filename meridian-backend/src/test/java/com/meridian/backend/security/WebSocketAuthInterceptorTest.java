@@ -9,6 +9,7 @@ import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.socket.WebSocketHandler;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -22,7 +23,7 @@ class WebSocketAuthInterceptorTest {
     private final JwtUtil jwt = new JwtUtil("test-secret-test-secret-test-secret-1234567890");
     private final UserRepository users = mock(UserRepository.class);
     private final WebSocketAuthInterceptor interceptor =
-            new WebSocketAuthInterceptor(jwt, users, new AuthCookies(jwt, false, "Lax"));
+            new WebSocketAuthInterceptor(new SessionAuthenticator(jwt, users), new AuthCookies(jwt, false, "Lax"));
 
     private Map<String, Object> handshake(MockHttpServletRequest request) {
         Map<String, Object> attributes = new HashMap<>();
@@ -46,6 +47,16 @@ class WebSocketAuthInterceptorTest {
         request.setCookies(new Cookie(AuthCookies.NAME, jwt.generateToken("a@b.io")));
 
         assertThat(handshake(request)).containsEntry("userId", 42L);
+    }
+
+    @Test
+    void aSessionIssuedBeforeAPasswordChangeNoLongerIdentifiesTheOwner() {
+        User user = knownUser();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setCookies(new Cookie(AuthCookies.NAME, jwt.generateToken("a@b.io")));
+        when(user.getPasswordChangedAt()).thenReturn(Instant.now().plusSeconds(5)); // changed after the token was issued
+
+        assertThat(handshake(request)).doesNotContainKey("userId");
     }
 
     @Test

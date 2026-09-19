@@ -1,7 +1,5 @@
 package com.meridian.backend.security;
 
-import com.meridian.backend.model.User;
-import com.meridian.backend.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,13 +27,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     // on top of the cookie's SameSite setting).
     public static final String CSRF_HEADER = "X-Requested-With";
 
-    private final JwtUtil jwtUtil;
-    private final UserRepository userRepository;
+    private final SessionAuthenticator sessions;
     private final AuthCookies authCookies;
 
-    public JwtAuthFilter(JwtUtil jwtUtil, UserRepository userRepository, AuthCookies authCookies) {
-        this.jwtUtil = jwtUtil;
-        this.userRepository = userRepository;
+    public JwtAuthFilter(SessionAuthenticator sessions, AuthCookies authCookies) {
+        this.sessions = sessions;
         this.authCookies = authCookies;
     }
 
@@ -70,22 +66,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
         }
 
-        if (token != null) {
-            try {
-                String email = jwtUtil.extractEmail(token);
-                User user = userRepository.findByEmail(email).orElse(null);
-
-                if (user != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    // Principal = the actual User entity, so controllers can access
-                    // it directly via @AuthenticationPrincipal User user.
-                    var authToken = new UsernamePasswordAuthenticationToken(user, null, List.of());
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-                }
-            } catch (Exception e) {
-                // Invalid/expired token — just leave the request unauthenticated.
-                // Spring Security will reject it later if the endpoint requires auth.
-                SecurityContextHolder.clearContext();
-            }
+        if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            // An invalid, expired or superseded token just leaves the request
+            // unauthenticated; Spring Security rejects it later if the endpoint needs auth.
+            sessions.authenticate(token).ifPresent(user -> {
+                // Principal = the actual User entity, so controllers can access
+                // it directly via @AuthenticationPrincipal User user.
+                var authToken = new UsernamePasswordAuthenticationToken(user, null, List.of());
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            });
         }
 
         filterChain.doFilter(request, response);

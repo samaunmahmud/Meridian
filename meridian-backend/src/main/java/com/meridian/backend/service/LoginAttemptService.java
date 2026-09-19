@@ -24,11 +24,17 @@ public class LoginAttemptService {
     private final SlidingWindowLimiter accountFailures;
     private final SlidingWindowLimiter ipFailures;
     private final SlidingWindowLimiter registrations;
+    private final SlidingWindowLimiter resetsByEmail;
+    private final SlidingWindowLimiter resetsByIp;
+    private final SlidingWindowLimiter verificationResends;
 
     public LoginAttemptService(RateLimitStore store) {
         this.accountFailures = new SlidingWindowLimiter(store, "login-account", 5, Duration.ofMinutes(15));
         this.ipFailures = new SlidingWindowLimiter(store, "login-ip", 20, Duration.ofMinutes(15));
         this.registrations = new SlidingWindowLimiter(store, "registration-ip", 10, Duration.ofHours(1));
+        this.resetsByEmail = new SlidingWindowLimiter(store, "reset-email", 5, Duration.ofHours(1));
+        this.resetsByIp = new SlidingWindowLimiter(store, "reset-ip", 10, Duration.ofHours(1));
+        this.verificationResends = new SlidingWindowLimiter(store, "verification-resend", 3, Duration.ofHours(1));
     }
 
     private static String key(String email) {
@@ -59,6 +65,27 @@ public class LoginAttemptService {
                     "Too many sign-ups from this connection. Please try again in " + humanize(wait) + ".", wait);
         }
         registrations.record(ip);
+    }
+
+    // Every request counts, whether or not the address has an account, so the
+    // limit itself gives nothing away.
+    public void checkAndRecordPasswordReset(String email, String ip) {
+        long wait = Math.max(resetsByEmail.retryAfterSeconds(key(email)), resetsByIp.retryAfterSeconds(ip));
+        if (wait > 0) {
+            throw new TooManyRequestsException(
+                    "Too many password reset requests. Please try again in " + humanize(wait) + ".", wait);
+        }
+        resetsByEmail.record(key(email));
+        resetsByIp.record(ip);
+    }
+
+    public void checkAndRecordVerificationResend(String email) {
+        long wait = verificationResends.retryAfterSeconds(key(email));
+        if (wait > 0) {
+            throw new TooManyRequestsException(
+                    "Too many verification emails requested. Please try again in " + humanize(wait) + ".", wait);
+        }
+        verificationResends.record(key(email));
     }
 
     private static String humanize(long seconds) {
