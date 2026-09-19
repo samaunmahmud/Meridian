@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -78,13 +79,15 @@ class RecurringOrderCurrencyTest extends IntegrationTestBase {
     void anUnaffordableEuroBuyChangesNothingAndIsNotAdvanced() {
         User user = newUser("1000.00"); // plenty of USD, but the order pays from EUR and the wallet is empty
         Ticker ticker = newTicker("100.00");
-        RecurringOrderResponse created = recurringOrderService.create(new RecurringOrderRequest(
+        recurringOrderService.create(new RecurringOrderRequest(
                 ticker.getSymbol(), new BigDecimal("100.00"), RecurringFrequency.DAILY, SupportedCurrency.EUR), user);
+        // read back from the database: it stores microseconds, Instant.now() may have nanoseconds
+        Instant dueBefore = storedRecurringOrder(user).getNextRunAt();
 
         recurringOrderService.runDue();
 
         assertThat(holdingRepository.findByPortfolioId(portfolioOf(user).getId())).isEmpty();
         assertThat(portfolioOf(user).getCashBalance()).isEqualByComparingTo("1000.00");
-        assertThat(storedRecurringOrder(user).getNextRunAt()).isEqualTo(created.nextRunAt());
+        assertThat(storedRecurringOrder(user).getNextRunAt()).isEqualTo(dueBefore); // still due, so it is retried
     }
 }
