@@ -61,6 +61,16 @@ public class Order {
     @Column(name = "rejection_reason")
     private String rejectionReason;
 
+    // Wallet the trade was paid from / credited to (market orders can settle
+    // in EUR or GBP). Null on orders that settled in USD before this existed.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "settlement_currency")
+    private SupportedCurrency settlementCurrency;
+
+    // What actually left (buy) or reached (sell) that wallet, in its currency.
+    @Column(name = "settlement_amount", precision = 14, scale = 4)
+    private BigDecimal settlementAmount;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -162,6 +172,22 @@ public class Order {
 
     public void setReservedAmount(BigDecimal reservedAmount) {
         this.reservedAmount = reservedAmount;
+    }
+
+    public SupportedCurrency getSettlementCurrency() {
+        return settlementCurrency;
+    }
+
+    public void setSettlementCurrency(SupportedCurrency settlementCurrency) {
+        this.settlementCurrency = settlementCurrency;
+    }
+
+    public BigDecimal getSettlementAmount() {
+        return settlementAmount;
+    }
+
+    public void setSettlementAmount(BigDecimal settlementAmount) {
+        this.settlementAmount = settlementAmount;
     }
 
     public String getRejectionReason() {

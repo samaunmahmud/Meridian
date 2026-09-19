@@ -28,7 +28,7 @@ public class WalletService {
     // Fintech-style markup applied on top of the raw FX rate on every
     // conversion — this is where currency-exchange revenue actually comes
     // from in a real app like Revolut, not a separate fee line.
-    private static final BigDecimal FX_SPREAD = new BigDecimal("0.005");
+    private static final BigDecimal FX_SPREAD = FeeService.FX_SPREAD;
 
     private static final BigDecimal STARTING_CASH = new BigDecimal("10000.00");
 
@@ -100,6 +100,25 @@ public class WalletService {
             wallet.setBalance(newBalance);
             walletRepository.save(wallet);
         }
+    }
+
+    // Used when a trade settles in a non-USD wallet. Callers already hold the
+    // portfolio lock (they are inside placeOrder's transaction).
+    public BigDecimal debitWallet(Portfolio portfolio, SupportedCurrency currency, BigDecimal amount) {
+        BigDecimal available = balanceOf(portfolio, currency);
+        if (available.compareTo(amount) < 0) {
+            throw new InsufficientFundsException(
+                    "Insufficient " + currency + " balance: need " + amount + " but only " + available + " available");
+        }
+        BigDecimal newBalance = available.subtract(amount);
+        setBalance(portfolio, currency, newBalance);
+        return newBalance;
+    }
+
+    public BigDecimal creditWallet(Portfolio portfolio, SupportedCurrency currency, BigDecimal amount) {
+        BigDecimal newBalance = balanceOf(portfolio, currency).add(amount);
+        setBalance(portfolio, currency, newBalance);
+        return newBalance;
     }
 
     @Transactional

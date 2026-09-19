@@ -13,13 +13,24 @@ import com.meridian.backend.repository.PortfolioRepository;
 import com.meridian.backend.repository.PriceHistoryRepository;
 import com.meridian.backend.repository.TickerRepository;
 import com.meridian.backend.repository.UserRepository;
+import com.meridian.backend.service.WalletService;
+import com.meridian.backend.dto.WalletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -40,6 +51,7 @@ public abstract class IntegrationTestBase {
     @Autowired protected HoldingRepository holdingRepository;
     @Autowired protected OrderRepository orderRepository;
     @Autowired protected FxRateRepository fxRateRepository;
+    @Autowired protected WalletService walletService;
 
     protected User newUser(String cash) {
         User user = userRepository.save(new User(UUID.randomUUID() + "@test.io", "not-a-real-hash"));
@@ -71,5 +83,33 @@ public abstract class IntegrationTestBase {
         fx.setRate(new BigDecimal(rate));
         fx.setUpdatedAt(Instant.now());
         fxRateRepository.save(fx);
+    }
+
+    protected BigDecimal balance(User user, SupportedCurrency currency) {
+        return walletService.getWallets(user).stream()
+                .filter(w -> w.currency() == currency).findFirst().map(WalletResponse::balance).orElseThrow();
+    }
+
+    /** Runs `task` on `threads` threads released together; returns how many succeeded. */
+    protected int runConcurrently(int threads, Callable<?> task) throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CyclicBarrier start = new CyclicBarrier(threads);
+        AtomicInteger succeeded = new AtomicInteger();
+        List<Future<?>> futures = new ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            futures.add(pool.submit(() -> {
+                start.await(10, TimeUnit.SECONDS);
+                try {
+                    task.call();
+                    succeeded.incrementAndGet();
+                } catch (Exception expectedRejection) {
+                    // insufficient funds / shares is the correct outcome for the losers
+                }
+                return null;
+            }));
+        }
+        for (Future<?> f : futures) f.get(60, TimeUnit.SECONDS);
+        pool.shutdownNow();
+        return succeeded.get();
     }
 }

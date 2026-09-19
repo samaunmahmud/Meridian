@@ -3,6 +3,7 @@ package com.meridian.backend.dto;
 import com.meridian.backend.model.OrderKind;
 import com.meridian.backend.model.OrderStatus;
 import com.meridian.backend.model.OrderType;
+import com.meridian.backend.model.SupportedCurrency;
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -20,6 +21,8 @@ public record OrderResponse(
         Instant createdAt,
         Instant executedAt,
         BigDecimal realizedPnL,
-        String rejectionReason
+        String rejectionReason,
+        SupportedCurrency settlementCurrency,   // wallet used, or null for USD
+        BigDecimal settlementAmount             // amount paid / received in that currency
 ) {
 }

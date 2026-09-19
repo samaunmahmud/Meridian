@@ -12,15 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -34,29 +25,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ConcurrencyTest extends IntegrationTestBase {
 
     @Autowired PortfolioService portfolioService;
-
-    /** Runs `task` on `threads` threads released together; returns how many succeeded. */
-    private int runConcurrently(int threads, Callable<?> task) throws Exception {
-        ExecutorService pool = Executors.newFixedThreadPool(threads);
-        CyclicBarrier start = new CyclicBarrier(threads);
-        AtomicInteger succeeded = new AtomicInteger();
-        List<Future<?>> futures = new ArrayList<>();
-        for (int i = 0; i < threads; i++) {
-            futures.add(pool.submit(() -> {
-                start.await(10, TimeUnit.SECONDS);
-                try {
-                    task.call();
-                    succeeded.incrementAndGet();
-                } catch (Exception expectedRejection) {
-                    // insufficient funds / shares is the correct outcome for the losers
-                }
-                return null;
-            }));
-        }
-        for (Future<?> f : futures) f.get(60, TimeUnit.SECONDS);
-        pool.shutdownNow();
-        return succeeded.get();
-    }
 
     @Test
     void concurrentMarketBuysNeverSpendMoreThanTheBalance() throws Exception {

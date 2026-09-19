@@ -159,7 +159,7 @@ export default function App() {
                   <OrderHistory refreshKey={refreshKey} />
                 </div>
                 <div className="space-y-6 min-w-0">
-                  <TradePanel onOrderPlaced={handleOrderPlaced} prefill={tradePrefill} />
+                  <TradePanel onOrderPlaced={handleOrderPlaced} prefill={tradePrefill} refreshKey={refreshKey} />
                   <PortfolioAllocation refreshKey={refreshKey} />
                   <RecurringOrdersPanel refreshKey={refreshKey} />
                 </div>

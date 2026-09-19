@@ -11,6 +11,10 @@ import java.math.RoundingMode;
 @Service
 public class FeeService {
 
+    // Markup on every currency conversion (manual converts and trades settled
+    // from a non-USD wallet alike) — how FX revenue works in an app like this.
+    public static final BigDecimal FX_SPREAD = new BigDecimal("0.005");
+
     private static final BigDecimal COMMISSION_RATE = new BigDecimal("0.0025"); // 0.25%
     private static final BigDecimal MINIMUM_FEE = new BigDecimal("1.00");
 

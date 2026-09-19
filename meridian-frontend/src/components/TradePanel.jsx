@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { getTickers, getPrices, placeOrder } from "../lib/api";
+import { getTickers, getPrices, placeOrder, getWallets, getFxRates } from "../lib/api";
+import { formatMoney } from "../lib/formatMoney";
 import { showToast } from "../lib/toast";
 
 const KINDS = [
@@ -10,8 +11,9 @@ const KINDS = [
 
 const COMMISSION_RATE = 0.0025;
 const MINIMUM_FEE = 1;
+const FX_SPREAD = 0.005; // same markup the backend applies to every conversion
 
-export default function TradePanel({ onOrderPlaced, prefill }) {
+export default function TradePanel({ onOrderPlaced, prefill, refreshKey }) {
   const [tickers, setTickers] = useState([]);
   const [symbol, setSymbol] = useState("");
   const [type, setType] = useState("BUY");
@@ -21,6 +23,9 @@ export default function TradePanel({ onOrderPlaced, prefill }) {
   const [stopPrice, setStopPrice] = useState("");
   const [lastPrice, setLastPrice] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [wallets, setWallets] = useState([]);
+  const [fxRates, setFxRates] = useState([]);
+  const [currency, setCurrency] = useState("USD");
 
   useEffect(() => {
     getTickers().then((data) => {
@@ -28,6 +33,13 @@ export default function TradePanel({ onOrderPlaced, prefill }) {
       if (data.length > 0 && !symbol) setSymbol(data[0].symbol);
     });
   }, []);
+
+  // Wallet balances (for the "Pay with" picker) and FX rates (for the
+  // estimate). Refreshed after every order so balances stay current.
+  useEffect(() => {
+    getWallets().then(setWallets).catch(() => {});
+    getFxRates().then(setFxRates).catch(() => {});
+  }, [refreshKey]);
 
   useEffect(() => {
     if (!prefill) return;
@@ -52,6 +64,21 @@ export default function TradePanel({ onOrderPlaced, prefill }) {
   const notional = referencePrice && quantity ? referencePrice * Number(quantity) : null;
   const estimatedFee = notional ? Math.max(notional * COMMISSION_RATE, MINIMUM_FEE) : null;
 
+  // Only market orders can settle in a non-USD wallet; limit/stop stay USD.
+  const settleCurrency = kind === "MARKET" ? currency : "USD";
+  const usdPerUnit =
+    settleCurrency === "USD"
+      ? 1
+      : fxRates.find((r) => r.baseCurrency === settleCurrency && r.quoteCurrency === "USD")?.rate;
+  // What leaves (buy) or arrives (sell) in the chosen wallet, incl. the spread.
+  const spreadFactor = settleCurrency === "USD" ? 1 : 1 - FX_SPREAD;
+  const settlementEstimate =
+    notional && estimatedFee && usdPerUnit
+      ? type === "BUY"
+        ? (notional + estimatedFee) / (usdPerUnit * spreadFactor)
+        : ((notional - estimatedFee) * spreadFactor) / usdPerUnit
+      : null;
+
   async function handleSubmit(e) {
     e.preventDefault();
     setSubmitting(true);
@@ -62,7 +89,8 @@ export default function TradePanel({ onOrderPlaced, prefill }) {
         Number(quantity),
         kind,
         kind === "LIMIT" ? Number(limitPrice) : null,
-        kind === "STOP_LOSS" ? Number(stopPrice) : null
+        kind === "STOP_LOSS" ? Number(stopPrice) : null,
+        settleCurrency === "USD" ? null : settleCurrency
       );
       if (order.status === "PENDING") {
         showToast(
@@ -72,7 +100,10 @@ export default function TradePanel({ onOrderPlaced, prefill }) {
       } else {
         showToast(
           "success",
-          `${order.type === "BUY" ? "Bought" : "Sold"} ${order.quantity} ${order.symbol} @ $${order.price.toFixed(2)}`
+          `${order.type === "BUY" ? "Bought" : "Sold"} ${order.quantity} ${order.symbol} @ $${order.price.toFixed(2)}` +
+            (order.settlementCurrency
+              ? ` (${order.type === "BUY" ? "paid" : "received"} ${formatMoney(order.settlementAmount, order.settlementCurrency)})`
+              : "")
         );
       }
       onOrderPlaced();
@@ -160,6 +191,25 @@ export default function TradePanel({ onOrderPlaced, prefill }) {
           />
         </div>
 
+        {kind === "MARKET" ? (
+          <div>
+            <label className="text-xs text-dim block mb-1.5">{type === "BUY" ? "Pay with" : "Receive in"}</label>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+            >
+              {(wallets.length ? wallets : [{ currency: "USD", balance: 0 }]).map((w) => (
+                <option key={w.currency} value={w.currency}>
+                  {w.currency} — {formatMoney(w.balance, w.currency)}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="text-xs text-dim">Limit and stop-loss orders settle in USD.</div>
+        )}
+
         {kind === "LIMIT" && (
           <div>
             <label className="text-xs text-dim block mb-1.5">Limit price</label>
@@ -193,6 +243,14 @@ export default function TradePanel({ onOrderPlaced, prefill }) {
         {estimatedFee != null && (
           <div className="text-xs text-dim">
             Est. commission: <span className="font-mono text-muted">${estimatedFee.toFixed(2)}</span>
+          </div>
+        )}
+
+        {settleCurrency !== "USD" && settlementEstimate != null && (
+          <div className="text-xs text-dim">
+            Est. you {type === "BUY" ? "pay" : "receive"}:{" "}
+            <span className="font-mono text-bone">{formatMoney(settlementEstimate, settleCurrency)}</span>
+            <span> · includes the 0.5% conversion spread</span>
           </div>
         )}
 

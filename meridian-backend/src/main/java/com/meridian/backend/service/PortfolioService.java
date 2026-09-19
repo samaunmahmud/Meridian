@@ -55,6 +55,8 @@ public class PortfolioService {
     private final PriceWebSocketHandler priceWebSocketHandler;
     private final ObjectMapper objectMapper;
     private final FeeService feeService;
+    private final WalletService walletService;
+    private final FxRateService fxRateService;
     // Runs one pending-order fill in its own transaction, so a failure on one
     // order can never roll back (and block) the fills of other orders.
     private final TransactionTemplate perOrderTransaction;
@@ -69,6 +71,8 @@ public class PortfolioService {
                              PriceWebSocketHandler priceWebSocketHandler,
                              ObjectMapper objectMapper,
                              FeeService feeService,
+                             WalletService walletService,
+                             FxRateService fxRateService,
                              PlatformTransactionManager transactionManager) {
         this.portfolioRepository = portfolioRepository;
         this.holdingRepository = holdingRepository;
@@ -80,13 +84,15 @@ public class PortfolioService {
         this.priceWebSocketHandler = priceWebSocketHandler;
         this.objectMapper = objectMapper;
         this.feeService = feeService;
+        this.walletService = walletService;
+        this.fxRateService = fxRateService;
         this.perOrderTransaction = new TransactionTemplate(transactionManager);
         this.perOrderTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     // Bundles the two things a sell needs to report back that a buy doesn't:
     // realized P&L and the commission charged.
-    private record TradeExecution(BigDecimal realizedPnL, BigDecimal fee) {
+    private record TradeExecution(BigDecimal realizedPnL, BigDecimal fee, BigDecimal settlementAmount) {
     }
 
     // Normally every user already has a portfolio (AuthService creates one at
@@ -124,8 +130,13 @@ public class PortfolioService {
         OrderKind kind = request.kind() == null ? OrderKind.MARKET : request.kind();
         BigDecimal quantity = request.quantity();
 
+        SupportedCurrency settlement = request.settlementCurrency() == null ? SupportedCurrency.USD : request.settlementCurrency();
+        if (kind != OrderKind.MARKET && settlement != SupportedCurrency.USD) {
+            throw new InvalidRequestException("Limit and stop-loss orders settle in USD; only market orders can use a " + settlement + " wallet");
+        }
+
         return switch (kind) {
-            case MARKET -> placeMarketOrder(portfolio, ticker, request.type(), quantity);
+            case MARKET -> placeMarketOrder(portfolio, ticker, request.type(), quantity, settlement);
             case LIMIT -> placePendingOrder(portfolio, ticker, request.type(), OrderKind.LIMIT, quantity, request.limitPrice(), null);
             case STOP_LOSS -> placePendingOrder(portfolio, ticker, request.type(), OrderKind.STOP_LOSS, quantity, null, request.stopPrice());
         };
@@ -135,27 +146,25 @@ public class PortfolioService {
     // its id) inside this @Transactional method — if execution then throws
     // (e.g. insufficient funds), the whole transaction rolls back and no
     // order row survives.
-    private OrderResponse placeMarketOrder(Portfolio portfolio, Ticker ticker, OrderType type, BigDecimal quantity) {
+    private OrderResponse placeMarketOrder(Portfolio portfolio, Ticker ticker, OrderType type, BigDecimal quantity,
+                                            SupportedCurrency settlement) {
         BigDecimal currentPrice = getCurrentPrice(ticker);
         Instant executedAt = Instant.now();
         Order order = new Order(portfolio, ticker, type, quantity, currentPrice, executedAt);
         order = orderRepository.save(order);
 
-        BigDecimal realizedPnL;
-        BigDecimal fee;
-        if (type == OrderType.BUY) {
-            realizedPnL = null; // buys never realize a gain/loss
-            fee = executeBuy(portfolio, ticker, quantity, currentPrice, order.getId());
-        } else {
-            TradeExecution execution = executeSell(portfolio, ticker, quantity, currentPrice, order.getId());
-            realizedPnL = execution.realizedPnL();
-            fee = execution.fee();
-        }
+        TradeExecution execution = type == OrderType.BUY
+                ? executeBuy(portfolio, ticker, quantity, currentPrice, order.getId(), settlement)
+                : executeSell(portfolio, ticker, quantity, currentPrice, order.getId(), settlement);
 
-        order.setFeeAmount(fee);
+        order.setFeeAmount(execution.fee());
+        if (settlement != SupportedCurrency.USD) {
+            order.setSettlementCurrency(settlement);
+            order.setSettlementAmount(execution.settlementAmount());
+        }
         order = orderRepository.save(order);
 
-        return toResponse(order, realizedPnL);
+        return toResponse(order, execution.realizedPnL());
     }
 
     // LIMIT and STOP_LOSS orders don't fill immediately — they sit PENDING
@@ -341,10 +350,11 @@ public class PortfolioService {
         Ticker ticker = order.getTicker();
         BigDecimal fee;
 
+        // Pending (limit / stop) orders always settle in USD.
         if (order.getType() == OrderType.BUY) {
-            fee = executeBuy(portfolio, ticker, order.getQuantity(), fillPrice, order.getId());
+            fee = executeBuy(portfolio, ticker, order.getQuantity(), fillPrice, order.getId(), SupportedCurrency.USD).fee();
         } else {
-            fee = executeSell(portfolio, ticker, order.getQuantity(), fillPrice, order.getId()).fee();
+            fee = executeSell(portfolio, ticker, order.getQuantity(), fillPrice, order.getId(), SupportedCurrency.USD).fee();
         }
 
         order.setPrice(fillPrice);
@@ -364,30 +374,58 @@ public class PortfolioService {
         }
     }
 
-    // Checked against availableCash (not raw cashBalance) so a MARKET buy
-    // can never spend money already earmarked by someone else's pending
-    // LIMIT buy order — and, on the pending-fill path, this order's own
-    // reservation was already released just before this call runs.
-    private BigDecimal executeBuy(Portfolio portfolio, Ticker ticker, BigDecimal quantity, BigDecimal price, Long orderId) {
+    // USD trades settle from the portfolio's cash, checked against availableCash
+    // (not raw cashBalance) so a MARKET buy can never spend money already
+    // earmarked by someone else's pending LIMIT buy — and, on the pending-fill
+    // path, this order's own reservation was already released just before this
+    // call runs.
+    //
+    // A non-USD `settlement` pays from that currency's wallet instead. The USD
+    // total is converted at the live rate minus the same 0.5% spread as a
+    // manual conversion, so trading straight from a EUR wallet costs exactly
+    // what converting first and then buying would. The amount charged is
+    // rounded up, never down, so the spread can't be rounded away.
+    private TradeExecution executeBuy(Portfolio portfolio, Ticker ticker, BigDecimal quantity, BigDecimal price,
+                                      Long orderId, SupportedCurrency settlement) {
         BigDecimal cost = price.multiply(quantity);
         BigDecimal fee = feeService.commissionFor(cost);
         BigDecimal totalDebit = cost.add(fee);
+        BigDecimal settled;
 
-        if (portfolio.getAvailableCash().compareTo(totalDebit) < 0) {
-            throw new InsufficientFundsException(
-                    "Insufficient funds: need " + totalDebit + " (including fees) but only "
-                            + portfolio.getAvailableCash() + " available");
+        if (settlement == SupportedCurrency.USD) {
+            if (portfolio.getAvailableCash().compareTo(totalDebit) < 0) {
+                throw new InsufficientFundsException(
+                        "Insufficient funds: need " + totalDebit + " (including fees) but only "
+                                + portfolio.getAvailableCash() + " available");
+            }
+
+            BigDecimal afterCost = portfolio.getCashBalance().subtract(cost);
+            BigDecimal afterFee = afterCost.subtract(fee);
+            portfolio.setCashBalance(afterFee);
+            portfolioRepository.save(portfolio);
+
+            transactionRepository.save(new Transaction(portfolio, TransactionType.BUY, cost.negate(), afterCost,
+                    "USD", "Bought " + quantity + " " + ticker.getSymbol(), orderId));
+            transactionRepository.save(new Transaction(portfolio, TransactionType.FEE, fee.negate(), afterFee,
+                    "USD", "Commission on " + ticker.getSymbol() + " order", orderId));
+            settled = totalDebit;
+        } else {
+            BigDecimal usdPerUnit = fxRateService.getRate(settlement, SupportedCurrency.USD)
+                    .multiply(BigDecimal.ONE.subtract(FeeService.FX_SPREAD));
+            BigDecimal totalPaid = totalDebit.divide(usdPerUnit, 4, RoundingMode.UP);
+            BigDecimal feePaid = fee.divide(usdPerUnit, 4, RoundingMode.HALF_UP);
+            BigDecimal costPaid = totalPaid.subtract(feePaid);
+
+            BigDecimal afterFee = walletService.debitWallet(portfolio, settlement, totalPaid);
+            BigDecimal afterCost = afterFee.add(feePaid);
+
+            String via = " (paid from " + settlement + " wallet)";
+            transactionRepository.save(new Transaction(portfolio, TransactionType.BUY, costPaid.negate(), afterCost,
+                    settlement.name(), "Bought " + quantity + " " + ticker.getSymbol() + via, orderId));
+            transactionRepository.save(new Transaction(portfolio, TransactionType.FEE, feePaid.negate(), afterFee,
+                    settlement.name(), "Commission on " + ticker.getSymbol() + " order", orderId));
+            settled = totalPaid;
         }
-
-        BigDecimal afterCost = portfolio.getCashBalance().subtract(cost);
-        BigDecimal afterFee = afterCost.subtract(fee);
-        portfolio.setCashBalance(afterFee);
-        portfolioRepository.save(portfolio);
-
-        transactionRepository.save(new Transaction(portfolio, TransactionType.BUY, cost.negate(), afterCost,
-                "USD", "Bought " + quantity + " " + ticker.getSymbol(), orderId));
-        transactionRepository.save(new Transaction(portfolio, TransactionType.FEE, fee.negate(), afterFee,
-                "USD", "Commission on " + ticker.getSymbol() + " order", orderId));
 
         Holding holding = holdingRepository.findByPortfolioIdAndTickerId(portfolio.getId(), ticker.getId())
                 .orElse(null);
@@ -405,14 +443,19 @@ public class PortfolioService {
             holdingRepository.save(holding);
         }
 
-        return fee;
+        return new TradeExecution(null, fee, settled); // buys never realize a gain/loss
     }
 
     // Checked against availableQuantity (not raw quantity) so a MARKET sell
     // can never sell shares already earmarked by someone else's pending
     // LIMIT/STOP_LOSS sell order — and, on the pending-fill path, this
     // order's own reservation was already released just before this call runs.
-    private TradeExecution executeSell(Portfolio portfolio, Ticker ticker, BigDecimal quantity, BigDecimal price, Long orderId) {
+    //
+    // With a non-USD `settlement` the proceeds (after commission) are
+    // converted at the live rate minus the 0.5% spread and credited to that
+    // wallet, rounded down.
+    private TradeExecution executeSell(Portfolio portfolio, Ticker ticker, BigDecimal quantity, BigDecimal price,
+                                       Long orderId, SupportedCurrency settlement) {
         Holding holding = holdingRepository.findByPortfolioIdAndTickerId(portfolio.getId(), ticker.getId())
                 .orElseThrow(() -> new InsufficientSharesException(
                         "You don't own any shares of " + ticker.getSymbol()));
@@ -427,16 +470,41 @@ public class PortfolioService {
 
         BigDecimal proceeds = price.multiply(quantity);
         BigDecimal fee = feeService.commissionFor(proceeds);
+        BigDecimal settled;
 
-        BigDecimal afterProceeds = portfolio.getCashBalance().add(proceeds);
-        BigDecimal afterFee = afterProceeds.subtract(fee);
-        portfolio.setCashBalance(afterFee);
-        portfolioRepository.save(portfolio);
+        if (settlement == SupportedCurrency.USD) {
+            BigDecimal afterProceeds = portfolio.getCashBalance().add(proceeds);
+            BigDecimal afterFee = afterProceeds.subtract(fee);
+            portfolio.setCashBalance(afterFee);
+            portfolioRepository.save(portfolio);
 
-        transactionRepository.save(new Transaction(portfolio, TransactionType.SELL, proceeds, afterProceeds,
-                "USD", "Sold " + quantity + " " + ticker.getSymbol(), orderId));
-        transactionRepository.save(new Transaction(portfolio, TransactionType.FEE, fee.negate(), afterFee,
-                "USD", "Commission on " + ticker.getSymbol() + " order", orderId));
+            transactionRepository.save(new Transaction(portfolio, TransactionType.SELL, proceeds, afterProceeds,
+                    "USD", "Sold " + quantity + " " + ticker.getSymbol(), orderId));
+            transactionRepository.save(new Transaction(portfolio, TransactionType.FEE, fee.negate(), afterFee,
+                    "USD", "Commission on " + ticker.getSymbol() + " order", orderId));
+            settled = proceeds.subtract(fee);
+        } else {
+            BigDecimal netUsd = proceeds.subtract(fee);
+            if (netUsd.signum() <= 0) {
+                throw new InvalidRequestException(
+                        "This sale is worth less than its commission; sell it into your USD balance instead");
+            }
+            BigDecimal rawRate = fxRateService.getRate(settlement, SupportedCurrency.USD);
+            BigDecimal keep = BigDecimal.ONE.subtract(FeeService.FX_SPREAD);
+            BigDecimal credited = netUsd.multiply(keep).divide(rawRate, 4, RoundingMode.DOWN);
+            BigDecimal feeInWallet = fee.multiply(keep).divide(rawRate, 4, RoundingMode.HALF_UP);
+            BigDecimal proceedsInWallet = credited.add(feeInWallet);
+
+            BigDecimal afterFee = walletService.creditWallet(portfolio, settlement, credited);
+            BigDecimal afterProceeds = afterFee.add(feeInWallet);
+
+            String via = " (paid into " + settlement + " wallet)";
+            transactionRepository.save(new Transaction(portfolio, TransactionType.SELL, proceedsInWallet, afterProceeds,
+                    settlement.name(), "Sold " + quantity + " " + ticker.getSymbol() + via, orderId));
+            transactionRepository.save(new Transaction(portfolio, TransactionType.FEE, feeInWallet.negate(), afterFee,
+                    settlement.name(), "Commission on " + ticker.getSymbol() + " order", orderId));
+            settled = credited;
+        }
 
         BigDecimal remainingQuantity = holding.getQuantity().subtract(quantity);
         if (remainingQuantity.compareTo(BigDecimal.ZERO) == 0) {
@@ -446,7 +514,7 @@ public class PortfolioService {
             holdingRepository.save(holding);
         }
 
-        return new TradeExecution(realizedPnL, fee);
+        return new TradeExecution(realizedPnL, fee, settled);
     }
 
     public PortfolioResponse getPortfolioValuation(User user) {
@@ -503,7 +571,8 @@ public class PortfolioService {
         return new OrderResponse(
                 order.getId(), order.getTicker().getSymbol(), order.getType(), order.getKind(), order.getStatus(),
                 order.getQuantity(), order.getLimitPrice(), order.getStopPrice(), order.getPrice(), order.getFeeAmount(),
-                order.getCreatedAt(), order.getExecutedAt(), realizedPnL, order.getRejectionReason()
+                order.getCreatedAt(), order.getExecutedAt(), realizedPnL, order.getRejectionReason(),
+                order.getSettlementCurrency(), order.getSettlementAmount()
         );
     }
 
