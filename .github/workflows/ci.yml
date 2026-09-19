@@ -58,7 +58,7 @@ jobs:
       - run: mvn -B test -Dtest='MySql*'
 
   frontend:
-    name: Frontend build
+    name: Frontend tests and build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -71,6 +71,7 @@ jobs:
           cache: npm
           cache-dependency-path: meridian-frontend/package-lock.json
       - run: npm ci
+      - run: npm test
       - run: npm run build
 
   docker-images:
