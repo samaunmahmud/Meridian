@@ -1,5 +1,6 @@
 package com.meridian.backend.config;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import com.meridian.backend.model.AssetType;
 import com.meridian.backend.repository.TickerRepository;
 import com.meridian.backend.service.MarketDataService;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 // database), seed 3 defaults with an immediate poll each, so the app isn't
 // completely empty on first run. If tickers already exist (normal restart),
 // this does nothing — the dynamic scheduler just keeps going.
+@ConditionalOnProperty(prefix = "meridian.scheduling", name = "enabled", havingValue = "true", matchIfMissing = true)
 @Component
 public class DataSeeder implements CommandLineRunner {
 

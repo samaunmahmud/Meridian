@@ -1,5 +1,6 @@
 package com.meridian.backend.scheduler;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import com.meridian.backend.dto.PortfolioResponse;
 import com.meridian.backend.model.Portfolio;
 import com.meridian.backend.model.PortfolioSnapshot;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 
+@ConditionalOnProperty(prefix = "meridian.scheduling", name = "enabled", havingValue = "true", matchIfMissing = true)
 @Component
 public class PortfolioSnapshotScheduler {
 

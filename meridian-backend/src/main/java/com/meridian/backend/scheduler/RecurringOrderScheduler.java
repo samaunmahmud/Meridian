@@ -1,11 +1,13 @@
 package com.meridian.backend.scheduler;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import com.meridian.backend.service.RecurringOrderService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+@ConditionalOnProperty(prefix = "meridian.scheduling", name = "enabled", havingValue = "true", matchIfMissing = true)
 @Component
 public class RecurringOrderScheduler {
 

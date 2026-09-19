@@ -27,7 +27,10 @@ import com.meridian.backend.websocket.PriceWebSocketHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -51,6 +54,9 @@ public class PortfolioService {
     private final PriceWebSocketHandler priceWebSocketHandler;
     private final ObjectMapper objectMapper;
     private final FeeService feeService;
+    // Runs one pending-order fill in its own transaction, so a failure on one
+    // order can never roll back (and block) the fills of other orders.
+    private final TransactionTemplate perOrderTransaction;
 
     public PortfolioService(PortfolioRepository portfolioRepository,
                              HoldingRepository holdingRepository,
@@ -61,7 +67,8 @@ public class PortfolioService {
                              TransactionRepository transactionRepository,
                              PriceWebSocketHandler priceWebSocketHandler,
                              ObjectMapper objectMapper,
-                             FeeService feeService) {
+                             FeeService feeService,
+                             PlatformTransactionManager transactionManager) {
         this.portfolioRepository = portfolioRepository;
         this.holdingRepository = holdingRepository;
         this.orderRepository = orderRepository;
@@ -72,6 +79,8 @@ public class PortfolioService {
         this.priceWebSocketHandler = priceWebSocketHandler;
         this.objectMapper = objectMapper;
         this.feeService = feeService;
+        this.perOrderTransaction = new TransactionTemplate(transactionManager);
+        this.perOrderTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     // Bundles the two things a sell needs to report back that a buy doesn't:
@@ -84,6 +93,14 @@ public class PortfolioService {
     // user created before this feature existed.
     private Portfolio getOrCreatePortfolio(User user) {
         return portfolioRepository.findByUserId(user.getId())
+                .orElseGet(() -> portfolioRepository.save(new Portfolio(user, STARTING_CASH)));
+    }
+
+    // Same as getOrCreatePortfolio, but takes a row lock held until the
+    // surrounding transaction ends — use this in anything that writes money
+    // or shares. See PortfolioRepository.findByUserIdForUpdate.
+    private Portfolio lockPortfolio(User user) {
+        return portfolioRepository.findByUserIdForUpdate(user.getId())
                 .orElseGet(() -> portfolioRepository.save(new Portfolio(user, STARTING_CASH)));
     }
 
@@ -102,7 +119,7 @@ public class PortfolioService {
         Ticker ticker = tickerRepository.findBySymbol(request.symbol())
                 .orElseThrow(() -> new TickerNotFoundException(request.symbol()));
 
-        Portfolio portfolio = getOrCreatePortfolio(user);
+        Portfolio portfolio = lockPortfolio(user);
         OrderKind kind = request.kind() == null ? OrderKind.MARKET : request.kind();
         BigDecimal quantity = request.quantity();
 
@@ -188,7 +205,7 @@ public class PortfolioService {
 
     @Transactional
     public void cancelOrder(Long orderId, User user) {
-        Portfolio portfolio = getOrCreatePortfolio(user);
+        Portfolio portfolio = lockPortfolio(user);
         Order order = orderRepository.findByIdAndPortfolioId(orderId, portfolio.getId())
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
 
@@ -221,23 +238,54 @@ public class PortfolioService {
     // PENDING order whose condition the new price satisfies, at that price —
     // by the time this condition is true, currentPrice is already at least
     // as good for the trader as the limit/stop they asked for.
-    @Transactional
+    //
+    // Deliberately NOT one big transaction: each order is filled in its own
+    // transaction, so one order that can't fill (or a failure on one user)
+    // never rolls back or blocks everyone else's fills for that ticker.
     public void checkPendingOrders(Ticker ticker, BigDecimal currentPrice) {
-        List<Order> pending = orderRepository.findByTickerIdAndStatus(ticker.getId(), OrderStatus.PENDING);
+        List<Long> pendingIds = orderRepository.findIdsByTickerIdAndStatus(ticker.getId(), OrderStatus.PENDING);
 
-        for (Order order : pending) {
-            boolean shouldFill = switch (order.getKind()) {
-                case LIMIT -> order.getType() == OrderType.BUY
-                        ? currentPrice.compareTo(order.getLimitPrice()) <= 0
-                        : currentPrice.compareTo(order.getLimitPrice()) >= 0;
-                case STOP_LOSS -> currentPrice.compareTo(order.getStopPrice()) <= 0;
-                case MARKET -> false; // MARKET orders never sit PENDING
-            };
-
-            if (shouldFill) {
-                fillPendingOrder(order, currentPrice);
+        for (Long orderId : pendingIds) {
+            try {
+                FillNotice notice = perOrderTransaction.execute(tx -> tryFill(orderId, currentPrice));
+                if (notice != null) {
+                    broadcastOrderFilled(notice);
+                }
+            } catch (RuntimeException e) {
+                log.warn("Pending order {} could not be filled; will retry on the next price update", orderId, e);
             }
         }
+    }
+
+    // What to tell the user's browser once the fill has committed. Built
+    // inside the transaction (lazy relations are only readable there) and
+    // sent after it, so nobody is told about a fill that later rolled back.
+    private record FillNotice(Long userId, OrderFilledMessage message) {
+    }
+
+    private FillNotice tryFill(Long orderId, BigDecimal currentPrice) {
+        Long portfolioId = orderRepository.findPortfolioIdById(orderId).orElse(null);
+        if (portfolioId == null) return null;
+
+        // Lock first, THEN read the order: a cancel or another fill may have
+        // changed it since the scheduler listed it as PENDING.
+        portfolioRepository.findByIdForUpdate(portfolioId).orElseThrow();
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || order.getStatus() != OrderStatus.PENDING) return null;
+
+        boolean shouldFill = switch (order.getKind()) {
+            case LIMIT -> order.getType() == OrderType.BUY
+                    ? currentPrice.compareTo(order.getLimitPrice()) <= 0
+                    : currentPrice.compareTo(order.getLimitPrice()) >= 0;
+            case STOP_LOSS -> currentPrice.compareTo(order.getStopPrice()) <= 0;
+            case MARKET -> false; // MARKET orders never sit PENDING
+        };
+        if (!shouldFill) return null;
+
+        fillPendingOrder(order, currentPrice);
+        return new FillNotice(order.getPortfolio().getUser().getId(), new OrderFilledMessage(
+                "ORDER_FILLED", order.getId(), order.getTicker().getSymbol(),
+                order.getType(), order.getQuantity(), order.getPrice(), order.getExecutedAt()));
     }
 
     private void fillPendingOrder(Order order, BigDecimal fillPrice) {
@@ -245,39 +293,28 @@ public class PortfolioService {
 
         Portfolio portfolio = order.getPortfolio();
         Ticker ticker = order.getTicker();
-        BigDecimal realizedPnL;
         BigDecimal fee;
 
         if (order.getType() == OrderType.BUY) {
-            realizedPnL = null;
             fee = executeBuy(portfolio, ticker, order.getQuantity(), fillPrice, order.getId());
         } else {
-            TradeExecution execution = executeSell(portfolio, ticker, order.getQuantity(), fillPrice, order.getId());
-            realizedPnL = execution.realizedPnL();
-            fee = execution.fee();
+            fee = executeSell(portfolio, ticker, order.getQuantity(), fillPrice, order.getId()).fee();
         }
 
-        Instant executedAt = Instant.now();
         order.setPrice(fillPrice);
         order.setFeeAmount(fee);
-        order.setExecutedAt(executedAt);
+        order.setExecutedAt(Instant.now());
         order.setStatus(OrderStatus.FILLED);
         orderRepository.save(order);
 
         log.info("Filled pending {} {} order {} for {} at {}", order.getKind(), order.getType(), order.getId(), ticker.getSymbol(), fillPrice);
-        broadcastOrderFilled(order);
     }
 
-    private void broadcastOrderFilled(Order order) {
+    private void broadcastOrderFilled(FillNotice notice) {
         try {
-            OrderFilledMessage message = new OrderFilledMessage(
-                    "ORDER_FILLED", order.getId(), order.getTicker().getSymbol(),
-                    order.getType(), order.getQuantity(), order.getPrice(), order.getExecutedAt()
-            );
-            String json = objectMapper.writeValueAsString(message);
-            priceWebSocketHandler.broadcastToUser(order.getPortfolio().getUser().getId(), json);
+            priceWebSocketHandler.broadcastToUser(notice.userId(), objectMapper.writeValueAsString(notice.message()));
         } catch (Exception e) {
-            log.warn("Failed to broadcast order fill for order {}", order.getId(), e);
+            log.warn("Failed to broadcast order fill for order {}", notice.message().orderId(), e);
         }
     }
 
@@ -439,7 +476,7 @@ public class PortfolioService {
             throw new InvalidRequestException("Deposit amount must be greater than zero");
         }
 
-        Portfolio portfolio = getOrCreatePortfolio(user);
+        Portfolio portfolio = lockPortfolio(user);
         portfolio.setCashBalance(portfolio.getCashBalance().add(amount));
         portfolioRepository.save(portfolio);
 
@@ -455,7 +492,7 @@ public class PortfolioService {
             throw new InvalidRequestException("Withdrawal amount must be greater than zero");
         }
 
-        Portfolio portfolio = getOrCreatePortfolio(user);
+        Portfolio portfolio = lockPortfolio(user);
         if (portfolio.getAvailableCash().compareTo(amount) < 0) {
             throw new InsufficientFundsException(
                     "Insufficient available funds: need " + amount + " but only "

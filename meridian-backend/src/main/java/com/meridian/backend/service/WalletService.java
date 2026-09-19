@@ -52,6 +52,13 @@ public class WalletService {
                 .orElseGet(() -> portfolioRepository.save(new Portfolio(user, STARTING_CASH)));
     }
 
+    // Row lock held until the transaction ends: two conversions/withdrawals
+    // for the same user run one after the other, never on the same stale balance.
+    private Portfolio lockPortfolio(User user) {
+        return portfolioRepository.findByUserIdForUpdate(user.getId())
+                .orElseGet(() -> portfolioRepository.save(new Portfolio(user, STARTING_CASH)));
+    }
+
     private Wallet getOrCreateWallet(Portfolio portfolio, SupportedCurrency currency) {
         return walletRepository.findByPortfolioIdAndCurrency(portfolio.getId(), currency)
                 .orElseGet(() -> new Wallet(portfolio, currency, BigDecimal.ZERO));
@@ -107,7 +114,7 @@ public class WalletService {
             throw new InvalidRequestException("Amount must be greater than zero");
         }
 
-        Portfolio portfolio = getOrCreatePortfolio(user);
+        Portfolio portfolio = lockPortfolio(user);
         BigDecimal available = balanceOf(portfolio, request.fromCurrency());
         if (available.compareTo(request.amount()) < 0) {
             throw new InsufficientFundsException(
@@ -141,7 +148,7 @@ public class WalletService {
             throw new InvalidRequestException("Deposit amount must be greater than zero");
         }
 
-        Portfolio portfolio = getOrCreatePortfolio(user);
+        Portfolio portfolio = lockPortfolio(user);
         BigDecimal newBalance = balanceOf(portfolio, currency).add(amount);
         setBalance(portfolio, currency, newBalance);
 
@@ -156,7 +163,7 @@ public class WalletService {
             throw new InvalidRequestException("Withdrawal amount must be greater than zero");
         }
 
-        Portfolio portfolio = getOrCreatePortfolio(user);
+        Portfolio portfolio = lockPortfolio(user);
         BigDecimal available = balanceOf(portfolio, currency);
         if (available.compareTo(amount) < 0) {
             throw new InsufficientFundsException(

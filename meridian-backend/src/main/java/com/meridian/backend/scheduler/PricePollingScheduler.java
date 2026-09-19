@@ -1,5 +1,6 @@
 package com.meridian.backend.scheduler;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import com.meridian.backend.model.Ticker;
 import com.meridian.backend.repository.TickerRepository;
 import com.meridian.backend.service.MarketDataService;
@@ -16,6 +17,7 @@ import java.util.List;
 // 20 seconds, so with N tickers tracked, each one refreshes roughly every
 // N*20 seconds — this naturally respects Alpha Vantage's free-tier rate
 // limit (5 calls/minute) no matter how many tickers get added.
+@ConditionalOnProperty(prefix = "meridian.scheduling", name = "enabled", havingValue = "true", matchIfMissing = true)
 @Component
 public class PricePollingScheduler {
 

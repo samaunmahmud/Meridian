@@ -1,5 +1,6 @@
 package com.meridian.backend.scheduler;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import com.meridian.backend.model.SupportedCurrency;
 import com.meridian.backend.service.FxRateService;
 import org.slf4j.Logger;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Component;
 // Only two pairs to poll (EUR/USD, GBP/USD), so unlike ticker polling this
 // doesn't need to round-robin — both are refreshed every tick, well within
 // Alpha Vantage's free-tier rate limit alongside the ticker scheduler.
+@ConditionalOnProperty(prefix = "meridian.scheduling", name = "enabled", havingValue = "true", matchIfMissing = true)
 @Component
 public class FxRatePollingScheduler {
 
