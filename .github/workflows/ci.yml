@@ -22,6 +22,41 @@ jobs:
       # Tests use an in-memory H2 database and never call the price provider.
       - run: mvn -B test
 
+  backend-mysql:
+    name: Backend on MySQL (migrations)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: meridian-backend
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci
+          MYSQL_DATABASE: meridian_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      MERIDIAN_TEST_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/meridian_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      MERIDIAN_TEST_MYSQL_USER: root
+      MERIDIAN_TEST_MYSQL_PASSWORD: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      # The other tests use H2, which is not MySQL. These run the Flyway
+      # migrations on a real server, compare them with what Hibernate builds,
+      # and check that a database created before Flyway upgrades cleanly.
+      - run: mvn -B test -Dtest='MySql*'
+
   frontend:
     name: Frontend build
     runs-on: ubuntu-latest
