@@ -1,9 +1,7 @@
 package com.meridian.backend.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.meridian.backend.client.AlphaVantageClient;
-import com.meridian.backend.client.CurrencyExchangeRate;
-import com.meridian.backend.client.CurrencyExchangeRateResponse;
+import com.meridian.backend.client.MarketDataProvider;
 import com.meridian.backend.dto.FxRateResponse;
 import com.meridian.backend.dto.FxRateUpdateMessage;
 import com.meridian.backend.exception.FxRateUnavailableException;
@@ -25,16 +23,16 @@ public class FxRateService {
 
     private static final Logger log = LoggerFactory.getLogger(FxRateService.class);
 
-    private final AlphaVantageClient alphaVantageClient;
+    private final MarketDataProvider marketDataProvider;
     private final FxRateRepository fxRateRepository;
     private final PriceWebSocketHandler priceWebSocketHandler;
     private final ObjectMapper objectMapper;
 
-    public FxRateService(AlphaVantageClient alphaVantageClient,
+    public FxRateService(MarketDataProvider marketDataProvider,
                           FxRateRepository fxRateRepository,
                           PriceWebSocketHandler priceWebSocketHandler,
                           ObjectMapper objectMapper) {
-        this.alphaVantageClient = alphaVantageClient;
+        this.marketDataProvider = marketDataProvider;
         this.fxRateRepository = fxRateRepository;
         this.priceWebSocketHandler = priceWebSocketHandler;
         this.objectMapper = objectMapper;
@@ -46,20 +44,9 @@ public class FxRateService {
     public void pollAndStore(SupportedCurrency currency) {
         if (currency == SupportedCurrency.USD) return;
 
-        CurrencyExchangeRateResponse response = alphaVantageClient.fetchExchangeRate(currency.name(), SupportedCurrency.USD.name());
-        CurrencyExchangeRate rate = response.getExchangeRate();
-
-        if (rate == null || rate.getExchangeRate() == null || rate.getExchangeRate().isBlank()) {
-            log.warn("No FX rate returned for {}/USD", currency);
-            return;
-        }
-
-        BigDecimal parsedRate;
-        try {
-            parsedRate = new BigDecimal(rate.getExchangeRate());
-        } catch (NumberFormatException e) {
-            log.warn("Malformed FX rate '{}' for {}/USD", rate.getExchangeRate(), currency);
-            return;
+        BigDecimal parsedRate = marketDataProvider.fetchUsdRate(currency);
+        if (parsedRate == null) {
+            return; // the provider already logged why there is no rate
         }
 
         Instant updatedAt = Instant.now();

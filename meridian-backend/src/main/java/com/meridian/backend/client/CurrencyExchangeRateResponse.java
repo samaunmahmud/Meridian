@@ -2,7 +2,7 @@ package com.meridian.backend.client;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class CurrencyExchangeRateResponse {
+public class CurrencyExchangeRateResponse extends AlphaVantageResponse {
 
     @JsonProperty("Realtime Currency Exchange Rate")
     private CurrencyExchangeRate exchangeRate;

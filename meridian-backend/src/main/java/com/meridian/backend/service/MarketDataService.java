@@ -1,12 +1,7 @@
 package com.meridian.backend.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.meridian.backend.client.AlphaVantageClient;
-import com.meridian.backend.client.CurrencyExchangeRate;
-import com.meridian.backend.client.CurrencyExchangeRateResponse;
-import com.meridian.backend.client.GlobalQuote;
-import com.meridian.backend.client.GlobalQuoteResponse;
-import com.meridian.backend.client.SymbolMatch;
+import com.meridian.backend.client.MarketDataProvider;
 import com.meridian.backend.dto.AddTickerRequest;
 import com.meridian.backend.dto.PricePointResponse;
 import com.meridian.backend.dto.PriceUpdateMessage;
@@ -34,13 +29,9 @@ public class MarketDataService {
 
     private static final Logger log = LoggerFactory.getLogger(MarketDataService.class);
 
-    // Crypto quotes are always priced against USD — Alpha Vantage's
-    // CURRENCY_EXCHANGE_RATE endpoint needs an explicit quote currency.
-    private static final String CRYPTO_QUOTE_CURRENCY = "USD";
-
     private final TickerRepository tickerRepository;
     private final PriceHistoryRepository priceHistoryRepository;
-    private final AlphaVantageClient alphaVantageClient;
+    private final MarketDataProvider marketDataProvider;
     private final PriceWebSocketHandler priceWebSocketHandler;
     private final ObjectMapper objectMapper;
     private final AlertService alertService;
@@ -48,14 +39,14 @@ public class MarketDataService {
 
     public MarketDataService(TickerRepository tickerRepository,
                               PriceHistoryRepository priceHistoryRepository,
-                              AlphaVantageClient alphaVantageClient,
+                              MarketDataProvider marketDataProvider,
                               PriceWebSocketHandler priceWebSocketHandler,
                               ObjectMapper objectMapper,
                               AlertService alertService,
                               PortfolioService portfolioService) {
         this.tickerRepository = tickerRepository;
         this.priceHistoryRepository = priceHistoryRepository;
-        this.alphaVantageClient = alphaVantageClient;
+        this.marketDataProvider = marketDataProvider;
         this.priceWebSocketHandler = priceWebSocketHandler;
         this.objectMapper = objectMapper;
         this.alertService = alertService;
@@ -75,7 +66,7 @@ public class MarketDataService {
                 : fetchStockPrice(symbol);
 
         if (price == null) {
-            return; // already logged by the fetch method
+            return; // the provider already logged why there is no price
         }
 
         Instant recordedAt = Instant.now();
@@ -89,38 +80,14 @@ public class MarketDataService {
         portfolioService.checkPendingOrders(ticker, price);
     }
 
+    // The provider returns null when it has no price for the symbol (it
+    // logs why), and throws MarketDataUnavailableException when we can't ask.
     private BigDecimal fetchStockPrice(String symbol) {
-        GlobalQuoteResponse response = alphaVantageClient.fetchQuote(symbol);
-        GlobalQuote quote = response.getGlobalQuote();
-
-        if (quote == null || quote.getPrice() == null || quote.getPrice().isBlank()) {
-            log.warn("No quote data returned for {}", symbol);
-            return null;
-        }
-
-        try {
-            return new BigDecimal(quote.getPrice());
-        } catch (NumberFormatException e) {
-            log.warn("Malformed price '{}' returned for {}", quote.getPrice(), symbol);
-            return null;
-        }
+        return marketDataProvider.fetchStockPrice(symbol);
     }
 
     private BigDecimal fetchCryptoPrice(String symbol) {
-        CurrencyExchangeRateResponse response = alphaVantageClient.fetchCryptoQuote(symbol, CRYPTO_QUOTE_CURRENCY);
-        CurrencyExchangeRate rate = response.getExchangeRate();
-
-        if (rate == null || rate.getExchangeRate() == null || rate.getExchangeRate().isBlank()) {
-            log.warn("No exchange rate data returned for {}", symbol);
-            return null;
-        }
-
-        try {
-            return new BigDecimal(rate.getExchangeRate());
-        } catch (NumberFormatException e) {
-            log.warn("Malformed exchange rate '{}' returned for {}", rate.getExchangeRate(), symbol);
-            return null;
-        }
+        return marketDataProvider.fetchCryptoPrice(symbol);
     }
 
     private void broadcastUpdate(String symbol, BigDecimal price, Instant recordedAt) {
@@ -149,12 +116,7 @@ public class MarketDataService {
         if (query == null || query.isBlank()) {
             return Collections.emptyList();
         }
-        List<SymbolMatch> matches = alphaVantageClient.searchSymbols(query).getBestMatches();
-        if (matches == null) return Collections.emptyList();
-
-        return matches.stream()
-                .map(m -> new TickerSearchResult(m.getSymbol(), m.getName(), m.getRegion()))
-                .toList();
+        return marketDataProvider.searchSymbols(query);
     }
 
     // Adds a new ticker to the tracked list and polls it once immediately,

@@ -2,7 +2,7 @@ package com.meridian.backend.client;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class GlobalQuoteResponse {
+public class GlobalQuoteResponse extends AlphaVantageResponse {
 
     @JsonProperty("Global Quote")
     private GlobalQuote globalQuote;
