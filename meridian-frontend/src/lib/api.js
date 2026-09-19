@@ -129,10 +129,10 @@ export function getRecurringOrders() {
   return apiFetch("/recurring-orders");
 }
 
-export function createRecurringOrder(symbol, amount, frequency) {
+export function createRecurringOrder(symbol, amount, frequency, settlementCurrency = null) {
   return apiFetch("/recurring-orders", {
     method: "POST",
-    body: JSON.stringify({ symbol, amount, frequency }),
+    body: JSON.stringify({ symbol, amount, frequency, settlementCurrency }),
   });
 }
 

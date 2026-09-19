@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { getTickers, getRecurringOrders, createRecurringOrder, deleteRecurringOrder } from "../lib/api";
+import { getTickers, getRecurringOrders, createRecurringOrder, deleteRecurringOrder, getWallets } from "../lib/api";
+import { currencySymbol, formatMoney } from "../lib/formatMoney";
 import { showToast } from "../lib/toast";
 
 const FREQUENCIES = [
@@ -15,14 +16,17 @@ export default function RecurringOrdersPanel({ refreshKey }) {
   const [symbol, setSymbol] = useState("");
   const [amount, setAmount] = useState("");
   const [frequency, setFrequency] = useState("WEEKLY");
+  const [currency, setCurrency] = useState("USD");
+  const [wallets, setWallets] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
   function refresh() {
     setLoading(true);
-    Promise.all([getTickers(), getRecurringOrders()])
-      .then(([tickerData, orderData]) => {
+    Promise.all([getTickers(), getRecurringOrders(), getWallets().catch(() => [])])
+      .then(([tickerData, orderData, walletData]) => {
         setTickers(tickerData);
         setOrders(orderData);
+        setWallets(walletData);
         if (tickerData.length > 0 && !symbol) setSymbol(tickerData[0].symbol);
       })
       .finally(() => setLoading(false));
@@ -35,8 +39,8 @@ export default function RecurringOrdersPanel({ refreshKey }) {
     if (!amount) return;
     setSubmitting(true);
     try {
-      await createRecurringOrder(symbol, Number(amount), frequency);
-      showToast("success", `Recurring buy set: $${amount} of ${symbol} ${frequency.toLowerCase()}`);
+      await createRecurringOrder(symbol, Number(amount), frequency, currency === "USD" ? null : currency);
+      showToast("success", `Recurring buy set: ${formatMoney(Number(amount), currency)} of ${symbol} ${frequency.toLowerCase()}`);
       setAmount("");
       refresh();
     } catch (err) {
@@ -66,7 +70,7 @@ export default function RecurringOrdersPanel({ refreshKey }) {
               <div className="text-sm">
                 <span className="font-medium">{o.symbol}</span>{" "}
                 <span className="text-dim font-mono">
-                  ${o.amount.toFixed(2)} {o.frequency.toLowerCase()}
+                  {formatMoney(o.amount, o.settlementCurrency ?? "USD")} {o.frequency.toLowerCase()}
                 </span>
               </div>
               <button
@@ -99,9 +103,30 @@ export default function RecurringOrdersPanel({ refreshKey }) {
             step="0.01"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder="Amount ($)"
+            placeholder={`Amount (${currencySymbol(currency).trim()})`}
             className="bg-panel-2 border border-line rounded-xl px-3 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
           />
+        </div>
+
+        <div>
+          <label className="text-xs text-dim block mb-1.5">Pay with</label>
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            className="w-full bg-panel-2 border border-line rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+          >
+            {(wallets.length ? wallets : [{ currency: "USD", balance: 0 }]).map((w) => (
+              <option key={w.currency} value={w.currency}>
+                {w.currency} — {formatMoney(w.available ?? w.balance, w.currency)} available
+              </option>
+            ))}
+          </select>
+          {currency !== "USD" && (
+            <div className="text-xs text-dim mt-1.5">
+              Buys {currencySymbol(currency).trim()}
+              {amount || "…"} worth of shares each time; commission and the 0.5% conversion spread are charged on top.
+            </div>
+          )}
         </div>
 
         <div className="flex gap-1 bg-panel-2 rounded-xl p-1 text-xs">

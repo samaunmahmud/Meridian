@@ -35,7 +35,8 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
 
   const rate = rateFor(fromCurrency, toCurrency);
   const estimated = rate && amount ? Number(amount) * rate * 0.995 : null;
-  const balance = wallets?.find((w) => w.currency === fromCurrency)?.balance ?? 0;
+  const from = wallets?.find((w) => w.currency === fromCurrency);
+  const balance = from?.available ?? from?.balance ?? 0; // money held by open orders cannot be converted
 
   async function handleSubmit(e) {
     e.preventDefault();

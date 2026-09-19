@@ -38,7 +38,7 @@ function WalletCard({ wallet, onChanged }) {
   }
 
   return (
-    <div className="bg-panel border border-line rounded-[20px] p-6 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10">
+    <div className="bg-panel border border-line rounded-[20px] p-6 flex flex-col transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <div
@@ -62,9 +62,14 @@ function WalletCard({ wallet, onChanged }) {
       <div className="font-display text-[38px] leading-none mb-5" style={{ letterSpacing: "-0.04em" }}>
         {formatMoney(wallet.balance, wallet.currency)}
       </div>
+      {wallet.reserved > 0 && (
+        <div className="text-xs text-dim -mt-3 mb-4">
+          {formatMoney(wallet.reserved, wallet.currency)} reserved by open orders
+        </div>
+      )}
 
       {mode ? (
-        <form onSubmit={handleSubmit} className="flex gap-2">
+        <form onSubmit={handleSubmit} className="flex gap-2 mt-auto">
           <input
             autoFocus
             type="number"
@@ -87,7 +92,7 @@ function WalletCard({ wallet, onChanged }) {
           </button>
         </form>
       ) : (
-        <div className="flex gap-2">
+        <div className="flex gap-2 mt-auto">
           <button
             onClick={() => setMode("deposit")}
             className="flex-1 h-10 rounded-xl bg-accent-dim text-accent text-[13px] font-medium flex items-center justify-center gap-1.5 hover:brightness-110 transition-all"

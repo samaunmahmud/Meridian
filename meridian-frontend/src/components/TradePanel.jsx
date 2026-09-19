@@ -64,8 +64,10 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey }) {
   const notional = referencePrice && quantity ? referencePrice * Number(quantity) : null;
   const estimatedFee = notional ? Math.max(notional * COMMISSION_RATE, MINIMUM_FEE) : null;
 
-  // Only market orders can settle in a non-USD wallet; limit/stop stay USD.
-  const settleCurrency = kind === "MARKET" ? currency : "USD";
+  // Every order type can settle in any wallet. A limit buy holds its money
+  // (in that wallet's currency) until it fills or is cancelled.
+  const settleCurrency = currency;
+  const reservesMoney = kind === "LIMIT" && type === "BUY";
   const usdPerUnit =
     settleCurrency === "USD"
       ? 1
@@ -95,7 +97,8 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey }) {
       if (order.status === "PENDING") {
         showToast(
           "success",
-          `${kind === "LIMIT" ? "Limit" : "Stop-loss"} order placed: ${type === "BUY" ? "buy" : "sell"} ${order.quantity} ${order.symbol}`
+          `${kind === "LIMIT" ? "Limit" : "Stop-loss"} order placed: ${type === "BUY" ? "buy" : "sell"} ${order.quantity} ${order.symbol}` +
+            (order.settlementCurrency ? ` (${order.type === "BUY" ? "from" : "into"} your ${order.settlementCurrency} wallet)` : "")
         );
       } else {
         showToast(
@@ -191,24 +194,21 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey }) {
           />
         </div>
 
-        {kind === "MARKET" ? (
-          <div>
-            <label className="text-xs text-dim block mb-1.5">{type === "BUY" ? "Pay with" : "Receive in"}</label>
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors"
-            >
-              {(wallets.length ? wallets : [{ currency: "USD", balance: 0 }]).map((w) => (
-                <option key={w.currency} value={w.currency}>
-                  {w.currency} — {formatMoney(w.balance, w.currency)}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : (
-          <div className="text-xs text-dim">Limit and stop-loss orders settle in USD.</div>
-        )}
+        <div>
+          <label className="text-xs text-dim block mb-1.5">{type === "BUY" ? "Pay with" : "Receive in"}</label>
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+          >
+            {(wallets.length ? wallets : [{ currency: "USD", balance: 0 }]).map((w) => (
+              <option key={w.currency} value={w.currency}>
+                {w.currency} — {formatMoney(w.available ?? w.balance, w.currency)}
+                {type === "BUY" ? " available" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {kind === "LIMIT" && (
           <div>
@@ -248,9 +248,15 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey }) {
 
         {settleCurrency !== "USD" && settlementEstimate != null && (
           <div className="text-xs text-dim">
-            Est. you {type === "BUY" ? "pay" : "receive"}:{" "}
+            {reservesMoney ? "Reserves" : `Est. you ${type === "BUY" ? "pay" : "receive"}:`}{" "}
             <span className="font-mono text-bone">{formatMoney(settlementEstimate, settleCurrency)}</span>
             <span> · includes the 0.5% conversion spread</span>
+            {kind !== "MARKET" && (
+              <div className="mt-1">
+                {reservesMoney ? "Held until the order fills or you cancel it. " : ""}
+                The final amount follows the exchange rate when it fills.
+              </div>
+            )}
           </div>
         )}
 
