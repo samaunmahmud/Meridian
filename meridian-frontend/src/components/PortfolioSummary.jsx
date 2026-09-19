@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { getPortfolio } from "../lib/api";
-import { formatMoney, formatNumber } from "../lib/formatMoney";
+import { formatMoney } from "../lib/formatMoney";
 import { useAnimatedNumber } from "../lib/useAnimatedNumber";
-import Icon from "./Icon";
+import HoldingsList from "./HoldingsList";
 import Skeleton from "./Skeleton";
-import TickerAvatar from "./TickerAvatar";
 
 function StatCard({ label, value, sub, display, className = "" }) {
   return (
@@ -81,53 +80,7 @@ export default function PortfolioSummary({ refreshKey, children }) {
         {portfolio.holdings.length === 0 ? (
           <div className="text-sm text-dim">No holdings yet — place a trade to get started.</div>
         ) : (
-          <div className="overflow-x-auto no-scrollbar -mx-1 px-1">
-            <table className="w-full text-sm min-w-[560px]">
-              <thead>
-                <tr className="text-left text-dim text-xs">
-                  <th className="font-medium pb-3">Asset</th>
-                  <th className="font-medium pb-3 text-right">Qty</th>
-                  <th className="font-medium pb-3 text-right">Avg cost</th>
-                  <th className="font-medium pb-3 text-right">Price</th>
-                  <th className="font-medium pb-3 text-right">Value</th>
-                  <th className="font-medium pb-3 text-right">P&amp;L</th>
-                </tr>
-              </thead>
-              <tbody className="font-mono">
-                {portfolio.holdings.map((h) => {
-                  const isUp = h.gainLoss >= 0;
-                  return (
-                    <tr key={h.symbol} className="border-t border-line/70">
-                      <td className="py-3.5 font-sans">
-                        <div className="flex items-center gap-3">
-                          <TickerAvatar symbol={h.symbol} size={36} />
-                          <div className="min-w-0">
-                            <div className="font-semibold text-sm">{h.symbol}</div>
-                            <div className="text-xs text-muted truncate max-w-[160px]">{h.name}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3.5 text-right">{h.quantity}</td>
-                      <td className="py-3.5 text-right text-muted">{formatNumber(h.avgCost)}</td>
-                      <td className="py-3.5 text-right">{formatNumber(h.currentPrice)}</td>
-                      <td className="py-3.5 text-right font-medium">{formatNumber(h.marketValue)}</td>
-                      <td className={`py-3.5 text-right ${isUp ? "text-gain" : "text-loss"}`}>
-                        <div className="font-medium inline-flex items-center gap-1 justify-end">
-                          <Icon name={isUp ? "up" : "down"} size={12} strokeWidth={2.2} />
-                          {isUp ? "+" : ""}
-                          {formatNumber(h.gainLoss)}
-                        </div>
-                        <div className="text-xs">
-                          {isUp ? "+" : ""}
-                          {h.gainLossPct.toFixed(2)}%
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <HoldingsList holdings={portfolio.holdings} />
         )}
       </section>
     </div>
