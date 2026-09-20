@@ -14,9 +14,12 @@ tmp="$out.partial"
 trap 'rm -f "$tmp"' EXIT
 
 # The password is passed through the environment, not the command line.
-docker compose exec -T mysql sh -c \
+if ! docker compose exec -T mysql sh -c \
   'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump --single-transaction --routines --no-tablespaces -uroot "$MYSQL_DATABASE"' \
-  | gzip > "$tmp"
+  | gzip > "$tmp"; then
+  echo "Backup failed: could not dump the database. Is the stack running (docker compose ps)?" >&2
+  exit 1
+fi
 
 # Never keep an empty or truncated file that would look like a good backup.
 if ! gzip -t "$tmp" || [ "$(gunzip -c "$tmp" | grep -c 'CREATE TABLE')" -lt 1 ]; then

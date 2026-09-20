@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Restores a backup made by backup.sh into the running Docker stack.
 #   ./scripts/restore.sh backups/meridian-20260920-030000.sql.gz
-# This REPLACES the current data. Stop the backend first so nothing writes while it runs:
+# This REPLACES the current data of every table in the backup (a table created after the
+# backup was taken is left as it is). Stop the backend first so nothing writes while it runs:
 #   docker compose stop backend && ./scripts/restore.sh <file> && docker compose start backend
 # Add --yes to skip the confirmation question.
 set -euo pipefail
