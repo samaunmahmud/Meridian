@@ -553,6 +553,12 @@ public class PortfolioService {
         return new TradeExecution(realizedPnL, fee, settled);
     }
 
+    // Reads lazy relations (each holding's ticker), so it needs a database session. A web
+    // request has one for its whole duration, but the snapshot scheduler runs on a thread
+    // that does not, and this used to throw LazyInitializationException every minute for
+    // anyone who held a stock, so their equity curve was never recorded.
+    // (Not readOnly: getOrCreatePortfolio can insert a missing portfolio for an old account.)
+    @Transactional
     public PortfolioResponse getPortfolioValuation(User user) {
         Portfolio portfolio = getOrCreatePortfolio(user);
         List<Holding> holdings = holdingRepository.findByPortfolioId(portfolio.getId());
