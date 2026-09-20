@@ -88,6 +88,7 @@ export default function OrderHistory({ refreshKey }) {
                   >
                     {o.status}
                     {o.status === "PENDING" && o.kind !== "MARKET" ? ` (${o.kind === "LIMIT" ? o.limitPrice?.toFixed(2) : o.stopPrice?.toFixed(2)})` : ""}
+                    {o.status === "PENDING" && o.kind === "MARKET" ? " (at open)" : ""}
                   </span>
                 </td>
                 <td className="py-3 text-right">{o.quantity}</td>

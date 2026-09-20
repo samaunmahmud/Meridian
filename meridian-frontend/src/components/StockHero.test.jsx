@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import StockHero from "./StockHero";
 import { getPrices } from "../lib/api";
 
-vi.mock("../lib/api", () => ({ getPrices: vi.fn() }));
+vi.mock("../lib/api", () => ({
+  getMarketStatus: vi.fn(() => Promise.resolve({ stocks: { open: true, nextClose: null }, crypto: { open: true } })), getPrices: vi.fn() }));
 
 const ticker = { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" };
 const minutesAgo = (m) => new Date(Date.now() - m * 60000).toISOString();

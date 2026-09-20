@@ -1,4 +1,6 @@
 import { useEffect, useId, useState } from "react";
+import { formatWhen } from "../lib/marketStatus";
+import { useMarketStatus } from "../lib/useMarketStatus";
 import { getTickers, getPrices, placeOrder, getWallets, getFxRates } from "../lib/api";
 import { formatMoney } from "../lib/formatMoney";
 import { showToast } from "../lib/toast";
@@ -15,6 +17,7 @@ const FX_SPREAD = 0.005; // same markup the backend applies to every conversion
 
 export default function TradePanel({ onOrderPlaced, prefill, refreshKey }) {
   const uid = useId();
+  const market = useMarketStatus();
   const [tickers, setTickers] = useState([]);
   const [symbol, setSymbol] = useState("");
   const [type, setType] = useState("BUY");
@@ -61,6 +64,13 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey }) {
       .catch(() => setLastPrice(null));
   }, [symbol]);
 
+  // Stocks only trade in the exchange session. A market order placed while it is closed is queued
+  // and fills at the first price after the open; limit and stop orders wait for the open too.
+  const symbolType = tickers.find((t) => t.symbol === symbol)?.assetType;
+  const marketClosed = symbolType === "STOCK" && market?.stocks && !market.stocks.open;
+  const queued = marketClosed && kind === "MARKET";
+  const opensWhen = marketClosed ? formatWhen(market.stocks.nextOpen) : "";
+
   const referencePrice = kind === "LIMIT" ? Number(limitPrice) || lastPrice : kind === "STOP_LOSS" ? Number(stopPrice) || lastPrice : lastPrice;
   const notional = referencePrice && quantity ? referencePrice * Number(quantity) : null;
   const estimatedFee = notional ? Math.max(notional * COMMISSION_RATE, MINIMUM_FEE) : null;
@@ -98,7 +108,7 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey }) {
       if (order.status === "PENDING") {
         showToast(
           "success",
-          `${kind === "LIMIT" ? "Limit" : "Stop-loss"} order placed: ${type === "BUY" ? "buy" : "sell"} ${order.quantity} ${order.symbol}` +
+          `${order.kind === "MARKET" ? "Market order queued for the open" : kind === "LIMIT" ? "Limit order placed" : "Stop-loss order placed"}: ${type === "BUY" ? "buy" : "sell"} ${order.quantity} ${order.symbol}` +
             (order.settlementCurrency ? ` (${order.type === "BUY" ? "from" : "into"} your ${order.settlementCurrency} wallet)` : "")
         );
       } else {
@@ -249,6 +259,18 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey }) {
           </div>
         )}
 
+        {marketClosed && (
+          <div role="status" className="text-xs text-bone bg-panel-2 rounded-xl px-3 py-2.5 flex gap-2">
+            <span className="w-2 h-2 rounded-full shrink-0 mt-1" style={{ background: "var(--c-s2)" }} aria-hidden="true" />
+            <span>
+              The market is closed (opens {opensWhen}).{" "}
+              {kind === "MARKET"
+                ? "Your order is queued and fills at the first price after the open. A buy holds up to 10% above the last price until then."
+                : "Limit and stop orders only fill while the market is open."}
+            </span>
+          </div>
+        )}
+
         {estimatedFee != null && (
           <div className="text-xs text-dim">
             Est. commission: <span className="font-mono text-muted">${estimatedFee.toFixed(2)}</span>
@@ -276,7 +298,7 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey }) {
             type === "BUY" ? "bg-accent text-accent-ink hover:brightness-110" : "bg-loss text-on-loss hover:brightness-110"
           }`}
         >
-          {submitting ? "Placing order..." : `${type === "BUY" ? "Buy" : "Sell"} ${symbol}`}
+          {submitting ? "Placing order..." : `${queued ? "Queue " : ""}${type === "BUY" ? (queued ? "buy" : "Buy") : (queued ? "sell" : "Sell")} ${symbol}`}
         </button>
       </form>
     </section>

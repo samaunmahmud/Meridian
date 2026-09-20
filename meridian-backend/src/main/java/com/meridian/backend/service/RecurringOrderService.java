@@ -7,6 +7,7 @@ import com.meridian.backend.dto.RecurringOrderExecutedMessage;
 import com.meridian.backend.dto.RecurringOrderRequest;
 import com.meridian.backend.dto.RecurringOrderResponse;
 import com.meridian.backend.exception.InvalidRequestException;
+import com.meridian.backend.market.MarketCalendar;
 import com.meridian.backend.exception.RecurringOrderNotFoundException;
 import com.meridian.backend.exception.StalePriceException;
 import com.meridian.backend.exception.TickerNotFoundException;
@@ -48,6 +49,7 @@ public class RecurringOrderService {
     private final PriceWebSocketHandler priceWebSocketHandler;
     private final ObjectMapper objectMapper;
     private final PriceFreshness priceFreshness;
+    private final MarketCalendar marketCalendar;
     // Each due order runs in its own transaction: the scheduler thread has no
     // database session of its own (so lazy relations such as the portfolio
     // can only be read inside a transaction), and one order failing must not
@@ -63,6 +65,7 @@ public class RecurringOrderService {
                                   PriceWebSocketHandler priceWebSocketHandler,
                                   ObjectMapper objectMapper,
                                   PriceFreshness priceFreshness,
+                                  MarketCalendar marketCalendar,
                                   PlatformTransactionManager transactionManager) {
         this.recurringOrderRepository = recurringOrderRepository;
         this.portfolioRepository = portfolioRepository;
@@ -73,6 +76,7 @@ public class RecurringOrderService {
         this.priceWebSocketHandler = priceWebSocketHandler;
         this.objectMapper = objectMapper;
         this.priceFreshness = priceFreshness;
+        this.marketCalendar = marketCalendar;
         this.perOrderTransaction = new TransactionTemplate(transactionManager);
     }
 
@@ -146,6 +150,13 @@ public class RecurringOrderService {
         }
 
         Ticker ticker = recurringOrder.getTicker();
+        if (!marketCalendar.isOpen(ticker.getAssetType())) {
+            // A recurring buy is not queued like a one-off order: it simply waits for the next
+            // run after the market opens.
+            log.info("Recurring order {} ({}) postponed: the market is closed", recurringOrder.getId(), ticker.getSymbol());
+            return null;
+        }
+
         PriceHistory latest = priceHistoryRepository.findFirstByTickerIdOrderByRecordedAtDesc(ticker.getId()).orElse(null);
         BigDecimal price = latest == null ? null : latest.getPrice();
 

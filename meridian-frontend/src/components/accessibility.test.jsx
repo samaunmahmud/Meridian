@@ -14,6 +14,7 @@ import RecurringOrdersPanel from "./RecurringOrdersPanel";
 import TradePanel from "./TradePanel";
 
 vi.mock("../lib/api", () => ({
+  getMarketStatus: vi.fn(() => Promise.resolve({ stocks: { open: true, nextClose: null }, crypto: { open: true } })),
   login: vi.fn(),
   register: vi.fn(),
   forgotPassword: vi.fn(),

@@ -3,6 +3,7 @@ import { getPrices } from "../lib/api";
 import { formatNumber } from "../lib/formatMoney";
 import CandlestickChart from "./CandlestickChart";
 import Icon from "./Icon";
+import MarketBadge from "./MarketBadge";
 import PriceChart from "./PriceChart";
 import TickerAvatar from "./TickerAvatar";
 import Skeleton from "./Skeleton";
@@ -116,6 +117,9 @@ export default function StockHero({ ticker, liveUpdate, onTrade }) {
             <div className="text-lg font-semibold leading-tight">{ticker.name}</div>
             <div className="text-[13px] text-muted">
               {ticker.symbol} &middot; {ticker.exchange}
+            </div>
+            <div className="mt-1">
+              <MarketBadge assetType={ticker.assetType} />
             </div>
           </div>
         </div>

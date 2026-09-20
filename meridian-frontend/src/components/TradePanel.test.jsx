@@ -6,6 +6,7 @@ import { placeOrder } from "../lib/api";
 import { showToast } from "../lib/toast";
 
 vi.mock("../lib/api", () => ({
+  getMarketStatus: vi.fn(() => Promise.resolve({ stocks: { open: true, nextClose: null }, crypto: { open: true } })),
   getTickers: vi.fn(() => Promise.resolve([{ symbol: "NVDA", name: "NVIDIA Corporation" }])),
   getPrices: vi.fn(() => Promise.resolve([{ price: 120 }])),
   getWallets: vi.fn(() =>

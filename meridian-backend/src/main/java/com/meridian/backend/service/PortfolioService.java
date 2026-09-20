@@ -2,6 +2,7 @@ package com.meridian.backend.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.meridian.backend.dto.HoldingResponse;
+import com.meridian.backend.market.MarketCalendar;
 import com.meridian.backend.dto.OrderFilledMessage;
 import com.meridian.backend.dto.OrderRejectedMessage;
 import com.meridian.backend.dto.OrderRequest;
@@ -44,6 +45,8 @@ public class PortfolioService {
     private static final Logger log = LoggerFactory.getLogger(PortfolioService.class);
 
     private static final BigDecimal STARTING_CASH = new BigDecimal("10000.00");
+    // Extra cash held for a market buy queued while the market is closed (the price can gap at the open).
+    private static final BigDecimal QUEUED_BUY_CUSHION = new BigDecimal("0.10");
 
     private final PortfolioRepository portfolioRepository;
     private final HoldingRepository holdingRepository;
@@ -58,6 +61,7 @@ public class PortfolioService {
     private final WalletService walletService;
     private final FxRateService fxRateService;
     private final PriceFreshness priceFreshness;
+    private final MarketCalendar marketCalendar;
     // Runs one pending-order fill in its own transaction, so a failure on one
     // order can never roll back (and block) the fills of other orders.
     private final TransactionTemplate perOrderTransaction;
@@ -75,6 +79,7 @@ public class PortfolioService {
                              WalletService walletService,
                              FxRateService fxRateService,
                              PriceFreshness priceFreshness,
+                             MarketCalendar marketCalendar,
                              PlatformTransactionManager transactionManager) {
         this.portfolioRepository = portfolioRepository;
         this.holdingRepository = holdingRepository;
@@ -89,6 +94,7 @@ public class PortfolioService {
         this.walletService = walletService;
         this.fxRateService = fxRateService;
         this.priceFreshness = priceFreshness;
+        this.marketCalendar = marketCalendar;
         this.perOrderTransaction = new TransactionTemplate(transactionManager);
         this.perOrderTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -146,7 +152,10 @@ public class PortfolioService {
         SupportedCurrency settlement = request.settlementCurrency() == null ? SupportedCurrency.USD : request.settlementCurrency();
 
         return switch (kind) {
-            case MARKET -> placeMarketOrder(portfolio, ticker, request.type(), quantity, settlement);
+            // While a stock market is closed a market order is queued and fills at the open.
+            case MARKET -> marketCalendar.isOpen(ticker.getAssetType())
+                    ? placeMarketOrder(portfolio, ticker, request.type(), quantity, settlement)
+                    : placePendingOrder(portfolio, ticker, request.type(), OrderKind.MARKET, quantity, null, null, settlement);
             case LIMIT -> placePendingOrder(portfolio, ticker, request.type(), OrderKind.LIMIT, quantity, request.limitPrice(), null, settlement);
             case STOP_LOSS -> placePendingOrder(portfolio, ticker, request.type(), OrderKind.STOP_LOSS, quantity, null, request.stopPrice(), settlement);
         };
@@ -194,7 +203,7 @@ public class PortfolioService {
             if (limitPrice == null || limitPrice.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new InvalidRequestException("A limit order requires a positive limit price");
             }
-        } else {
+        } else if (kind == OrderKind.STOP_LOSS) {
             if (stopPrice == null || stopPrice.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new InvalidRequestException("A stop-loss order requires a positive stop price");
             }
@@ -210,7 +219,13 @@ public class PortfolioService {
             // so notional + fee at the limit is the most it can ever cost.
             // (Reserving just the price left orders that used all the user's
             // cash unable to ever pay their own fee.)
-            BigDecimal notional = limitPrice.multiply(quantity);
+            // A queued market order has no limit: hold the last price plus a cushion for the
+            // opening gap. Whatever is not needed is released when it fills, and if the open
+            // is beyond the cushion the fill is rejected rather than overdrawing (see checkPendingOrders).
+            BigDecimal basis = kind == OrderKind.MARKET
+                    ? getCurrentPrice(ticker).multiply(BigDecimal.ONE.add(QUEUED_BUY_CUSHION))
+                    : limitPrice;
+            BigDecimal notional = basis.multiply(quantity);
             BigDecimal totalUsd = notional.add(feeService.commissionFor(notional));
             if (settlement == SupportedCurrency.USD) {
                 reservedAmount = totalUsd;
@@ -302,6 +317,10 @@ public class PortfolioService {
     // transaction, so one order that can't fill (or a failure on one user)
     // never rolls back or blocks everyone else's fills for that ticker.
     public void checkPendingOrders(Ticker ticker, BigDecimal currentPrice) {
+        // Outside the trading session the provider just repeats the last close: nothing fills on it.
+        if (!marketCalendar.isOpen(ticker.getAssetType())) {
+            return;
+        }
         List<Long> pendingIds = orderRepository.findIdsByTickerIdAndStatus(ticker.getId(), OrderStatus.PENDING);
 
         for (Long orderId : pendingIds) {
@@ -370,7 +389,7 @@ public class PortfolioService {
                     ? currentPrice.compareTo(order.getLimitPrice()) <= 0
                     : currentPrice.compareTo(order.getLimitPrice()) >= 0;
             case STOP_LOSS -> currentPrice.compareTo(order.getStopPrice()) <= 0;
-            case MARKET -> false; // MARKET orders never sit PENDING
+            case MARKET -> true; // queued while the market was closed: fills at the first price after the open
         };
         if (!shouldFill) return null;
 

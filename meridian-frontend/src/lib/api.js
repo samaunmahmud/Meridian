@@ -73,6 +73,11 @@ export function resendVerification() {
   return apiFetch("/auth/resend-verification", { method: "POST" });
 }
 
+/** Whether stocks and crypto can be traded right now: { stocks: {open, nextOpen, nextClose}, crypto: {...} }. */
+export function getMarketStatus() {
+  return apiFetch("/market/status");
+}
+
 export function getTickers() {
   return apiFetch("/tickers");
 }

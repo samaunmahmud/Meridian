@@ -23,6 +23,10 @@ public class MutableClock extends Clock {
         now = now.plus(d);
     }
 
+    public void set(Instant t) {
+        now = t;
+    }
+
     @Override public ZoneId getZone() { return zone; }
     @Override public Clock withZone(ZoneId z) { return new MutableClock(now, z) { @Override public Instant instant() { return MutableClock.this.now; } }; }
     @Override public Instant instant() { return now; }
