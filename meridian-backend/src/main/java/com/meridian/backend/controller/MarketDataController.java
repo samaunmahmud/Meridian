@@ -35,7 +35,10 @@ public class MarketDataController {
     }
 
     @GetMapping("/prices/{symbol}")
-    public List<PricePointResponse> getPrices(@PathVariable String symbol) {
-        return marketDataService.getPriceHistory(symbol);
+    public List<PricePointResponse> getPrices(@PathVariable String symbol,
+                                              @RequestParam(required = false) String range,
+                                              @RequestParam(required = false) Integer points,
+                                              @RequestParam(required = false) Integer limit) {
+        return marketDataService.getPriceHistory(symbol, range, points, limit);
     }
 }

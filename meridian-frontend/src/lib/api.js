@@ -90,8 +90,17 @@ export function addTicker(symbol, name, exchange) {
   return apiFetch("/tickers", { method: "POST", body: JSON.stringify({ symbol, name, exchange }) });
 }
 
-export function getPrices(symbol) {
-  return apiFetch(`/prices/${symbol}`);
+/**
+ * Prices for a stock, newest first. `range` is "1D" | "1W" | "1M" | "3M" | "1Y" | "ALL", `points` caps how many
+ * come back (evenly thinned), `limit` asks for just the newest N.
+ */
+export function getPrices(symbol, { range, points, limit } = {}) {
+  const query = new URLSearchParams();
+  if (range) query.set("range", range);
+  if (points) query.set("points", points);
+  if (limit) query.set("limit", limit);
+  const qs = query.toString();
+  return apiFetch(`/prices/${encodeURIComponent(symbol)}${qs ? `?${qs}` : ""}`);
 }
 
 export function getPortfolio() {

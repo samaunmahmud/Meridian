@@ -59,7 +59,7 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey }) {
 
   useEffect(() => {
     if (!symbol) return;
-    getPrices(symbol)
+    getPrices(symbol, { limit: 1 })
       .then((data) => setLastPrice(data[0]?.price ?? null))
       .catch(() => setLastPrice(null));
   }, [symbol]);

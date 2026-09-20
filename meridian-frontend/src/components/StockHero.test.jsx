@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import StockHero from "./StockHero";
 import { getPrices } from "../lib/api";
@@ -34,5 +35,19 @@ describe("StockHero: how old is this price?", () => {
     const notice = await screen.findByRole("status");
     expect(notice).toHaveTextContent("Prices delayed — last update 3 h ago");
     expect(screen.queryByText(/^Updated /)).not.toBeInTheDocument();
+  });
+
+  it("asks the server for the chosen time window, thinned, and keeps the range buttons in place", async () => {
+    getPrices.mockResolvedValue(pricesRecorded(1, 21, 41));
+    render(<StockHero ticker={ticker} liveUpdate={null} onTrade={vi.fn()} />);
+    await screen.findByText(/^Updated /);
+    expect(getPrices).toHaveBeenLastCalledWith("AAPL", { range: "1D", points: 500 });
+    expect(screen.getByRole("button", { name: "1D" })).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(screen.getByRole("button", { name: "1W" }));
+
+    expect(getPrices).toHaveBeenLastCalledWith("AAPL", { range: "1W", points: 500 });
+    expect(screen.getByRole("button", { name: "1W" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "All" })).toBeInTheDocument();
   });
 });

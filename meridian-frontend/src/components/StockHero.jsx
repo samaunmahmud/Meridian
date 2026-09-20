@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getPrices } from "../lib/api";
 import { formatNumber } from "../lib/formatMoney";
 import CandlestickChart from "./CandlestickChart";
@@ -10,11 +10,15 @@ import Skeleton from "./Skeleton";
 import { useAnimatedNumber } from "../lib/useAnimatedNumber";
 import { formatAge, isDelayed } from "../lib/priceAge";
 
+// Time windows, answered by the server (which thins a long history to at most CHART_POINTS points).
+// History only goes back to when the stock was first tracked, so a young stock shows the same on all.
 const RANGES = [
-  { key: "20", label: "20" },
-  { key: "50", label: "50" },
-  { key: "all", label: "All" },
+  { key: "1D", label: "1D" },
+  { key: "1W", label: "1W" },
+  { key: "1M", label: "1M" },
+  { key: "ALL", label: "All" },
 ];
+const CHART_POINTS = 500;
 
 const CHART_TYPES = [
   { key: "line", label: "Line" },
@@ -44,16 +48,27 @@ function Segmented({ options, value, onChange, label }) {
 export default function StockHero({ ticker, liveUpdate, onTrade }) {
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState("all");
+  const [range, setRange] = useState("1D");
   const [chartType, setChartType] = useState("line");
 
+  // Only a NEW stock shows the loading skeleton; changing the range updates the chart in place, so the
+  // range buttons stay where they are. A stale answer (a slower earlier request) is ignored.
+  const shownSymbol = useRef(null);
   useEffect(() => {
     if (!ticker) return;
-    setLoading(true);
-    getPrices(ticker.symbol)
-      .then((data) => setPrices([...data].reverse()))
-      .finally(() => setLoading(false));
-  }, [ticker]);
+    let cancelled = false;
+    if (shownSymbol.current !== ticker.symbol) setLoading(true);
+    getPrices(ticker.symbol, { range, points: CHART_POINTS })
+      .then((data) => {
+        if (cancelled) return;
+        shownSymbol.current = ticker.symbol;
+        setPrices([...data].reverse());
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [ticker, range]);
 
   useEffect(() => {
     if (!liveUpdate || liveUpdate.kind !== "PRICE_UPDATE") return;
@@ -65,7 +80,7 @@ export default function StockHero({ ticker, liveUpdate, onTrade }) {
     });
   }, [liveUpdate, ticker]);
 
-  const visible = range === "all" ? prices : prices.slice(-Number(range));
+  const visible = prices;
   const latest = visible[visible.length - 1];
   const first = visible[0];
   const delta = latest && first ? latest.price - first.price : 0;
