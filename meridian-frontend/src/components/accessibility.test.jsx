@@ -2,9 +2,11 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { axeViolations } from "../test/axe";
+import AddTickerModal from "./AddTickerModal";
 import AlertsPanel from "./AlertsPanel";
 import AccountsPanel from "./AccountsPanel";
 import AuthPage from "./AuthPage";
+import ConvertModal from "./ConvertModal";
 import OrderHistory from "./OrderHistory";
 import RecurringOrdersPanel from "./RecurringOrdersPanel";
 import TradePanel from "./TradePanel";
@@ -40,6 +42,9 @@ vi.mock("../lib/api", () => ({
     ])
   ),
   cancelOrder: vi.fn(),
+  searchTickers: vi.fn(() => Promise.resolve([{ symbol: "AAPL", name: "Apple Inc.", region: "United States" }])),
+  addTicker: vi.fn(),
+  convertCurrency: vi.fn(),
   depositToWallet: vi.fn(),
   withdrawFromWallet: vi.fn(),
 }));
@@ -164,5 +169,28 @@ describe("form panels", () => {
     expect(within(region).getByRole("columnheader", { name: "Actions" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cancel pending buy order: NVDA" })).toBeInTheDocument();
     expect(await axeViolations(container)).toEqual([]);
+  });
+});
+
+describe("modals", () => {
+  it("ConvertModal: a named dialog whose From, To and Amount fields are labelled", async () => {
+    render(<ConvertModal wallets={[{ currency: "USD", balance: 100, available: 100 }]} onClose={vi.fn()} onConverted={vi.fn()} />);
+    expect(screen.getByRole("dialog", { name: "Convert currency" })).toBeInTheDocument();
+    expect(screen.getByLabelText("From")).toBeInTheDocument();
+    expect(screen.getByLabelText("To")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Amount/)).toHaveFocus();
+    expect(await axeViolations(document.body)).toEqual([]);
+  });
+
+  it("AddTickerModal: a named dialog, a labelled search box, results announced, Add says which stock", async () => {
+    render(<AddTickerModal onClose={vi.fn()} onAdded={vi.fn()} />);
+    expect(screen.getByRole("dialog", { name: "Add a stock" })).toBeInTheDocument();
+    const search = screen.getByRole("textbox", { name: "Search by company name or symbol" });
+    expect(search).toHaveFocus();
+
+    await userEvent.type(search, "app");
+    expect(await screen.findByRole("button", { name: "Add AAPL to the watchlist" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("1 match");
+    expect(await axeViolations(document.body)).toEqual([]);
   });
 });

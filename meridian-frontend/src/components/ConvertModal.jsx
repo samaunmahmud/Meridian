@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { convertCurrency, getFxRates } from "../lib/api";
 import { formatMoney, currencySymbol } from "../lib/formatMoney";
 import { showToast } from "../lib/toast";
+import Modal from "./Modal";
 
 const CURRENCIES = ["USD", "EUR", "GBP"];
 
 export default function ConvertModal({ wallets, onClose, onConverted }) {
+  const uid = useId();
   const [fromCurrency, setFromCurrency] = useState("USD");
   const [toCurrency, setToCurrency] = useState("EUR");
   const [amount, setAmount] = useState("");
@@ -58,20 +60,13 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-40 flex items-start justify-center pt-24" onClick={onClose}>
-      <div className="bg-panel border border-line rounded-[20px] w-full max-w-md p-5 fade-in" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-sm font-medium">Convert currency</div>
-          <button onClick={onClose} className="text-dim hover:text-bone text-lg leading-none">
-            &times;
-          </button>
-        </div>
-
+    <Modal title="Convert currency" onClose={onClose}>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-dim block mb-1.5">From</label>
+              <label htmlFor={`${uid}-from`} className="text-xs text-dim block mb-1.5">From</label>
               <select
+                id={`${uid}-from`}
                 value={fromCurrency}
                 onChange={(e) => setFromCurrency(e.target.value)}
                 className="w-full bg-panel-2 border border-control rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
@@ -82,8 +77,9 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
               </select>
             </div>
             <div>
-              <label className="text-xs text-dim block mb-1.5">To</label>
+              <label htmlFor={`${uid}-to`} className="text-xs text-dim block mb-1.5">To</label>
               <select
+                id={`${uid}-to`}
                 value={toCurrency}
                 onChange={(e) => setToCurrency(e.target.value)}
                 className="w-full bg-panel-2 border border-control rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
@@ -96,11 +92,12 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
           </div>
 
           <div>
-            <label className="text-xs text-dim block mb-1.5">
+            <label htmlFor={`${uid}-amount`} className="text-xs text-dim block mb-1.5">
               Amount <span className="text-dim">({currencySymbol(fromCurrency)}{balance.toFixed(2)} available)</span>
             </label>
             <input
-              autoFocus
+              id={`${uid}-amount`}
+              data-autofocus
               type="number"
               min="0.01"
               step="0.01"
@@ -125,7 +122,6 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
             {submitting ? "Converting..." : "Convert"}
           </button>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

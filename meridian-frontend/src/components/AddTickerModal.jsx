@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { searchTickers, addTicker } from "../lib/api";
 import { showToast } from "../lib/toast";
+import Modal from "./Modal";
 import TickerAvatar from "./TickerAvatar";
 
 export default function AddTickerModal({ onClose, onAdded }) {
@@ -40,29 +41,29 @@ export default function AddTickerModal({ onClose, onAdded }) {
     }
   }
 
-  return (
-    <div
-      className="fixed inset-0 bg-black/60 z-40 flex items-start justify-center pt-24"
-      onClick={onClose}
-    >
-      <div
-        className="bg-panel border border-line rounded-[20px] w-full max-w-md p-5 fade-in"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-sm font-medium">Add a stock</div>
-          <button onClick={onClose} className="text-dim hover:text-bone text-lg leading-none">
-            &times;
-          </button>
-        </div>
+  // Read out by screen readers as the search runs (the visible text is not in a live region).
+  const status = searching
+    ? "Searching"
+    : query.trim()
+    ? results.length === 0
+      ? `No matches for ${query}`
+      : `${results.length} ${results.length === 1 ? "match" : "matches"}`
+    : "";
 
+  return (
+    <Modal title="Add a stock" onClose={onClose}>
         <input
-          autoFocus
+          data-autofocus
+          aria-label="Search by company name or symbol"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by company name or symbol..."
           className="w-full bg-panel-2 border border-control rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors mb-3"
         />
+
+        <div role="status" className="sr-only">
+          {status}
+        </div>
 
         <div className="max-h-80 overflow-y-auto space-y-1">
           {searching && <div className="text-xs text-dim px-2 py-3">Searching...</div>}
@@ -86,6 +87,7 @@ export default function AddTickerModal({ onClose, onAdded }) {
               <button
                 onClick={() => handleAdd(r)}
                 disabled={addingSymbol === r.symbol}
+                aria-label={`Add ${r.symbol} to the watchlist`}
                 className="text-xs bg-accent hover:brightness-110 transition-colors text-accent-ink px-3 py-1.5 rounded-md disabled:opacity-50 shrink-0"
               >
                 {addingSymbol === r.symbol ? "Adding..." : "Add"}
@@ -93,7 +95,6 @@ export default function AddTickerModal({ onClose, onAdded }) {
             </div>
           ))}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
