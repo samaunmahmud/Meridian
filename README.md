@@ -1,6 +1,6 @@
 # Meridian
 
-A paper-trading app: practise buying and selling stocks with virtual money, in USD, EUR or GBP, without risking any real cash.
+A paper-trading app: practise buying and selling stocks and crypto with virtual money, in USD, EUR or GBP, without risking any real cash.
 
 - **Backend:** Spring Boot 3.3, Java 21, MySQL 8.4, Flyway migrations, JWT session in an HttpOnly cookie, WebSocket for live prices.
 - **Frontend:** React 19, Vite, Tailwind 4 (dark and light themes, works on phones).
@@ -8,7 +8,7 @@ A paper-trading app: practise buying and selling stocks with virtual money, in U
 
 ## Features
 
-- Watchlist and price alerts, with live prices pushed over WebSocket
+- Stocks and crypto, with a watchlist, price alerts and live prices pushed over WebSocket
 - Market, limit and stop-loss orders, recurring buys
 - USD, EUR and GBP wallets. Any order type can be paid from any wallet; a pending limit buy reserves its money (and commission) in that wallet
 - Portfolio with holdings, equity chart and an activity feed
@@ -29,7 +29,7 @@ docker-compose.yml   The full stack (MySQL, backend, web)
 
 ## Run it locally (development)
 
-You need Java 21, Maven, Node 22 and Docker (for MySQL).
+You need Java 21, Maven, Node 22 or newer and Docker (for MySQL).
 
 ```sh
 # 1. Configuration for the backend (it reads meridian-backend/.env)
@@ -46,11 +46,11 @@ mvn spring-boot:run
 
 # 4. Frontend on http://localhost:5173
 cd ../meridian-frontend
-npm install
+npm install     # an npm warning about fsevents' install script is harmless
 npm run dev
 ```
 
-In development the frontend calls `http://localhost:8080/api` unless `VITE_API_BASE` is set. With `MAIL_HOST` empty, password-reset and verification emails are only printed in the backend log, so copy the link from there.
+Then sign up on the login page. In development the frontend calls `http://localhost:8080/api` unless `VITE_API_BASE` is set. With `MAIL_HOST` empty, password-reset and verification emails are only printed in the backend log, so copy the link from there.
 
 ## Deploy with Docker
 
