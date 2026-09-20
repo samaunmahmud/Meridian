@@ -54,7 +54,9 @@ jobs:
           cache: maven
       # The other tests use H2, which is not MySQL. These run the Flyway
       # migrations on a real server, compare them with what Hibernate builds,
-      # and check that a database created before Flyway upgrades cleanly.
+      # check that a database created before Flyway upgrades cleanly, and fire
+      # simultaneous orders from one account at MySQL (MySqlConcurrencyTest:
+      # the app relies on READ COMMITTED, which H2 cannot show).
       - run: mvn -B test -Dtest='MySql*'
 
   frontend:
