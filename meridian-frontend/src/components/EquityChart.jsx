@@ -37,7 +37,7 @@ export default function EquityChart({ refreshKey }) {
   if (history.length < 2) {
     return (
       <section className="bg-panel border border-line rounded-[20px] p-6">
-        <div className="text-base font-semibold mb-2">Portfolio performance</div>
+        <h2 className="text-base font-semibold mb-2">Portfolio performance</h2>
         <div className="text-sm text-dim py-10 text-center">
           Building your equity curve — check back in a minute or two as more snapshots are recorded.
         </div>
@@ -52,7 +52,7 @@ export default function EquityChart({ refreshKey }) {
 
   return (
     <section className="bg-panel border border-line rounded-[20px] p-6 fade-in">
-      <div className="text-base font-semibold mb-4">Portfolio performance</div>
+      <h2 className="text-base font-semibold mb-4">Portfolio performance</h2>
       <ResponsiveContainer width="100%" height={180}>
         <AreaChart data={history} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
           <defs>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { getTickers, getRecurringOrders, createRecurringOrder, deleteRecurringOrder, getWallets } from "../lib/api";
 import { currencySymbol, formatMoney } from "../lib/formatMoney";
 import { showToast } from "../lib/toast";
@@ -10,6 +10,7 @@ const FREQUENCIES = [
 ];
 
 export default function RecurringOrdersPanel({ refreshKey }) {
+  const uid = useId();
   const [tickers, setTickers] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +62,7 @@ export default function RecurringOrdersPanel({ refreshKey }) {
 
   return (
     <section className="bg-panel border border-line rounded-[20px] p-6">
-      <div className="text-base font-semibold mb-4">Recurring buys</div>
+      <h2 className="text-base font-semibold mb-4">Recurring buys</h2>
 
       {!loading && orders.length > 0 && (
         <div className="space-y-1 mb-4">
@@ -75,6 +76,7 @@ export default function RecurringOrdersPanel({ refreshKey }) {
               </div>
               <button
                 onClick={() => handleDelete(o.id)}
+                aria-label={`Cancel recurring buy: ${o.symbol} ${formatMoney(o.amount, o.settlementCurrency ?? "USD")} ${o.frequency.toLowerCase()}`}
                 className="text-xs text-dim hover:text-loss transition-colors px-2 py-1"
               >
                 Cancel
@@ -87,6 +89,7 @@ export default function RecurringOrdersPanel({ refreshKey }) {
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <select
+            aria-label="Symbol"
             value={symbol}
             onChange={(e) => setSymbol(e.target.value)}
             className="bg-panel-2 border border-control rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
@@ -98,6 +101,7 @@ export default function RecurringOrdersPanel({ refreshKey }) {
             ))}
           </select>
           <input
+            aria-label={`Amount in ${currency}`}
             type="number"
             min="1"
             step="0.01"
@@ -109,8 +113,9 @@ export default function RecurringOrdersPanel({ refreshKey }) {
         </div>
 
         <div>
-          <label className="text-xs text-dim block mb-1.5">Pay with</label>
+          <label htmlFor={`${uid}-currency`} className="text-xs text-dim block mb-1.5">Pay with</label>
           <select
+            id={`${uid}-currency`}
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
             className="w-full bg-panel-2 border border-control rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
@@ -129,11 +134,12 @@ export default function RecurringOrdersPanel({ refreshKey }) {
           )}
         </div>
 
-        <div className="flex gap-1 bg-panel-2 rounded-xl p-1 text-xs">
+        <div role="group" aria-label="How often" className="flex gap-1 bg-panel-2 rounded-xl p-1 text-xs">
           {FREQUENCIES.map((f) => (
             <button
               key={f.key}
               type="button"
+              aria-pressed={frequency === f.key}
               onClick={() => setFrequency(f.key)}
               className={`flex-1 py-1.5 rounded-md transition-colors ${
                 frequency === f.key ? "bg-accent-dim text-accent" : "text-dim"

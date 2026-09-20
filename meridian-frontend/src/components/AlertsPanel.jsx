@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { getTickers, getAlerts, createAlert, deleteAlert } from "../lib/api";
 import { showToast } from "../lib/toast";
 import TickerAvatar from "./TickerAvatar";
 import Skeleton from "./Skeleton";
 
 export default function AlertsPanel() {
+  const uid = useId();
   const [alerts, setAlerts] = useState([]);
   const [tickers, setTickers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,9 +53,9 @@ export default function AlertsPanel() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 px-4 sm:px-6 lg:px-8 pb-8 max-w-[1240px] fade-in">
+    <main className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 px-4 sm:px-6 lg:px-8 pb-8 max-w-[1240px] fade-in">
       <section className="bg-panel border border-line rounded-[20px] p-6">
-        <div className="text-base font-semibold mb-4">Your alerts</div>
+        <h2 className="text-base font-semibold mb-4">Your alerts</h2>
 
         {loading ? (
           <div className="space-y-3">
@@ -89,6 +90,7 @@ export default function AlertsPanel() {
                 </div>
                 <button
                   onClick={() => handleDelete(a.id)}
+                  aria-label={`Remove alert: ${a.symbol} ${a.direction === "ABOVE" ? "above" : "below"} $${a.targetPrice.toFixed(2)}`}
                   className="text-xs text-dim hover:text-loss transition-colors px-2 py-1"
                 >
                   Remove
@@ -100,11 +102,12 @@ export default function AlertsPanel() {
       </section>
 
       <section className="bg-panel border border-line rounded-[20px] p-6 h-fit">
-        <div className="text-base font-semibold mb-4">New alert</div>
+        <h2 className="text-base font-semibold mb-4">New alert</h2>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="text-xs text-dim block mb-1.5">Symbol</label>
+            <label htmlFor={`${uid}-symbol`} className="text-xs text-dim block mb-1.5">Symbol</label>
             <select
+              id={`${uid}-symbol`}
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
               className="w-full bg-panel-2 border border-control rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors"
@@ -117,7 +120,7 @@ export default function AlertsPanel() {
             </select>
           </div>
 
-          <div className="relative bg-panel-2 rounded-xl p-1 grid grid-cols-2">
+          <div role="group" aria-label="Alert direction" className="relative bg-panel-2 rounded-xl p-1 grid grid-cols-2">
             <div
               className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-md bg-accent transition-transform duration-200 ${
                 direction === "ABOVE" ? "translate-x-0" : "translate-x-[calc(100%+8px)]"
@@ -125,6 +128,7 @@ export default function AlertsPanel() {
             />
             <button
               type="button"
+              aria-pressed={direction === "ABOVE"}
               onClick={() => setDirection("ABOVE")}
               className={`relative z-10 py-2 text-sm font-medium transition-colors ${
                 direction === "ABOVE" ? "text-accent-ink" : "text-muted"
@@ -134,6 +138,7 @@ export default function AlertsPanel() {
             </button>
             <button
               type="button"
+              aria-pressed={direction === "BELOW"}
               onClick={() => setDirection("BELOW")}
               className={`relative z-10 py-2 text-sm font-medium transition-colors ${
                 direction === "BELOW" ? "text-accent-ink" : "text-muted"
@@ -144,8 +149,9 @@ export default function AlertsPanel() {
           </div>
 
           <div>
-            <label className="text-xs text-dim block mb-1.5">Target price</label>
+            <label htmlFor={`${uid}-target`} className="text-xs text-dim block mb-1.5">Target price</label>
             <input
+              id={`${uid}-target`}
               type="number"
               step="0.01"
               min="0"
@@ -165,6 +171,6 @@ export default function AlertsPanel() {
           </button>
         </form>
       </section>
-    </div>
+    </main>
   );
 }

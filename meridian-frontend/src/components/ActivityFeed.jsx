@@ -67,7 +67,7 @@ function MonthSummary({ transactions }) {
   return (
     <section className="bg-panel border border-line rounded-[20px] px-5 pt-5 pb-2">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-base font-semibold">This month</div>
+        <h2 className="text-base font-semibold">This month</h2>
         <div className="text-xs text-muted">{now.toLocaleString("en-US", { month: "long" })} · USD</div>
       </div>
       {rows.map((r, i) => (

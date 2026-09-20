@@ -68,10 +68,11 @@ export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
     <>
       <div className="bg-panel border border-line rounded-[20px] p-4 sm:p-5 fade-in h-fit">
         <div className="flex items-center justify-between mb-1 px-1.5">
-          <div className="text-base font-semibold">Watchlist</div>
+          <h2 className="text-base font-semibold">Watchlist</h2>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1 text-[13px] text-accent hover:brightness-110 transition-all font-medium"
+            aria-label="Add a stock to the watchlist"
+            className="flex items-center gap-1 h-8 px-2 -mr-2 text-[13px] text-accent hover:brightness-110 transition-all font-medium"
           >
             <Icon name="plus" size={14} strokeWidth={2.2} />
             Add
@@ -87,6 +88,7 @@ export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
         ) : (
           <>
             <input
+              aria-label="Filter watchlist"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Filter tickers..."

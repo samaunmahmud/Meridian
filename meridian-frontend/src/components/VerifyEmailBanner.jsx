@@ -34,7 +34,7 @@ export default function VerifyEmailBanner({ email }) {
         type="button"
         onClick={resend}
         disabled={sending}
-        className="ml-auto text-accent font-medium hover:underline disabled:opacity-50"
+        className="ml-auto py-1 px-1 text-accent font-medium hover:underline disabled:opacity-50"
       >
         {sending ? "Sending…" : "Resend link"}
       </button>

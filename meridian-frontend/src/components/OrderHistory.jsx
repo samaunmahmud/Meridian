@@ -45,23 +45,27 @@ export default function OrderHistory({ refreshKey }) {
 
   return (
     <section className="bg-panel border border-line rounded-[20px] p-6 fade-in">
-      <div className="text-base font-semibold mb-4">Order history</div>
+      <h2 className="text-base font-semibold mb-4">Order history</h2>
 
       {orders.length === 0 ? (
         <div className="text-sm text-dim">No orders placed yet.</div>
       ) : (
-        <table className="w-full text-sm">
+        /* relative: the sr-only header text is absolutely positioned and must be clipped by this box */
+        <div role="region" aria-label="Order history table" tabIndex={0} className="relative overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="text-left text-dim border-b border-line">
-              <th className="font-normal pb-3">Type</th>
-              <th className="font-normal pb-3">Symbol</th>
-              <th className="font-normal pb-3">Status</th>
-              <th className="font-normal pb-3 text-right">Qty</th>
-              <th className="font-normal pb-3 text-right">Price</th>
-              <th className="font-normal pb-3 text-right">Fee</th>
-              <th className="font-normal pb-3 text-right">Realized P/L</th>
-              <th className="font-normal pb-3 text-right">When</th>
-              <th className="font-normal pb-3"></th>
+              <th scope="col" className="font-normal pb-3">Type</th>
+              <th scope="col" className="font-normal pb-3">Symbol</th>
+              <th scope="col" className="font-normal pb-3">Status</th>
+              <th scope="col" className="font-normal pb-3 text-right">Qty</th>
+              <th scope="col" className="font-normal pb-3 text-right">Price</th>
+              <th scope="col" className="font-normal pb-3 text-right">Fee</th>
+              <th scope="col" className="font-normal pb-3 text-right">Realized P/L</th>
+              <th scope="col" className="font-normal pb-3 text-right">When</th>
+              <th scope="col" className="font-normal pb-3">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody className="font-mono">
@@ -101,6 +105,7 @@ export default function OrderHistory({ refreshKey }) {
                   {o.status === "PENDING" && (
                     <button
                       onClick={() => handleCancel(o.id)}
+                      aria-label={`Cancel pending ${o.type.toLowerCase()} order: ${o.symbol}`}
                       className="font-sans text-xs text-dim hover:text-loss transition-colors px-2 py-1"
                     >
                       Cancel
@@ -111,6 +116,7 @@ export default function OrderHistory({ refreshKey }) {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </section>
   );

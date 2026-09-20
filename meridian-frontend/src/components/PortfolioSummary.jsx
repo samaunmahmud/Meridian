@@ -71,7 +71,7 @@ export default function PortfolioSummary({ refreshKey, children }) {
 
       <section className="bg-panel border border-line rounded-[20px] p-5 sm:p-6">
         <div className="flex items-center justify-between mb-4">
-          <div className="text-base font-semibold">Holdings</div>
+          <h2 className="text-base font-semibold">Holdings</h2>
           <div className="text-[13px] text-muted">
             {portfolio.holdings.length} {portfolio.holdings.length === 1 ? "position" : "positions"}
           </div>

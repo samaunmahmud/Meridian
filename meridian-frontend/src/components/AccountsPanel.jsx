@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getWallets, depositToWallet, withdrawFromWallet } from "../lib/api";
 import { formatMoney, currencySymbol } from "../lib/formatMoney";
 import { showToast } from "../lib/toast";
@@ -14,6 +14,17 @@ function WalletCard({ wallet, onChanged }) {
   const [mode, setMode] = useState(null); // null | "deposit" | "withdraw"
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // When the inline deposit/withdraw form closes, put focus back on the button that opened it.
+  const openers = useRef({});
+  const lastMode = useRef(null);
+  useEffect(() => {
+    if (mode) lastMode.current = mode;
+    else if (lastMode.current) {
+      openers.current[lastMode.current]?.focus();
+      lastMode.current = null;
+    }
+  }, [mode]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -72,6 +83,7 @@ function WalletCard({ wallet, onChanged }) {
         <form onSubmit={handleSubmit} className="flex gap-2 mt-auto">
           <input
             autoFocus
+            aria-label={`${mode === "deposit" ? "Deposit" : "Withdraw"} amount in ${wallet.currency}`}
             type="number"
             min="0.01"
             step="0.01"
@@ -83,25 +95,35 @@ function WalletCard({ wallet, onChanged }) {
           <button
             type="submit"
             disabled={submitting}
+            aria-label={`Confirm ${mode}`}
             className="px-3 py-2 rounded-xl bg-accent hover:brightness-110 text-accent-ink text-xs font-medium disabled:opacity-50 transition-colors shrink-0"
           >
             {submitting ? "..." : "Confirm"}
           </button>
-          <button type="button" onClick={() => setMode(null)} className="px-1 text-dim hover:text-bone text-xs shrink-0">
+          <button
+            type="button"
+            onClick={() => setMode(null)}
+            aria-label={`Cancel ${mode}`}
+            className="px-1 text-dim hover:text-bone text-xs shrink-0"
+          >
             Cancel
           </button>
         </form>
       ) : (
         <div className="flex gap-2 mt-auto">
           <button
+            ref={(el) => (openers.current.deposit = el)}
             onClick={() => setMode("deposit")}
+            aria-label={`Deposit ${wallet.currency}`}
             className="flex-1 h-10 rounded-xl bg-accent-dim text-accent text-[13px] font-medium flex items-center justify-center gap-1.5 hover:brightness-110 transition-all"
           >
             <Icon name="plus" size={15} strokeWidth={2.2} />
             Deposit
           </button>
           <button
+            ref={(el) => (openers.current.withdraw = el)}
             onClick={() => setMode("withdraw")}
+            aria-label={`Withdraw ${wallet.currency}`}
             className="flex-1 h-10 rounded-xl bg-panel-2 text-bone text-[13px] font-medium flex items-center justify-center gap-1.5 hover:brightness-110 transition-all"
           >
             <Icon name="up" size={15} strokeWidth={2} />

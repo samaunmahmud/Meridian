@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { forgotPassword, login, register, resetPassword } from "../lib/api";
 import Icon from "./Icon";
 import Logo from "./Logo";
@@ -40,13 +40,18 @@ function Globe() {
 }
 
 function Field({ label, icon, trailing, ...inputProps }) {
+  const id = useId();
   return (
     <div>
-      <label className="text-[13px] font-medium block mb-2">{label}</label>
-      <div className="flex items-center gap-3 h-[52px] px-4 rounded-[14px] bg-panel border border-line focus-within:border-accent transition-colors">
+      <label htmlFor={id} className="text-[13px] font-medium block mb-2">
+        {label}
+      </label>
+      <div className="flex items-center gap-3 h-[52px] px-4 rounded-[14px] bg-panel border border-control focus-within:border-accent has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-accent transition-colors">
         <Icon name={icon} size={18} className="text-dim" />
         <input
+          id={id}
           {...inputProps}
+          data-ring-parent
           className="flex-1 min-w-0 bg-transparent outline-none text-[15px] placeholder:text-dim"
         />
         {trailing}
@@ -54,6 +59,11 @@ function Field({ label, icon, trailing, ...inputProps }) {
     </div>
   );
 }
+
+const TABS = [
+  { key: "login", label: "Log in" },
+  { key: "register", label: "Sign up" },
+];
 
 // Modes: "login" and "register" (the two tabs), "forgot" (ask for a reset
 // link) and "reset" (choose a new password; only when the page was opened from
@@ -115,6 +125,19 @@ export default function AuthPage({ onAuthenticated, resetToken = null, onResetDo
 
   const isLogin = mode === "login";
   const isTab = mode === "login" || mode === "register";
+
+  // Arrow keys / Home / End move between the two tabs, as in a real tablist.
+  function handleTabKeyDown(e) {
+    const current = TABS.findIndex((t) => t.key === mode);
+    let next = null;
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") next = TABS[(current + 1) % TABS.length];
+    else if (e.key === "Home") next = TABS[0];
+    else if (e.key === "End") next = TABS[TABS.length - 1];
+    if (!next) return;
+    e.preventDefault();
+    goTo(next.key);
+    document.getElementById(`auth-tab-${next.key}`)?.focus();
+  }
   const COPY = {
     login: { title: "Welcome back", subtitle: "Log in to your Meridian account.", button: "Log in" },
     register: { title: "Create your account", subtitle: "Start with $10,000 in virtual cash.", button: "Create account" },
@@ -129,18 +152,18 @@ export default function AuthPage({ onAuthenticated, resetToken = null, onResetDo
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-ink text-bone">
       {/* Left: brand panel */}
-      <div className="hidden lg:flex flex-col p-14 relative overflow-hidden bg-panel border-r border-line">
+      <aside aria-label="About Meridian" className="hidden lg:flex flex-col p-14 relative overflow-hidden bg-panel border-r border-line">
         <Globe />
         <div className="relative z-10">
           <Logo size={30} />
         </div>
 
         <div className="relative z-10 mt-auto mb-10 max-w-[520px]">
-          <h2 className="font-display font-normal text-[52px] xl:text-[60px] leading-[1.05]" style={{ letterSpacing: "-0.04em" }}>
+          <p className="font-display font-normal text-[52px] xl:text-[60px] leading-[1.05]" style={{ letterSpacing: "-0.04em" }}>
             Invest in
             <br />
             <em className="text-accent italic">every currency.</em>
-          </h2>
+          </p>
           <p className="text-muted text-base leading-relaxed mt-5 max-w-[440px]">
             Stocks, crypto and multi-currency wallets in one calm place. Practice with $10,000 in virtual cash.
           </p>
@@ -155,10 +178,10 @@ export default function AuthPage({ onAuthenticated, resetToken = null, onResetDo
             ))}
           </ul>
         </div>
-      </div>
+      </aside>
 
       {/* Right: form */}
-      <div className="relative flex items-center justify-center p-6 sm:p-8">
+      <main className="relative flex items-center justify-center p-6 sm:p-8">
         <div className="absolute top-6 right-6 sm:top-8 sm:right-8">
           <ThemeToggle />
         </div>
@@ -169,17 +192,18 @@ export default function AuthPage({ onAuthenticated, resetToken = null, onResetDo
           </div>
 
           {isTab ? (
-          <div role="tablist" className="grid grid-cols-2 gap-1 p-1 rounded-[14px] bg-panel-2 mb-7">
-            {[
-              { key: "login", label: "Log in" },
-              { key: "register", label: "Sign up" },
-            ].map((t) => (
+          <div role="tablist" aria-label="Log in or sign up" className="grid grid-cols-2 gap-1 p-1 rounded-[14px] bg-panel-2 mb-7">
+            {TABS.map((t) => (
               <button
                 key={t.key}
+                id={`auth-tab-${t.key}`}
                 type="button"
                 role="tab"
                 aria-selected={mode === t.key}
+                aria-controls="auth-panel"
+                tabIndex={mode === t.key ? 0 : -1}
                 onClick={() => goTo(t.key)}
+                onKeyDown={handleTabKeyDown}
                 className={`h-10 rounded-[10px] text-sm font-semibold transition-colors ${
                   mode === t.key ? "bg-panel border border-line text-bone" : "text-muted hover:text-bone"
                 }`}
@@ -198,6 +222,11 @@ export default function AuthPage({ onAuthenticated, resetToken = null, onResetDo
             </button>
           )}
 
+          <div
+            id="auth-panel"
+            role={isTab ? "tabpanel" : undefined}
+            aria-labelledby={isTab ? `auth-tab-${mode}` : undefined}
+          >
           <h1 className="font-display font-normal text-[38px] leading-none" style={{ letterSpacing: "-0.035em" }}>
             {COPY.title}
           </h1>
@@ -282,13 +311,14 @@ export default function AuthPage({ onAuthenticated, resetToken = null, onResetDo
               {submitting ? "Please wait…" : COPY.button}
             </button>
           </form>
+          </div>
 
           <div className="flex items-center justify-center gap-2 mt-7 text-xs text-muted">
             <Icon name="info" size={14} className="text-dim" />
             Simulated trading — no real money involved.
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
