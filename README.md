@@ -10,6 +10,9 @@ A paper-trading app: practise buying and selling stocks and crypto with virtual 
 
 - Stocks and crypto, with a watchlist, price alerts and live prices pushed over WebSocket
 - Market, limit and stop-loss orders, recurring buys
+- Trading hours: stocks trade in the exchange session (see "Trading hours" below); crypto is always open
+- Emails when you are not looking: a price alert fired, a queued or pending order filled or was rejected (to confirmed addresses only)
+- Chart ranges (1D / 1W / 1M / All) and a market open/closed badge on every stock; installable on a phone's home screen
 - USD, EUR and GBP wallets. Any order type can be paid from any wallet; a pending limit buy reserves its money (and commission) in that wallet
 - Portfolio with holdings, equity chart and an activity feed
 - Sign-up and login with database-backed rate limits, password reset, email verification
@@ -74,6 +77,18 @@ If you do not terminate TLS at the bundled nginx, make sure whatever sits in fro
 
 `GET /api/health` returns `200` with `{"status":"ok","database":"up","priceFeed":"ok","newestPriceAgeSeconds":12}`, or `503` when the backend cannot reach MySQL. Docker uses it, and you can point an uptime monitor at it. `priceFeed` is `ok`, `stale` (the newest price is older than trades accept, see below) or `empty`; it never turns the response into a 503, because the site is up and restarting it would not fix the feed. To be told about a provider outage, alert on `"priceFeed":"stale"`.
 
+### Trading hours
+
+Stocks trade in the regular NYSE/Nasdaq session, **09:30-16:00 New York time, Monday-Friday**, with the 13:00 early closes and closed on exchange holidays (worked out by rule for any year, so nothing to update each January). Pre-market and after-hours are not modelled. Crypto trades around the clock.
+
+- A **market order placed while a stock market is closed is queued** (status `PENDING`, shown as "(at open)"). A buy holds the last price plus a 10% cushion (and the commission) until then, a sell holds its shares. It fills at the first price polled after the open and releases what it did not need; if the stock opens beyond the cushion the order is rejected and everything is released, never overdrawn. It can be cancelled like any pending order.
+- Limit and stop-loss orders only fill while the market is open (a closed market just repeats the last close). Recurring buys wait for the open.
+- `GET /api/market/status` says whether each market is open and when that changes. Set `MARKET_HOURS_ENFORCED=false` to let stocks trade at any hour (for a demo).
+
+### Installing on a phone
+
+The site ships a web manifest and icons, so "Add to Home Screen" (iPhone Safari, Android Chrome) gives a full-screen app with the Meridian icon. It needs the live API, so there is no offline mode and no push notifications; the emails cover what push would.
+
 ### When the database is down
 
 Requests that need it answer `503` ("temporarily unavailable") after at most 5 s (`spring.datasource.hikari.connection-timeout`), which the browser shows as an error without signing anyone out, and `/api/health` answers `503`. Nothing has to be restarted: everything works again a few seconds after MySQL is back, with the same sessions.
@@ -113,6 +128,7 @@ Set these in `.env` (Docker) or `meridian-backend/.env` (development).
 | `ALPHA_VANTAGE_API_KEY` / `FINNHUB_API_KEY` | empty | Key for the chosen provider |
 | `MARKETDATA_DAILY_REQUEST_BUDGET` | `0` | Provider calls per UTC day; `0` means the free-plan default (Alpha Vantage 25, Finnhub 50,000) |
 | `MARKETDATA_FX_POLL_INTERVAL_MS` | `0` | FX refresh interval; `0` means the provider default |
+| `MARKET_HOURS_ENFORCED` | `true` | Stocks trade only in the exchange session; `false` = any hour |
 | `MARKETDATA_MAX_PRICE_AGE_MINUTES`, `MARKETDATA_MAX_FX_RATE_AGE_MINUTES` | `0` | Oldest price / exchange rate a trade may use; `0` = derived from the polling settings (at least 15 / 30 minutes) |
 | `MARKETDATA_CONNECT_TIMEOUT_MS`, `MARKETDATA_READ_TIMEOUT_MS` | `5000`, `10000` | When to give up on a provider request |
 | `PUBLIC_URL` | `http://localhost` (Docker) | Address people use in the browser; the only allowed CORS origin in Docker and the base of email links |

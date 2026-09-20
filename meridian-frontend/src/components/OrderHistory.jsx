@@ -52,7 +52,7 @@ export default function OrderHistory({ refreshKey }) {
       ) : (
         /* relative: the sr-only header text is absolutely positioned and must be clipped by this box */
         <div role="region" aria-label="Order history table" tabIndex={0} className="relative overflow-x-auto">
-        <table className="w-full text-sm min-w-[640px]">
+        <table className="w-full text-sm min-w-[680px] [&_th]:px-1.5 [&_td]:px-1.5 [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap [&_th:first-child]:pl-0 [&_td:first-child]:pl-0 [&_th:last-child]:pr-0 [&_td:last-child]:pr-0">
           <thead>
             <tr className="text-left text-dim border-b border-line">
               <th scope="col" className="font-normal pb-3">Type</th>
@@ -100,7 +100,7 @@ export default function OrderHistory({ refreshKey }) {
                     : "—"}
                 </td>
                 <td className="py-3 text-right text-xs text-dim">
-                  {new Date(o.executedAt ?? o.createdAt).toLocaleString()}
+                  {new Date(o.executedAt ?? o.createdAt).toLocaleString([], { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
                 </td>
                 <td className="py-3 text-right">
                   {o.status === "PENDING" && (

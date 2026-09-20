@@ -46,6 +46,8 @@ services:
       MARKETDATA_PROVIDER: ${MARKETDATA_PROVIDER:-alphavantage}
       FINNHUB_API_KEY: ${FINNHUB_API_KEY:-}
       MARKETDATA_DAILY_REQUEST_BUDGET: ${MARKETDATA_DAILY_REQUEST_BUDGET:-0}
+      # Stocks trade only in the exchange session; set false to trade them at any hour (a demo).
+      MARKET_HOURS_ENFORCED: ${MARKET_HOURS_ENFORCED:-true}
       # How old a price / exchange rate may be before trades on it are refused (0 = worked out
       # from the polling settings), and when to give up on a provider request.
       MARKETDATA_MAX_PRICE_AGE_MINUTES: ${MARKETDATA_MAX_PRICE_AGE_MINUTES:-0}
