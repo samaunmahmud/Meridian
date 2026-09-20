@@ -3,6 +3,8 @@ package com.meridian.backend.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+
 // Settings for where prices come from and how fast we may ask for them.
 // Bound from application.properties / .env (see the marketdata.* keys).
 @Component
@@ -27,6 +29,35 @@ public class MarketDataProperties {
     // How often FX rates are refreshed. 0 or less = provider default
     // (Alpha Vantage 6 h, because every refresh costs requests; Finnhub 5 min).
     private long fxPollIntervalMs = 0;
+
+    // Trades (market orders, recurring buys, currency conversions) refuse to run on a price or
+    // exchange rate older than this: it means the feed is down, and an old price is not a
+    // price anyone can trade at. 0 or less = worked out from how often data is refreshed.
+    private long maxPriceAgeMinutes = 0;
+    private long maxFxRateAgeMinutes = 0;
+
+    // A ticker is refreshed once per rotation through all tracked tickers, so the normal
+    // age of a price is up to (poll spacing x number of tickers). Allow three rotations
+    // (two missed rounds) and never less than 15 minutes.
+    public Duration getMaxPriceAge(long trackedTickers) {
+        if (maxPriceAgeMinutes > 0) return Duration.ofMinutes(maxPriceAgeMinutes);
+        long rotationMs = getTickerPollSpacingMs() * Math.max(1, trackedTickers);
+        return Duration.ofMillis(Math.max(15 * 60_000L, 3 * rotationMs));
+    }
+
+    // Same idea for exchange rates: three refresh intervals, at least 30 minutes.
+    public Duration getMaxFxRateAge() {
+        if (maxFxRateAgeMinutes > 0) return Duration.ofMinutes(maxFxRateAgeMinutes);
+        return Duration.ofMillis(Math.max(30 * 60_000L, 3 * getFxPollIntervalMs()));
+    }
+
+    public void setMaxPriceAgeMinutes(long maxPriceAgeMinutes) {
+        this.maxPriceAgeMinutes = maxPriceAgeMinutes;
+    }
+
+    public void setMaxFxRateAgeMinutes(long maxFxRateAgeMinutes) {
+        this.maxFxRateAgeMinutes = maxFxRateAgeMinutes;
+    }
 
     public boolean isFinnhub() {
         return "finnhub".equalsIgnoreCase(provider);

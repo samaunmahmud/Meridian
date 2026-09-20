@@ -2,11 +2,14 @@ package com.meridian.backend.client;
 
 import com.meridian.backend.dto.TickerSearchResult;
 import com.meridian.backend.exception.MarketDataUnavailableException;
+import com.meridian.backend.exception.MarketDataUnreachableException;
 import com.meridian.backend.model.SupportedCurrency;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+
+import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -35,7 +38,13 @@ public class AlphaVantageProvider implements MarketDataProvider {
             throw new MarketDataUnavailableException(
                     "Market data is paused: today's price-request allowance is used up. It resumes automatically.");
         }
-        R response = request.get();
+        R response;
+        try {
+            response = request.get();
+        } catch (RestClientException e) {
+            // Timeout, connection refused, HTTP 4xx/5xx, or a reply that is not JSON.
+            throw new MarketDataUnreachableException("The market data provider is not responding. Try again in a few minutes.", e);
+        }
         String limitMessage = response == null ? null : response.rateLimitMessage();
         if (limitMessage != null) {
             budget.blockFor(limitMessage);

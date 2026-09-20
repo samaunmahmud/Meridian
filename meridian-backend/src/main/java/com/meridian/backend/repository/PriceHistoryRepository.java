@@ -11,4 +11,7 @@ public interface PriceHistoryRepository extends JpaRepository<PriceHistory, Long
     List<PriceHistory> findByTickerIdOrderByRecordedAtDesc(Long tickerId);
 
     Optional<PriceHistory> findFirstByTickerIdOrderByRecordedAtDesc(Long tickerId);
+
+    /** The newest price of any ticker: how fresh the feed is as a whole. */
+    Optional<PriceHistory> findFirstByOrderByRecordedAtDesc();
 }

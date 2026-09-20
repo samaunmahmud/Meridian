@@ -1,5 +1,6 @@
 package com.meridian.backend.client;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -12,8 +13,17 @@ public class AlphaVantageClient {
     private final RestClient restClient;
     private final String apiKey;
 
-    public AlphaVantageClient(RestClient.Builder builder, @Value("${ALPHA_VANTAGE_API_KEY}") String apiKey) {
-        this.restClient = builder.baseUrl("https://www.alphavantage.co").build();
+    static final String DEFAULT_BASE_URL = "https://www.alphavantage.co";
+
+    public AlphaVantageClient(RestClient.Builder builder, String apiKey) {
+        this(builder, apiKey, DEFAULT_BASE_URL);
+    }
+
+    // The base URL is a setting only so tests and a stand-in server can replace it.
+    @Autowired
+    public AlphaVantageClient(RestClient.Builder builder, @Value("${ALPHA_VANTAGE_API_KEY}") String apiKey,
+                              @Value("${marketdata.alphavantage.base-url:" + DEFAULT_BASE_URL + "}") String baseUrl) {
+        this.restClient = builder.baseUrl(baseUrl).build();
         this.apiKey = apiKey;
     }
 

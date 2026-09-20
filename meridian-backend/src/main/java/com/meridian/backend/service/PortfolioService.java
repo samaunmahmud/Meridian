@@ -57,6 +57,7 @@ public class PortfolioService {
     private final FeeService feeService;
     private final WalletService walletService;
     private final FxRateService fxRateService;
+    private final PriceFreshness priceFreshness;
     // Runs one pending-order fill in its own transaction, so a failure on one
     // order can never roll back (and block) the fills of other orders.
     private final TransactionTemplate perOrderTransaction;
@@ -73,6 +74,7 @@ public class PortfolioService {
                              FeeService feeService,
                              WalletService walletService,
                              FxRateService fxRateService,
+                             PriceFreshness priceFreshness,
                              PlatformTransactionManager transactionManager) {
         this.portfolioRepository = portfolioRepository;
         this.holdingRepository = holdingRepository;
@@ -86,6 +88,7 @@ public class PortfolioService {
         this.feeService = feeService;
         this.walletService = walletService;
         this.fxRateService = fxRateService;
+        this.priceFreshness = priceFreshness;
         this.perOrderTransaction = new TransactionTemplate(transactionManager);
         this.perOrderTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -117,6 +120,16 @@ public class PortfolioService {
                 .orElseThrow(() -> new PriceUnavailableException(ticker.getSymbol()));
     }
 
+    // The price a market order executes at. Unlike getCurrentPrice (used to show what a
+    // holding is worth, where the last known price is the right answer), this refuses a
+    // price the feed has stopped refreshing: filling at hours-old data is not a real fill.
+    private BigDecimal getTradablePrice(Ticker ticker) {
+        PriceHistory latest = priceHistoryRepository.findFirstByTickerIdOrderByRecordedAtDesc(ticker.getId())
+                .orElseThrow(() -> new PriceUnavailableException(ticker.getSymbol()));
+        priceFreshness.requireFreshPrice(ticker, latest.getRecordedAt());
+        return latest.getPrice();
+    }
+
     @Transactional
     public OrderResponse placeOrder(OrderRequest request, User user) {
         if (request.quantity() == null || request.quantity().compareTo(BigDecimal.ZERO) <= 0) {
@@ -145,7 +158,7 @@ public class PortfolioService {
     // order row survives.
     private OrderResponse placeMarketOrder(Portfolio portfolio, Ticker ticker, OrderType type, BigDecimal quantity,
                                             SupportedCurrency settlement) {
-        BigDecimal currentPrice = getCurrentPrice(ticker);
+        BigDecimal currentPrice = getTradablePrice(ticker);
         Instant executedAt = Instant.now();
         Order order = new Order(portfolio, ticker, type, quantity, currentPrice, executedAt);
         order = orderRepository.save(order);

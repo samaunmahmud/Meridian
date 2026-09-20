@@ -3,6 +3,7 @@ package com.meridian.backend.marketdata;
 import com.meridian.backend.MutableClock;
 import com.meridian.backend.config.MarketDataProperties;
 import com.meridian.backend.exception.MarketDataUnavailableException;
+import com.meridian.backend.exception.MarketDataUnreachableException;
 import com.meridian.backend.model.AssetType;
 import com.meridian.backend.model.Ticker;
 import com.meridian.backend.repository.TickerRepository;
@@ -54,6 +55,26 @@ class PricePollingSchedulerTest {
         clock.advance(Duration.ofMinutes(86));
         scheduler.pollNextTicker();
         verify(service).pollAndStore(eq("BBB"), any(), any(), any()); // rotates to the next ticker
+    }
+
+    @Test
+    void aProviderThatIsDownDoesNotBreakTheSpacingOrTheRotation() {
+        doThrow(new MarketDataUnreachableException("down", new RuntimeException("HTTP 500")))
+                .when(service).pollAndStore(eq("AAA"), any(), any(), any());
+
+        scheduler.pollNextTicker();
+        verify(service).pollAndStore(eq("AAA"), any(), any(), any());
+
+        // A failed request still counts as the poll: nothing more is sent until the spacing has
+        // passed, so an outage cannot use up the daily allowance in a few minutes...
+        clock.advance(Duration.ofSeconds(20));
+        scheduler.pollNextTicker();
+        verifyNoMoreInteractions(service);
+
+        // ...and one ticker that keeps failing does not hold up the others.
+        clock.advance(Duration.ofMinutes(86));
+        scheduler.pollNextTicker();
+        verify(service).pollAndStore(eq("BBB"), any(), any(), any());
     }
 
     @Test

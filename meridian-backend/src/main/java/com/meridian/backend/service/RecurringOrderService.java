@@ -8,6 +8,7 @@ import com.meridian.backend.dto.RecurringOrderRequest;
 import com.meridian.backend.dto.RecurringOrderResponse;
 import com.meridian.backend.exception.InvalidRequestException;
 import com.meridian.backend.exception.RecurringOrderNotFoundException;
+import com.meridian.backend.exception.StalePriceException;
 import com.meridian.backend.exception.TickerNotFoundException;
 import com.meridian.backend.model.OrderKind;
 import com.meridian.backend.model.OrderType;
@@ -46,6 +47,7 @@ public class RecurringOrderService {
     private final FxRateService fxRateService;
     private final PriceWebSocketHandler priceWebSocketHandler;
     private final ObjectMapper objectMapper;
+    private final PriceFreshness priceFreshness;
     // Each due order runs in its own transaction: the scheduler thread has no
     // database session of its own (so lazy relations such as the portfolio
     // can only be read inside a transaction), and one order failing must not
@@ -60,6 +62,7 @@ public class RecurringOrderService {
                                   FxRateService fxRateService,
                                   PriceWebSocketHandler priceWebSocketHandler,
                                   ObjectMapper objectMapper,
+                                  PriceFreshness priceFreshness,
                                   PlatformTransactionManager transactionManager) {
         this.recurringOrderRepository = recurringOrderRepository;
         this.portfolioRepository = portfolioRepository;
@@ -69,6 +72,7 @@ public class RecurringOrderService {
         this.fxRateService = fxRateService;
         this.priceWebSocketHandler = priceWebSocketHandler;
         this.objectMapper = objectMapper;
+        this.priceFreshness = priceFreshness;
         this.perOrderTransaction = new TransactionTemplate(transactionManager);
     }
 
@@ -127,6 +131,8 @@ public class RecurringOrderService {
                 if (executed != null) {
                     broadcastExecuted(executed);
                 }
+            } catch (StalePriceException e) {
+                log.info("Recurring order {} postponed: {}", id, e.getMessage());
             } catch (Exception e) {
                 log.warn("Recurring order {} failed to execute", id, e);
             }
@@ -140,9 +146,15 @@ public class RecurringOrderService {
         }
 
         Ticker ticker = recurringOrder.getTicker();
-        BigDecimal price = priceHistoryRepository.findFirstByTickerIdOrderByRecordedAtDesc(ticker.getId())
-                .map(PriceHistory::getPrice)
-                .orElse(null);
+        PriceHistory latest = priceHistoryRepository.findFirstByTickerIdOrderByRecordedAtDesc(ticker.getId()).orElse(null);
+        BigDecimal price = latest == null ? null : latest.getPrice();
+
+        if (latest != null && priceFreshness.isPriceStale(latest.getRecordedAt())) {
+            // The feed is behind: leave the order due and try again at the next run rather
+            // than buying at an old price.
+            log.info("Recurring order {} ({}) postponed: the latest price is stale", recurringOrder.getId(), ticker.getSymbol());
+            return null;
+        }
 
         if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
             log.warn("No price available for recurring order {} ({})", recurringOrder.getId(), ticker.getSymbol());

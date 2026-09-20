@@ -2,6 +2,7 @@ package com.meridian.backend.scheduler;
 
 import com.meridian.backend.config.MarketDataProperties;
 import com.meridian.backend.exception.MarketDataUnavailableException;
+import com.meridian.backend.exception.MarketDataUnreachableException;
 import com.meridian.backend.model.Ticker;
 import com.meridian.backend.repository.TickerRepository;
 import com.meridian.backend.service.MarketDataService;
@@ -73,11 +74,21 @@ public class PricePollingScheduler {
             // again on a later tick without making any request.
             log.info("Price poll skipped: {}", e.getMessage());
             return;
+        } catch (MarketDataUnreachableException e) {
+            // The provider is down or answering nonsense. One line, not a stack trace on every
+            // poll; the spacing below still applies, so an outage does not use up the budget.
+            log.warn("Price poll for {} failed: {} ({})", ticker.getSymbol(), e.getMessage(), rootCause(e));
         } catch (Exception e) {
             log.warn("Scheduled poll failed for {}", ticker.getSymbol(), e);
         }
 
         lastPollAt = now;
         index = (index + 1) % tickers.size();
+    }
+
+    private static String rootCause(Throwable e) {
+        Throwable t = e;
+        while (t.getCause() != null && t.getCause() != t) t = t.getCause();
+        return t.getClass().getSimpleName() + ": " + t.getMessage();
     }
 }

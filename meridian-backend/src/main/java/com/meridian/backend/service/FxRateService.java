@@ -27,15 +27,18 @@ public class FxRateService {
     private final FxRateRepository fxRateRepository;
     private final PriceWebSocketHandler priceWebSocketHandler;
     private final ObjectMapper objectMapper;
+    private final PriceFreshness priceFreshness;
 
     public FxRateService(MarketDataProvider marketDataProvider,
                           FxRateRepository fxRateRepository,
                           PriceWebSocketHandler priceWebSocketHandler,
-                          ObjectMapper objectMapper) {
+                          ObjectMapper objectMapper,
+                          PriceFreshness priceFreshness) {
         this.marketDataProvider = marketDataProvider;
         this.fxRateRepository = fxRateRepository;
         this.priceWebSocketHandler = priceWebSocketHandler;
         this.objectMapper = objectMapper;
+        this.priceFreshness = priceFreshness;
     }
 
     // Only non-USD currencies against USD are actually polled — enough to
@@ -81,10 +84,14 @@ public class FxRateService {
         return fromToUsd.divide(toToUsd, 8, RoundingMode.HALF_UP);
     }
 
+    // getRate is only used to execute something (a conversion, a trade paid from a foreign
+    // wallet), so a rate the feed has stopped refreshing is refused rather than used.
+    // The last known rates are still shown as they are by getAllRates.
     private BigDecimal latestRate(SupportedCurrency currency) {
-        return fxRateRepository.findByBaseCurrencyAndQuoteCurrency(currency, SupportedCurrency.USD)
-                .map(FxRate::getRate)
+        FxRate fx = fxRateRepository.findByBaseCurrencyAndQuoteCurrency(currency, SupportedCurrency.USD)
                 .orElseThrow(() -> new FxRateUnavailableException(currency.name()));
+        priceFreshness.requireFreshRate(currency, fx.getUpdatedAt());
+        return fx.getRate();
     }
 
     public List<FxRateResponse> getAllRates() {

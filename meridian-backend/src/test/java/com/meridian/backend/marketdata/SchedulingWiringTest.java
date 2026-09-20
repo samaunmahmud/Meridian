@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,10 +23,18 @@ class SchedulingWiringTest {
     @MockBean MarketDataProvider provider;
     @Autowired FxRatePollingScheduler fxScheduler;
     @Autowired PricePollingScheduler priceScheduler;
+    @Autowired ThreadPoolTaskScheduler taskScheduler;
 
     @Test
     void backgroundJobsStartWithTheConfiguredIntervals() {
         assertThat(fxScheduler).isNotNull();
         assertThat(priceScheduler).isNotNull();
+    }
+
+    @Test
+    void scheduledJobsDoNotShareASingleThread() {
+        // With Spring's default of one thread, a price poll stuck on a slow provider would hold up
+        // the snapshot, recurring-order and cleanup jobs as well.
+        assertThat(taskScheduler.getScheduledThreadPoolExecutor().getCorePoolSize()).isGreaterThanOrEqualTo(2);
     }
 }

@@ -3,13 +3,16 @@ package com.meridian.backend.client;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.meridian.backend.dto.TickerSearchResult;
 import com.meridian.backend.exception.MarketDataUnavailableException;
+import com.meridian.backend.exception.MarketDataUnreachableException;
 import com.meridian.backend.model.SupportedCurrency;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
@@ -34,8 +37,17 @@ public class FinnhubProvider implements MarketDataProvider {
     private final RestClient restClient;
     private final RequestBudget budget;
 
-    public FinnhubProvider(RestClient.Builder builder, RequestBudget budget, @Value("${FINNHUB_API_KEY}") String apiKey) {
-        this.restClient = builder.baseUrl("https://finnhub.io/api/v1").defaultHeader("X-Finnhub-Token", apiKey).build();
+    static final String DEFAULT_BASE_URL = "https://finnhub.io/api/v1";
+
+    public FinnhubProvider(RestClient.Builder builder, RequestBudget budget, String apiKey) {
+        this(builder, budget, apiKey, DEFAULT_BASE_URL);
+    }
+
+    // The base URL is a setting only so tests and a stand-in server can replace it.
+    @Autowired
+    public FinnhubProvider(RestClient.Builder builder, RequestBudget budget, @Value("${FINNHUB_API_KEY}") String apiKey,
+                           @Value("${marketdata.finnhub.base-url:" + DEFAULT_BASE_URL + "}") String baseUrl) {
+        this.restClient = builder.baseUrl(baseUrl).defaultHeader("X-Finnhub-Token", apiKey).build();
         this.budget = budget;
     }
 
@@ -50,6 +62,9 @@ public class FinnhubProvider implements MarketDataProvider {
             budget.blockFor("per minute");
             log.warn("Finnhub rate limit reached");
             throw new MarketDataUnavailableException("The market data provider's rate limit was reached. Try again later.");
+        } catch (RestClientException e) {
+            // Timeout, connection refused, HTTP 4xx/5xx, or a reply that is not JSON.
+            throw new MarketDataUnreachableException("The market data provider is not responding. Try again in a few minutes.", e);
         }
     }
 

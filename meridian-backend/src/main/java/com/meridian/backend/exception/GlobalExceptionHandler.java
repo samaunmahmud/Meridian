@@ -30,7 +30,9 @@ public class GlobalExceptionHandler {
             AlertNotFoundException.class,
             FxRateUnavailableException.class,
             RecurringOrderNotFoundException.class,
-            MarketDataUnavailableException.class
+            MarketDataUnavailableException.class,
+            MarketDataUnreachableException.class,
+            StalePriceException.class
     })
     public ResponseEntity<Map<String, String>> handleKnownException(RuntimeException ex) {
         // Reads the @ResponseStatus annotation already on each exception class,

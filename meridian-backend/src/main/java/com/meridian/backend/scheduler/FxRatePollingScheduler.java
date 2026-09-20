@@ -1,6 +1,7 @@
 package com.meridian.backend.scheduler;
 
 import com.meridian.backend.exception.MarketDataUnavailableException;
+import com.meridian.backend.exception.MarketDataUnreachableException;
 import com.meridian.backend.model.SupportedCurrency;
 import com.meridian.backend.service.FxRateService;
 import org.slf4j.Logger;
@@ -34,6 +35,9 @@ public class FxRatePollingScheduler {
             } catch (MarketDataUnavailableException e) {
                 log.info("FX rate refresh skipped: {}", e.getMessage());
                 return; // no point asking for the next currency either
+            } catch (MarketDataUnreachableException e) {
+                log.warn("FX rate refresh failed: {}", e.getMessage());
+                return; // the provider is down; asking again for the next currency would only repeat it
             } catch (Exception e) {
                 log.warn("Scheduled FX poll failed for {}/USD", currency, e);
             }
