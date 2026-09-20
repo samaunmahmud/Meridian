@@ -8,6 +8,9 @@ meridian-frontend/node_modules/
 meridian-frontend/dist/
 
 # Shared
+scripts/load-test/cookies.json
+scripts/load-test/node_modules/
+scripts/load-test/package*.json
 .env
 backups/
 .DS_Store

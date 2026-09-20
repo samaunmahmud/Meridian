@@ -74,6 +74,10 @@ If you do not terminate TLS at the bundled nginx, make sure whatever sits in fro
 
 `GET /api/health` returns `200` with `{"status":"ok","database":"up","priceFeed":"ok","newestPriceAgeSeconds":12}`, or `503` when the backend cannot reach MySQL. Docker uses it, and you can point an uptime monitor at it. `priceFeed` is `ok`, `stale` (the newest price is older than trades accept, see below) or `empty`; it never turns the response into a 503, because the site is up and restarting it would not fix the feed. To be told about a provider outage, alert on `"priceFeed":"stale"`.
 
+### When the database is down
+
+Requests that need it answer `503` ("temporarily unavailable") after at most 5 s (`spring.datasource.hikari.connection-timeout`), which the browser shows as an error without signing anyone out, and `/api/health` answers `503`. Nothing has to be restarted: everything works again a few seconds after MySQL is back, with the same sessions.
+
 ### When the price provider is down
 
 - The site keeps working and keeps showing the last known prices and portfolio values; the stock page says "Prices delayed — last update 3 h ago" once the newest price is over 15 minutes old.
@@ -144,6 +148,10 @@ MERIDIAN_TEST_MYSQL_USER=root MERIDIAN_TEST_MYSQL_PASSWORD=test \
   mvn -B clean test -Dtest='MySql*'
 ```
 
+`MySqlConcurrencyTest` is the one to keep green: it fires simultaneous orders from one account at a real MySQL and checks that none is lost. The app depends on MySQL running at `READ COMMITTED` (set in `application.properties`); under MySQL's default `REPEATABLE READ` such orders overwrite each other, and H2 (the other tests) cannot show it.
+
+For load and data-consistency checks (many users trading at once, then verifying cash and shares add up, WebSocket fan-out) see [`scripts/load-test`](scripts/load-test/README.md); it also lists what one laptop measured.
+
 CI (`.github/workflows/ci.yml`) runs the backend tests, the MySQL tests against a MySQL 8.4 service, the frontend tests and build, and a Docker image build on every push.
 
 ## Changing the database
@@ -154,5 +162,6 @@ The schema belongs to Flyway. Add a new file `meridian-backend/src/main/resource
 
 - Deposits are fake. Real money would need a licensed broker or payment partner and identity checks; that is not a code change.
 - Finnhub support is covered by unit tests and by runs against a stand-in server that speaks its documented API, but has not been tried with a live API key. In particular, crypto is quoted as `BINANCE:<SYMBOL>USDT` through `/quote`, and whether Finnhub's free plan serves that (and `/forex/rates`) is unconfirmed.
-- There is no monitoring or alerting beyond `/api/health`, no accessibility review and no load test.
+- There is no monitoring or alerting beyond `/api/health` (its `priceFeed` field is what to alert on). The interface has been checked with automated tools and by keyboard, but not with a real screen reader.
+- Load numbers come from one laptop (see `scripts/load-test`). WebSocket sessions live in the memory of one backend, so running several backends behind a load balancer would need shared messaging first.
 - Prices come from a single provider (see "When the price provider is down" for what happens when it fails).
