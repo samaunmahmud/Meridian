@@ -46,6 +46,12 @@ services:
       MARKETDATA_PROVIDER: ${MARKETDATA_PROVIDER:-alphavantage}
       FINNHUB_API_KEY: ${FINNHUB_API_KEY:-}
       MARKETDATA_DAILY_REQUEST_BUDGET: ${MARKETDATA_DAILY_REQUEST_BUDGET:-0}
+      # How old a price / exchange rate may be before trades on it are refused (0 = worked out
+      # from the polling settings), and when to give up on a provider request.
+      MARKETDATA_MAX_PRICE_AGE_MINUTES: ${MARKETDATA_MAX_PRICE_AGE_MINUTES:-0}
+      MARKETDATA_MAX_FX_RATE_AGE_MINUTES: ${MARKETDATA_MAX_FX_RATE_AGE_MINUTES:-0}
+      MARKETDATA_CONNECT_TIMEOUT_MS: ${MARKETDATA_CONNECT_TIMEOUT_MS:-5000}
+      MARKETDATA_READ_TIMEOUT_MS: ${MARKETDATA_READ_TIMEOUT_MS:-10000}
       # The address people type in the browser: it is the only origin allowed to call the API.
       CORS_ALLOWED_ORIGINS: ${PUBLIC_URL:-http://localhost}
       # Links in emails (password reset, address confirmation) point here.

@@ -7,6 +7,7 @@ import PriceChart from "./PriceChart";
 import TickerAvatar from "./TickerAvatar";
 import Skeleton from "./Skeleton";
 import { useAnimatedNumber } from "../lib/useAnimatedNumber";
+import { formatAge, isDelayed } from "../lib/priceAge";
 
 const RANGES = [
   { key: "20", label: "20" },
@@ -71,6 +72,13 @@ export default function StockHero({ ticker, liveUpdate, onTrade }) {
   const isUp = delta >= 0;
 
   const animatedPrice = useAnimatedNumber(latest?.price ?? 0);
+
+  // Re-check once a minute, so a quiet feed turns into "delayed" without a reload.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   if (!ticker) return null;
 
@@ -138,10 +146,18 @@ export default function StockHero({ ticker, liveUpdate, onTrade }) {
               <Segmented options={RANGES} value={range} onChange={setRange} label="Price window" />
               <Segmented options={CHART_TYPES} value={chartType} onChange={setChartType} label="Chart type" />
             </div>
-            <div className="flex items-center gap-2 text-xs text-muted">
-              <span className="w-2 h-2 rounded-full bg-gain shrink-0" />
-              Updated {new Date(latest.recordedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-            </div>
+            {isDelayed(latest.recordedAt, now) ? (
+              // The words carry the meaning (the amber dot is decoration).
+              <div role="status" className="flex items-center gap-2 text-xs text-bone">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--c-s2)" }} aria-hidden="true" />
+                Prices delayed — last update {formatAge(latest.recordedAt, now)}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-xs text-muted">
+                <span className="w-2 h-2 rounded-full bg-gain shrink-0" aria-hidden="true" />
+                Updated {new Date(latest.recordedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+              </div>
+            )}
           </div>
 
           {chartType === "line" ? (

@@ -72,7 +72,15 @@ If you do not terminate TLS at the bundled nginx, make sure whatever sits in fro
 
 ### Health check
 
-`GET /api/health` returns `200` with `{"status":"ok","database":"up"}`, or `503` when the backend cannot reach MySQL. Docker uses it, and you can point an uptime monitor at it.
+`GET /api/health` returns `200` with `{"status":"ok","database":"up","priceFeed":"ok","newestPriceAgeSeconds":12}`, or `503` when the backend cannot reach MySQL. Docker uses it, and you can point an uptime monitor at it. `priceFeed` is `ok`, `stale` (the newest price is older than trades accept, see below) or `empty`; it never turns the response into a 503, because the site is up and restarting it would not fix the feed. To be told about a provider outage, alert on `"priceFeed":"stale"`.
+
+### When the price provider is down
+
+- The site keeps working and keeps showing the last known prices and portfolio values; the stock page says "Prices delayed — last update 3 h ago" once the newest price is over 15 minutes old.
+- **Market orders, recurring buys and currency conversions refuse to run on an old price or exchange rate** (HTTP 503 with the reason), and a recurring buy that is due waits for the next run. Limit and stop-loss orders are not affected: they only fill when a new price arrives. The limit is `MARKETDATA_MAX_PRICE_AGE_MINUTES` / `MARKETDATA_MAX_FX_RATE_AGE_MINUTES`; at 0 it is three refresh rounds, never under 15 (prices) or 30 (rates) minutes.
+- A provider request is abandoned after 5 s to connect / 10 s to read (`MARKETDATA_CONNECT_TIMEOUT_MS`, `MARKETDATA_READ_TIMEOUT_MS`), so a provider that hangs cannot freeze the background jobs, which run on their own small thread pool. Failures are logged as one line each, and a failed poll still counts against the poll spacing, so an outage does not use up the daily request allowance.
+- Everything recovers by itself when the provider does: the next successful poll refreshes the price and trading resumes.
+- On Alpha Vantage's free plan a price is hours old even when everything works (25 requests a day shared by all tickers), so "live" trading needs Finnhub or a paid plan.
 
 ### Backups
 
@@ -101,6 +109,8 @@ Set these in `.env` (Docker) or `meridian-backend/.env` (development).
 | `ALPHA_VANTAGE_API_KEY` / `FINNHUB_API_KEY` | empty | Key for the chosen provider |
 | `MARKETDATA_DAILY_REQUEST_BUDGET` | `0` | Provider calls per UTC day; `0` means the free-plan default (Alpha Vantage 25, Finnhub 50,000) |
 | `MARKETDATA_FX_POLL_INTERVAL_MS` | `0` | FX refresh interval; `0` means the provider default |
+| `MARKETDATA_MAX_PRICE_AGE_MINUTES`, `MARKETDATA_MAX_FX_RATE_AGE_MINUTES` | `0` | Oldest price / exchange rate a trade may use; `0` = derived from the polling settings (at least 15 / 30 minutes) |
+| `MARKETDATA_CONNECT_TIMEOUT_MS`, `MARKETDATA_READ_TIMEOUT_MS` | `5000`, `10000` | When to give up on a provider request |
 | `PUBLIC_URL` | `http://localhost` (Docker) | Address people use in the browser; the only allowed CORS origin in Docker and the base of email links |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173,http://localhost:5174` | Comma-separated origins, for development (Docker derives it from `PUBLIC_URL`) |
 | `AUTH_COOKIE_SECURE` | `false` | Set `true` once the site is served over HTTPS |
@@ -143,6 +153,6 @@ The schema belongs to Flyway. Add a new file `meridian-backend/src/main/resource
 ## Known limitations
 
 - Deposits are fake. Real money would need a licensed broker or payment partner and identity checks; that is not a code change.
-- Finnhub support is covered by unit tests but has not been tried with a live API key.
+- Finnhub support is covered by unit tests and by runs against a stand-in server that speaks its documented API, but has not been tried with a live API key. In particular, crypto is quoted as `BINANCE:<SYMBOL>USDT` through `/quote`, and whether Finnhub's free plan serves that (and `/forex/rates`) is unconfirmed.
 - There is no monitoring or alerting beyond `/api/health`, no accessibility review and no load test.
-- Prices come from a single provider; how the app behaves when it is down for hours has not been tested.
+- Prices come from a single provider (see "When the price provider is down" for what happens when it fails).
