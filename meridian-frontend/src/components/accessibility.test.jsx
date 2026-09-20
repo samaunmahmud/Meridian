@@ -1,13 +1,15 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axeViolations } from "../test/axe";
 import AddTickerModal from "./AddTickerModal";
 import AlertsPanel from "./AlertsPanel";
 import AccountsPanel from "./AccountsPanel";
 import AuthPage from "./AuthPage";
+import CandlestickChart from "./CandlestickChart";
 import ConvertModal from "./ConvertModal";
 import OrderHistory from "./OrderHistory";
+import PriceChart from "./PriceChart";
 import RecurringOrdersPanel from "./RecurringOrdersPanel";
 import TradePanel from "./TradePanel";
 
@@ -192,5 +194,23 @@ describe("modals", () => {
     expect(await screen.findByRole("button", { name: "Add AAPL to the watchlist" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("1 match");
     expect(await axeViolations(document.body)).toEqual([]);
+  });
+});
+
+describe("charts", () => {
+  // Recharts' ResponsiveContainer measures itself with ResizeObserver, which jsdom lacks.
+  beforeEach(() => vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} }));
+  afterEach(() => vi.unstubAllGlobals());
+
+  const points = [{ price: 100, recordedAt: "2026-09-19T10:00:00Z" }, { price: 90, recordedAt: "2026-09-19T10:20:00Z" }, { price: 125, recordedAt: "2026-09-19T10:40:00Z" }];
+
+  it("PriceChart has a text alternative with the facts a sighted user reads off the line", () => {
+    render(<PriceChart points={points} positive name="AAPL" />);
+    expect(screen.getByRole("img", { name: "AAPL price chart: up 25.00% from $100.00 to $125.00; low $90.00, high $125.00; 3 data points" })).toBeInTheDocument();
+  });
+
+  it("CandlestickChart has one too", () => {
+    render(<CandlestickChart points={points} name="AAPL" />);
+    expect(screen.getByRole("img", { name: /^AAPL candlestick chart: up 25\.00%/ })).toBeInTheDocument();
   });
 });

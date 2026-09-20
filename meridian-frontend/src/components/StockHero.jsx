@@ -145,9 +145,9 @@ export default function StockHero({ ticker, liveUpdate, onTrade }) {
           </div>
 
           {chartType === "line" ? (
-            <PriceChart points={visible} positive={isUp} />
+            <PriceChart points={visible} positive={isUp} name={ticker.symbol} />
           ) : (
-            <CandlestickChart points={visible} />
+            <CandlestickChart points={visible} name={ticker.symbol} />
           )}
 
           <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-4 bg-panel-2 rounded-[20px] px-5 py-4 mt-5">

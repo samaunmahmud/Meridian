@@ -55,6 +55,12 @@ export default function App() {
 
   const liveUpdate = usePriceSocket(session ? session.email : null);
 
+  // There is no router, so keep the page title in step with the tab for screen-reader
+  // users and the browser history/tab strip.
+  useEffect(() => {
+    document.title = session ? `${TITLES[activeTab]} · Meridian` : "Meridian";
+  }, [session, activeTab]);
+
   // Ask the server whether the session cookie is still valid (the page can't
   // read the cookie itself).
   useEffect(() => {
@@ -187,6 +193,12 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen bg-ink text-bone">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-accent focus:text-accent-ink focus:font-semibold"
+      >
+        Skip to main content
+      </a>
       <ToastContainer />
       <Sidebar
         activeTab={activeTab}
@@ -209,7 +221,7 @@ export default function App() {
             transition={{ duration: 0.18, ease: "easeOut" }}
           >
             {activeTab === "overview" && (
-              <main className={`${PAGE_PADDING} space-y-6`}>
+              <main id="main-content" tabIndex={-1} data-ring-parent className={`${PAGE_PADDING} space-y-6`}>
                 <OverviewStrip refreshKey={refreshKey} />
                 <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6">
                   <StockHero ticker={selectedTicker} liveUpdate={liveUpdate} onTrade={handleTrade} />
@@ -223,7 +235,7 @@ export default function App() {
             )}
 
             {activeTab === "portfolio" && (
-              <main className={`${PAGE_PADDING} grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6`}>
+              <main id="main-content" tabIndex={-1} data-ring-parent className={`${PAGE_PADDING} grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6`}>
                 <div className="space-y-6 min-w-0">
                   <PortfolioSummary refreshKey={refreshKey}>
                     <EquityChart refreshKey={refreshKey} />

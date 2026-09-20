@@ -1,5 +1,6 @@
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, YAxis } from "recharts";
 import { formatNumber } from "../lib/formatMoney";
+import { summarizeSeries } from "../lib/chartSummary";
 
 function ChartTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
@@ -14,7 +15,7 @@ function ChartTooltip({ active, payload }) {
 
 // Smooth area chart of the price history — the default view. Colour follows
 // the direction of the visible window (gain / loss theme colours).
-export default function PriceChart({ points, positive, height = 260 }) {
+export default function PriceChart({ points, positive, name = "Price", height = 260 }) {
   if (!points || points.length < 2) {
     return <div className="text-sm text-dim py-16 text-center">Not enough data yet for a chart.</div>;
   }
@@ -22,6 +23,7 @@ export default function PriceChart({ points, positive, height = 260 }) {
   const color = positive ? "var(--c-gain)" : "var(--c-loss)";
 
   return (
+    <div role="img" aria-label={summarizeSeries(`${name} price chart`, points.map((p) => p.price))}>
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={points} margin={{ top: 10, right: 2, left: 2, bottom: 0 }}>
         <defs>
@@ -44,5 +46,6 @@ export default function PriceChart({ points, positive, height = 260 }) {
         />
       </AreaChart>
     </ResponsiveContainer>
+    </div>
   );
 }

@@ -11,7 +11,9 @@ export function useAnimatedNumber(target, duration = 500) {
   useEffect(() => {
     const from = fromRef.current;
     const to = target;
-    if (from === to || typeof to !== "number" || Number.isNaN(to)) {
+    // People who asked for less motion get the new value straight away.
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion || from === to || typeof to !== "number" || Number.isNaN(to)) {
       setDisplay(to);
       fromRef.current = to;
       return;

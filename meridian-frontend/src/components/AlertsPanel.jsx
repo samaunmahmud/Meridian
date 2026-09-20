@@ -53,7 +53,7 @@ export default function AlertsPanel() {
   }
 
   return (
-    <main className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 px-4 sm:px-6 lg:px-8 pb-8 max-w-[1240px] fade-in">
+    <main id="main-content" tabIndex={-1} data-ring-parent className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 px-4 sm:px-6 lg:px-8 pb-8 max-w-[1240px] fade-in">
       <section className="bg-panel border border-line rounded-[20px] p-6">
         <h2 className="text-base font-semibold mb-4">Your alerts</h2>
 

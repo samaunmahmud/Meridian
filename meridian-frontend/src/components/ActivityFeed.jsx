@@ -102,7 +102,7 @@ export default function ActivityFeed({ refreshKey }) {
   }, [transactions, filter]);
 
   return (
-    <main className="px-4 sm:px-6 lg:px-8 pb-8 max-w-[1240px] fade-in">
+    <main id="main-content" tabIndex={-1} data-ring-parent className="px-4 sm:px-6 lg:px-8 pb-8 max-w-[1240px] fade-in">
       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-5" role="group" aria-label="Filter activity">
         {FILTERS.map((f) => (
           <button

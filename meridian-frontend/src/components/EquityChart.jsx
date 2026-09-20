@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AreaChart, Area, ResponsiveContainer, YAxis, Tooltip } from "recharts";
 import { getPortfolioHistory } from "../lib/api";
+import { summarizeSeries } from "../lib/chartSummary";
 import Skeleton from "./Skeleton";
 
 function ChartTooltip({ active, payload }) {
@@ -53,6 +54,7 @@ export default function EquityChart({ refreshKey }) {
   return (
     <section className="bg-panel border border-line rounded-[20px] p-6 fade-in">
       <h2 className="text-base font-semibold mb-4">Portfolio performance</h2>
+      <div role="img" aria-label={summarizeSeries("Portfolio value chart", history.map((h) => h.totalValue))}>
       <ResponsiveContainer width="100%" height={180}>
         <AreaChart data={history} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
           <defs>
@@ -72,6 +74,7 @@ export default function EquityChart({ refreshKey }) {
           />
         </AreaChart>
       </ResponsiveContainer>
+      </div>
     </section>
   );
 }

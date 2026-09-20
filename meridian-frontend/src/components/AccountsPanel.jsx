@@ -146,7 +146,7 @@ export default function AccountsPanel() {
   useEffect(load, []);
 
   return (
-    <main className="px-4 sm:px-6 lg:px-8 pb-8 max-w-[1240px] fade-in">
+    <main id="main-content" tabIndex={-1} data-ring-parent className="px-4 sm:px-6 lg:px-8 pb-8 max-w-[1240px] fade-in">
       <div className="flex items-center justify-between mb-5">
         <p className="text-sm text-muted">Your balances by currency.</p>
         <button

@@ -1,4 +1,5 @@
 import { ResponsiveContainer, ComposedChart, Bar, YAxis, Tooltip, CartesianGrid } from "recharts";
+import { summarizeSeries } from "../lib/chartSummary";
 
 // Our data source gives one price per poll, not true intraday OHLC. To get a
 // candlestick VISUAL without fabricating fake market movement, each candle's
@@ -57,7 +58,7 @@ function ChartTooltip({ active, payload }) {
   );
 }
 
-export default function CandlestickChart({ points, height = 260 }) {
+export default function CandlestickChart({ points, name = "Price", height = 260 }) {
   if (!points || points.length < 2) {
     return <div className="text-sm text-dim py-16 text-center">Not enough data yet for a chart.</div>;
   }
@@ -67,6 +68,7 @@ export default function CandlestickChart({ points, height = 260 }) {
   const domain = [Math.min(...allValues) * 0.998, Math.max(...allValues) * 1.002];
 
   return (
+    <div role="img" aria-label={summarizeSeries(`${name} candlestick chart`, points.map((p) => p.price))}>
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={candles} margin={{ top: 10, right: 8, left: 8, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--c-line)" vertical={false} />
@@ -75,5 +77,6 @@ export default function CandlestickChart({ points, height = 260 }) {
         <Bar dataKey="range" shape={<Candle />} isAnimationActive={false} />
       </ComposedChart>
     </ResponsiveContainer>
+    </div>
   );
 }

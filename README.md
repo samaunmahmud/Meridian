@@ -121,6 +121,8 @@ cd meridian-backend && mvn -B clean test
 cd meridian-frontend && npm test && npm run build
 ```
 
+The frontend tests include accessibility checks: axe-core runs on every form panel, modal and the login page, and `src/lib/contrast.test.js` reads the colour tokens in `src/index.css` and fails if any text colour drops under 4.5:1 (or a form-field border under 3:1) in either theme. When you change a colour token, that test is the one to watch.
+
 Run the backend tests on JDK 21, which is what the project targets and CI uses. On JDK 25 seven tests that use Mockito fail with "Mockito cannot mock this class".
 
 Four tests need a real MySQL server and skip themselves otherwise. To run them:
