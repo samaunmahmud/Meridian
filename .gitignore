@@ -9,6 +9,7 @@ meridian-frontend/dist/
 
 # Shared
 .env
+backups/
 .DS_Store
 .idea/
 *.iml
