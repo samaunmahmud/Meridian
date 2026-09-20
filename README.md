@@ -75,7 +75,7 @@ If you do not terminate TLS at the bundled nginx, make sure whatever sits in fro
 
 ### Health check
 
-`GET /api/health` returns `200` with `{"status":"ok","database":"up","priceFeed":"ok","newestPriceAgeSeconds":12}`, or `503` when the backend cannot reach MySQL. Docker uses it, and you can point an uptime monitor at it. `priceFeed` is `ok`, `stale` (the newest price is older than trades accept, see below) or `empty`; it never turns the response into a 503, because the site is up and restarting it would not fix the feed. To be told about a provider outage, alert on `"priceFeed":"stale"`.
+`GET /api/health` returns `200` with `{"status":"ok","database":"up","priceFeed":"ok","newestPriceAgeSeconds":12}`, or `503` when the backend cannot reach MySQL. Docker uses it, and you can point an uptime monitor at it. `priceFeed` is `ok`, `stale` (prices should be arriving and are not, see below) or `empty`; it never turns the response into a 503, because the site is up and restarting it would not fix the feed. A closed stock market whose closing price is recorded is not stale, so a quiet weekend stays `ok`. To be told about a provider outage, alert on `"priceFeed":"stale"`.
 
 ### Trading hours
 
@@ -83,7 +83,12 @@ Stocks trade in the regular NYSE/Nasdaq session, **09:30-16:00 New York time, Mo
 
 - A **market order placed while a stock market is closed is queued** (status `PENDING`, shown as "(at open)"). A buy holds the last price plus a 10% cushion (and the commission) until then, a sell holds its shares. It fills at the first price polled after the open and releases what it did not need; if the stock opens beyond the cushion the order is rejected and everything is released, never overdrawn. It can be cancelled like any pending order.
 - Limit and stop-loss orders only fill while the market is open (a closed market just repeats the last close). Recurring buys wait for the open.
+- A closed stock market is not polled: once a stock's closing price is recorded the poller makes no more requests for it until the open, so nights, weekends and holidays cost none of the provider's daily allowance. Crypto keeps being polled.
 - `GET /api/market/status` says whether each market is open and when that changes. Set `MARKET_HOURS_ENFORCED=false` to let stocks trade at any hour (for a demo).
+
+### Keeping the database small
+
+Prices are stored on every poll and each user's portfolio value every minute, so those two tables would grow for ever. Every night at 03:30 (server time) old history is thinned: the last 7 days keep every row, older rows are reduced to the last value of each hour, and rows older than 90 days to the last value of each day (`HISTORY_FULL_RESOLUTION_DAYS`, `HISTORY_DAILY_AFTER_DAYS`). The newest price of every stock is never removed, and running it twice changes nothing. On a real MySQL, 300 000 one-minute prices (208 days) shrank to about 12 000 rows in 12 seconds. The chart endpoints return a bounded number of points anyway (`/api/prices/{symbol}` and `/api/portfolio/history` accept `points`), so nothing visible changes.
 
 ### Installing on a phone
 
@@ -129,6 +134,8 @@ Set these in `.env` (Docker) or `meridian-backend/.env` (development).
 | `MARKETDATA_DAILY_REQUEST_BUDGET` | `0` | Provider calls per UTC day; `0` means the free-plan default (Alpha Vantage 25, Finnhub 50,000) |
 | `MARKETDATA_FX_POLL_INTERVAL_MS` | `0` | FX refresh interval; `0` means the provider default |
 | `MARKET_HOURS_ENFORCED` | `true` | Stocks trade only in the exchange session; `false` = any hour |
+| `HISTORY_FULL_RESOLUTION_DAYS`, `HISTORY_DAILY_AFTER_DAYS` | `7`, `90` | Keep every price / portfolio value for this many days, then one per hour, then (after the second number of days) one per day |
+| `HISTORY_RETENTION_CRON` | `0 30 3 * * *` | When the nightly clean-up runs |
 | `MARKETDATA_MAX_PRICE_AGE_MINUTES`, `MARKETDATA_MAX_FX_RATE_AGE_MINUTES` | `0` | Oldest price / exchange rate a trade may use; `0` = derived from the polling settings (at least 15 / 30 minutes) |
 | `MARKETDATA_CONNECT_TIMEOUT_MS`, `MARKETDATA_READ_TIMEOUT_MS` | `5000`, `10000` | When to give up on a provider request |
 | `PUBLIC_URL` | `http://localhost` (Docker) | Address people use in the browser; the only allowed CORS origin in Docker and the base of email links |

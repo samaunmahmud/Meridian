@@ -30,8 +30,9 @@ public class PortfolioController {
     }
 
     @GetMapping("/portfolio/history")
-    public List<PortfolioSnapshotResponse> getPortfolioHistory(@AuthenticationPrincipal User user) {
-        return portfolioService.getPortfolioHistory(user);
+    public List<PortfolioSnapshotResponse> getPortfolioHistory(@AuthenticationPrincipal User user,
+                                                               @RequestParam(required = false) Integer points) {
+        return portfolioService.getPortfolioHistory(user, points);
     }
 
     @PostMapping("/portfolio/deposit")

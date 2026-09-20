@@ -689,9 +689,20 @@ public class PortfolioService {
 
     // Real historical total-value points, oldest first — exactly what the
     // frontend needs to draw a genuine equity curve.
+    public static final int DEFAULT_HISTORY_POINTS = 500;
+
     public List<PortfolioSnapshotResponse> getPortfolioHistory(User user) {
+        return getPortfolioHistory(user, null);
+    }
+
+    /** Oldest first, at most {@code points} snapshots (default 500) spread evenly over the whole history. */
+    public List<PortfolioSnapshotResponse> getPortfolioHistory(User user, Integer points) {
+        int max = points == null ? DEFAULT_HISTORY_POINTS : points;
+        if (max < 2 || max > 5000) {
+            throw new InvalidRequestException("points must be between 2 and 5000");
+        }
         Portfolio portfolio = getOrCreatePortfolio(user);
-        return portfolioSnapshotRepository.findByPortfolioIdOrderByRecordedAtAsc(portfolio.getId()).stream()
+        return Downsample.evenly(portfolioSnapshotRepository.findByPortfolioIdOrderByRecordedAtAsc(portfolio.getId()), max).stream()
                 .map(s -> new PortfolioSnapshotResponse(s.getTotalValue(), s.getRecordedAt()))
                 .toList();
     }

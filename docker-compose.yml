@@ -48,6 +48,9 @@ services:
       MARKETDATA_DAILY_REQUEST_BUDGET: ${MARKETDATA_DAILY_REQUEST_BUDGET:-0}
       # Stocks trade only in the exchange session; set false to trade them at any hour (a demo).
       MARKET_HOURS_ENFORCED: ${MARKET_HOURS_ENFORCED:-true}
+      # Nightly clean-up of old price and portfolio history (full detail for this many days, then hourly, then daily).
+      HISTORY_FULL_RESOLUTION_DAYS: ${HISTORY_FULL_RESOLUTION_DAYS:-7}
+      HISTORY_DAILY_AFTER_DAYS: ${HISTORY_DAILY_AFTER_DAYS:-90}
       # How old a price / exchange rate may be before trades on it are refused (0 = worked out
       # from the polling settings), and when to give up on a provider request.
       MARKETDATA_MAX_PRICE_AGE_MINUTES: ${MARKETDATA_MAX_PRICE_AGE_MINUTES:-0}

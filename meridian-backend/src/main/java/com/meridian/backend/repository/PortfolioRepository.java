@@ -10,6 +10,10 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface PortfolioRepository extends JpaRepository<Portfolio, Long> {
+
+    @Query("select p.id from Portfolio p")
+    java.util.List<Long> findAllIds();
+
     Optional<Portfolio> findByUserId(Long userId);
 
     // Row-level lock (SELECT ... FOR UPDATE). Every operation that changes a

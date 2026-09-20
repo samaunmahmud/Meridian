@@ -3,6 +3,10 @@ package com.meridian.backend.scheduler;
 import com.meridian.backend.config.MarketDataProperties;
 import com.meridian.backend.exception.MarketDataUnavailableException;
 import com.meridian.backend.exception.MarketDataUnreachableException;
+import com.meridian.backend.market.MarketCalendar;
+import com.meridian.backend.model.AssetType;
+import com.meridian.backend.model.PriceHistory;
+import com.meridian.backend.repository.PriceHistoryRepository;
 import com.meridian.backend.model.Ticker;
 import com.meridian.backend.repository.TickerRepository;
 import com.meridian.backend.service.MarketDataService;
@@ -18,6 +22,10 @@ import java.util.List;
 
 // Polls whatever tickers actually exist in the database, one per poll, in
 // rotation — adding a ticker means it joins the rotation automatically.
+//
+// A stock is not polled while its market is closed once its closing price is recorded: the provider would
+// only repeat that price, and every such request comes out of the daily allowance. Crypto is polled around
+// the clock. When nothing needs a poll the tick does nothing and costs no request.
 //
 // The tick itself is cheap (every 20 s) but a poll only happens when at
 // least marketdata.getTickerPollSpacingMs() has passed since the last one.
@@ -38,15 +46,21 @@ public class PricePollingScheduler {
     private final TickerRepository tickerRepository;
     private final MarketDataProperties properties;
     private final Clock clock;
+    private final MarketCalendar marketCalendar;
+    private final PriceHistoryRepository priceHistoryRepository;
 
     public PricePollingScheduler(MarketDataService marketDataService,
                                  TickerRepository tickerRepository,
                                  MarketDataProperties properties,
-                                 Clock clock) {
+                                 Clock clock,
+                                 MarketCalendar marketCalendar,
+                                 PriceHistoryRepository priceHistoryRepository) {
         this.marketDataService = marketDataService;
         this.tickerRepository = tickerRepository;
         this.properties = properties;
         this.clock = clock;
+        this.marketCalendar = marketCalendar;
+        this.priceHistoryRepository = priceHistoryRepository;
     }
 
     @Scheduled(fixedRate = 20000)
@@ -65,6 +79,19 @@ public class PricePollingScheduler {
             index = 0; // list shrank or grew since last tick — stay safe
         }
 
+        // The next ticker in the rotation that has a reason to be polled.
+        int chosen = -1;
+        for (int i = 0; i < tickers.size(); i++) {
+            int candidate = (index + i) % tickers.size();
+            if (needsPoll(tickers.get(candidate), now)) {
+                chosen = candidate;
+                break;
+            }
+        }
+        if (chosen < 0) {
+            return; // every stock market is closed and every price is already the close: nothing to ask for
+        }
+        index = chosen;
         Ticker ticker = tickers.get(index);
 
         try {
@@ -84,6 +111,22 @@ public class PricePollingScheduler {
 
         lastPollAt = now;
         index = (index + 1) % tickers.size();
+    }
+
+    // Crypto: always. A stock: while its market is open, and once after the close so that the closing price
+    // is on record (a price recorded before the last close is not the close yet).
+    private boolean needsPoll(Ticker ticker, Instant now) {
+        if (ticker.getAssetType() == AssetType.CRYPTO || marketCalendar.status(AssetType.STOCK, now).open()) {
+            return true;
+        }
+        Instant lastClose = marketCalendar.lastStockClose(now);
+        if (lastClose == null) {
+            return true; // trading hours are not enforced
+        }
+        return priceHistoryRepository.findFirstByTickerIdOrderByRecordedAtDesc(ticker.getId())
+                .map(PriceHistory::getRecordedAt)
+                .map(recordedAt -> recordedAt.isBefore(lastClose))
+                .orElse(true);
     }
 
     private static String rootCause(Throwable e) {

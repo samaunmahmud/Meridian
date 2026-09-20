@@ -24,7 +24,6 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -182,7 +181,7 @@ public class MarketDataService {
                 : priceHistoryRepository.findByTickerIdAndRecordedAtGreaterThanEqualOrderByRecordedAtDesc(
                         ticker.getId(), clock.instant().minus(window));
 
-        return downsample(rows, maxPoints).stream()
+        return Downsample.evenly(rows, maxPoints).stream()
                 .map(p -> new PricePointResponse(p.getPrice(), p.getRecordedAt()))
                 .toList();
     }
@@ -197,16 +196,5 @@ public class MarketDataService {
             case "1Y" -> Duration.ofDays(365);
             default -> throw new InvalidRequestException("range must be one of 1D, 1W, 1M, 3M, 1Y, ALL");
         };
-    }
-
-    // Evenly spaced picks (by position), always including the first and the last.
-    static <T> List<T> downsample(List<T> rows, int maxPoints) {
-        int n = rows.size();
-        if (n <= maxPoints) return rows;
-        List<T> picked = new ArrayList<>(maxPoints);
-        for (int i = 0; i < maxPoints; i++) {
-            picked.add(rows.get((int) Math.round((double) i * (n - 1) / (maxPoints - 1))));
-        }
-        return picked;
     }
 }

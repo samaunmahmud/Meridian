@@ -71,6 +71,21 @@ public class MarketCalendar {
         return new MarketStatus(false, next.atTime(OPEN).atZone(NEW_YORK).toInstant(), null);
     }
 
+    /**
+     * When the stock session last closed (at or before {@code now}), or null when trading hours are not
+     * enforced. A price recorded after this moment is the closing price: nothing will move until the next open.
+     */
+    public Instant lastStockClose(Instant now) {
+        if (!enforced) return null;
+        ZonedDateTime local = now.atZone(NEW_YORK);
+        LocalDate day = local.toLocalDate();
+        if (!(isTradingDay(day) && !local.toLocalTime().isBefore(closeTime(day)))) {
+            day = day.minusDays(1);
+            while (!isTradingDay(day)) day = day.minusDays(1);
+        }
+        return day.atTime(closeTime(day)).atZone(NEW_YORK).toInstant();
+    }
+
     boolean isTradingDay(LocalDate day) {
         DayOfWeek dow = day.getDayOfWeek();
         return dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY && !holidays(day.getYear()).contains(day);

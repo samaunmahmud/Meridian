@@ -143,4 +143,28 @@ class MarketCalendarTest {
         MarketCalendar off = new MarketCalendar(Clock.systemUTC(), false);
         assertThat(off.status(AssetType.STOCK, at("2026-09-19", "12:00")).open()).isTrue();
     }
+
+    @Test
+    void theLastCloseIsTodaysCloseOnceTheSessionHasEnded() {
+        assertThat(calendar.lastStockClose(at("2026-09-16", "16:00"))).isEqualTo(at("2026-09-16", "16:00"));
+        assertThat(calendar.lastStockClose(at("2026-09-16", "23:00"))).isEqualTo(at("2026-09-16", "16:00"));
+    }
+
+    @Test
+    void theLastCloseIsYesterdaysWhileTodaysSessionHasNotEnded() {
+        assertThat(calendar.lastStockClose(at("2026-09-16", "09:00"))).isEqualTo(at("2026-09-15", "16:00"));
+        assertThat(calendar.lastStockClose(at("2026-09-16", "15:59"))).isEqualTo(at("2026-09-15", "16:00"));
+    }
+
+    @Test
+    void overAWeekendAndAHolidayTheLastCloseIsTheLastTradingDays() {
+        assertThat(calendar.lastStockClose(at("2026-09-20", "12:00"))).isEqualTo(at("2026-09-18", "16:00")); // Sunday
+        assertThat(calendar.lastStockClose(at("2026-09-08", "08:00"))).isEqualTo(at("2026-09-04", "16:00")); // after Labor Day
+        assertThat(calendar.lastStockClose(at("2026-11-28", "12:00"))).isEqualTo(at("2026-11-27", "13:00")); // early close
+    }
+
+    @Test
+    void thereIsNoLastCloseWhenHoursAreNotEnforced() {
+        assertThat(new MarketCalendar(Clock.systemUTC(), false).lastStockClose(at("2026-09-20", "12:00"))).isNull();
+    }
 }
