@@ -25,10 +25,12 @@ import org.springframework.test.context.TestPropertySource;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 
 /**
  * What happens when the price feed has been down: anything that EXECUTES at a price or exchange
@@ -161,8 +163,9 @@ class StaleDataTest extends IntegrationTestBase {
         assertThat(orderRepository.findByPortfolioIdOrderByCreatedAtDesc(portfolioOf(user).getId())).isEmpty();
         assertThat(portfolioOf(user).getCashBalance()).isEqualByComparingTo("1000.00");
         // still due: it is retried at the next run, not skipped for a whole day
+        // (within a millisecond: the database keeps microseconds, a Linux clock nanoseconds)
         assertThat(recurringOrderRepository.findByPortfolioIdOrderByCreatedAtDesc(portfolioOf(user).getId()).get(0).getNextRunAt())
-                .isEqualTo(created.nextRunAt());
+                .isCloseTo(created.nextRunAt(), within(1, ChronoUnit.MILLIS));
 
         setPrice(ticker, "100.00");
         recurringOrderService.runDue();
