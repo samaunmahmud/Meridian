@@ -61,7 +61,7 @@ export default function AddTickerModal({ onClose, onAdded }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by company name or symbol..."
-          className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors mb-3"
+          className="w-full bg-panel-2 border border-control rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors mb-3"
         />
 
         <div className="max-h-80 overflow-y-auto space-y-1">

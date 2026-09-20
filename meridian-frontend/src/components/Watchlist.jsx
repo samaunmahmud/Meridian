@@ -90,7 +90,7 @@ export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Filter tickers..."
-              className="w-full bg-panel-2 border border-line rounded-lg px-3 py-1.5 text-xs my-2 outline-none focus:border-accent transition-colors"
+              className="w-full bg-panel-2 border border-control rounded-lg px-3 py-1.5 text-xs my-2 outline-none focus:border-accent transition-colors"
             />
 
             {filtered.length === 0 && (

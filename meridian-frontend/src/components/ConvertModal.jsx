@@ -74,7 +74,7 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
               <select
                 value={fromCurrency}
                 onChange={(e) => setFromCurrency(e.target.value)}
-                className="w-full bg-panel-2 border border-line rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+                className="w-full bg-panel-2 border border-control rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
               >
                 {CURRENCIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -86,7 +86,7 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
               <select
                 value={toCurrency}
                 onChange={(e) => setToCurrency(e.target.value)}
-                className="w-full bg-panel-2 border border-line rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+                className="w-full bg-panel-2 border border-control rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
               >
                 {CURRENCIES.filter((c) => c !== fromCurrency).map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -107,7 +107,7 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
-              className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
+              className="w-full bg-panel-2 border border-control rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
             />
           </div>
 

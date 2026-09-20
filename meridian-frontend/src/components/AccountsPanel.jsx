@@ -78,7 +78,7 @@ function WalletCard({ wallet, onChanged }) {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
-            className="flex-1 min-w-0 bg-panel-2 border border-line rounded-xl px-3 py-2 text-sm font-mono outline-none focus:border-accent transition-colors"
+            className="flex-1 min-w-0 bg-panel-2 border border-control rounded-xl px-3 py-2 text-sm font-mono outline-none focus:border-accent transition-colors"
           />
           <button
             type="submit"

@@ -172,7 +172,7 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey }) {
           <select
             value={symbol}
             onChange={(e) => setSymbol(e.target.value)}
-            className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+            className="w-full bg-panel-2 border border-control rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors"
           >
             {tickers.map((t) => (
               <option key={t.symbol} value={t.symbol}>
@@ -190,7 +190,7 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey }) {
             step="0.0001"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
+            className="w-full bg-panel-2 border border-control rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
           />
         </div>
 
@@ -199,7 +199,7 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey }) {
           <select
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
-            className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+            className="w-full bg-panel-2 border border-control rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors"
           >
             {(wallets.length ? wallets : [{ currency: "USD", balance: 0 }]).map((w) => (
               <option key={w.currency} value={w.currency}>
@@ -220,7 +220,7 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey }) {
               value={limitPrice}
               onChange={(e) => setLimitPrice(e.target.value)}
               placeholder={lastPrice ? lastPrice.toFixed(2) : "0.00"}
-              className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
+              className="w-full bg-panel-2 border border-control rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
             />
           </div>
         )}
@@ -235,7 +235,7 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey }) {
               value={stopPrice}
               onChange={(e) => setStopPrice(e.target.value)}
               placeholder={lastPrice ? lastPrice.toFixed(2) : "0.00"}
-              className="w-full bg-panel-2 border border-line rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
+              className="w-full bg-panel-2 border border-control rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
             />
           </div>
         )}

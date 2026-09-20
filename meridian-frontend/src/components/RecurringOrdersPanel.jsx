@@ -89,7 +89,7 @@ export default function RecurringOrdersPanel({ refreshKey }) {
           <select
             value={symbol}
             onChange={(e) => setSymbol(e.target.value)}
-            className="bg-panel-2 border border-line rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+            className="bg-panel-2 border border-control rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
           >
             {tickers.map((t) => (
               <option key={t.symbol} value={t.symbol}>
@@ -104,7 +104,7 @@ export default function RecurringOrdersPanel({ refreshKey }) {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder={`Amount (${currencySymbol(currency).trim()})`}
-            className="bg-panel-2 border border-line rounded-xl px-3 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
+            className="bg-panel-2 border border-control rounded-xl px-3 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
           />
         </div>
 
@@ -113,7 +113,7 @@ export default function RecurringOrdersPanel({ refreshKey }) {
           <select
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
-            className="w-full bg-panel-2 border border-line rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+            className="w-full bg-panel-2 border border-control rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
           >
             {(wallets.length ? wallets : [{ currency: "USD", balance: 0 }]).map((w) => (
               <option key={w.currency} value={w.currency}>

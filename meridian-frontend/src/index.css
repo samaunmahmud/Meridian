@@ -15,7 +15,9 @@
   --c-line: #222c32;
   --c-text: #edf2f1;
   --c-muted: #8e9da3;
-  --c-dim: #5d6b71;
+  --c-dim: #829298;
+  /* Border of form fields: 3:1 against the surface (WCAG 1.4.11). --c-line stays decorative. */
+  --c-control: #5d6c72;
   --c-accent: #35c9d8;
   --c-accent-ink: #04262b;
   --c-accent-soft: #0f2d33;
@@ -44,13 +46,14 @@
   --c-line: #e3dfd5;
   --c-text: #12181b;
   --c-muted: #5b686d;
-  --c-dim: #78848a;
-  --c-accent: #0b7f8e;
+  --c-dim: #5e676c;
+  --c-control: #78848a;
+  --c-accent: #0a707d;
   --c-accent-ink: #ffffff;
   --c-accent-soft: #dceef0;
-  --c-gain: #0b8455;
+  --c-gain: #0a744b;
   --c-gain-soft: #ddf1e8;
-  --c-loss: #d0394b;
+  --c-loss: #be2d3e;
   --c-loss-soft: #fadde0;
   --c-on-loss: #ffffff;
   --c-cash: #a9b2b5;
@@ -71,6 +74,7 @@
   --color-panel: var(--c-surface);
   --color-panel-2: var(--c-surface-2);
   --color-line: var(--c-line);
+  --color-control: var(--c-control);
   --color-bone: var(--c-text);
   --color-muted: var(--c-muted);
   --color-dim: var(--c-dim);
@@ -97,6 +101,21 @@ body {
   color: var(--c-text);
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Every text token below meets 4.5:1 on every surface it is used on, and --c-control
+   meets 3:1 (src/lib/contrast.test.js checks this, so a colour edit cannot quietly
+   break it). Keep it that way when changing a value. */
+
+/* One visible focus ring for everything focusable. This rule is unlayered, so it also
+   wins over Tailwind's `outline-none` on inputs. A control that draws its own ring on a
+   wrapper opts out with data-ring-parent. */
+:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+[data-ring-parent]:focus-visible {
+  outline: none;
 }
 
 ::selection {
