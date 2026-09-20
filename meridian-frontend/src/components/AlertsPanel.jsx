@@ -102,7 +102,10 @@ export default function AlertsPanel() {
       </section>
 
       <section className="bg-panel border border-line rounded-[20px] p-6 h-fit">
-        <h2 className="text-base font-semibold mb-4">New alert</h2>
+        <h2 className="text-base font-semibold mb-1">New alert</h2>
+        <p className="text-xs text-muted mb-4">
+          You'll be told here the moment it fires, and by email once your address is confirmed.
+        </p>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label htmlFor={`${uid}-symbol`} className="text-xs text-dim block mb-1.5">Symbol</label>

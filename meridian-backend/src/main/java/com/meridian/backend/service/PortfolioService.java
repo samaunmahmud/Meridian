@@ -2,6 +2,7 @@ package com.meridian.backend.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.meridian.backend.dto.HoldingResponse;
+import com.meridian.backend.mail.EmailNotifier;
 import com.meridian.backend.market.MarketCalendar;
 import com.meridian.backend.dto.OrderFilledMessage;
 import com.meridian.backend.dto.OrderRejectedMessage;
@@ -62,6 +63,8 @@ public class PortfolioService {
     private final FxRateService fxRateService;
     private final PriceFreshness priceFreshness;
     private final MarketCalendar marketCalendar;
+    private final EmailNotifier emailNotifier;
+    private final String publicUrl;
     // Runs one pending-order fill in its own transaction, so a failure on one
     // order can never roll back (and block) the fills of other orders.
     private final TransactionTemplate perOrderTransaction;
@@ -80,6 +83,8 @@ public class PortfolioService {
                              FxRateService fxRateService,
                              PriceFreshness priceFreshness,
                              MarketCalendar marketCalendar,
+                             EmailNotifier emailNotifier,
+                             @org.springframework.beans.factory.annotation.Value("${app.public-url:http://localhost}") String publicUrl,
                              PlatformTransactionManager transactionManager) {
         this.portfolioRepository = portfolioRepository;
         this.holdingRepository = holdingRepository;
@@ -95,6 +100,8 @@ public class PortfolioService {
         this.fxRateService = fxRateService;
         this.priceFreshness = priceFreshness;
         this.marketCalendar = marketCalendar;
+        this.emailNotifier = emailNotifier;
+        this.publicUrl = publicUrl.endsWith("/") ? publicUrl.substring(0, publicUrl.length() - 1) : publicUrl;
         this.perOrderTransaction = new TransactionTemplate(transactionManager);
         this.perOrderTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -344,7 +351,21 @@ public class PortfolioService {
     // What to tell the user's browser once a change has committed. Built
     // inside the transaction (lazy relations are only readable there) and
     // sent after it, so nobody is told about something that later rolled back.
-    private record UserNotice(Long userId, Object message) {
+    // `emailTo` is set only for a confirmed address; the email covers what happens while nobody is looking.
+    private record UserNotice(Long userId, Object message, String emailTo, String emailSubject, String emailBody) {
+        UserNotice(Long userId, Object message) {
+            this(userId, message, null, null, null);
+        }
+    }
+
+    private String confirmedEmailOf(Order order) {
+        var user = order.getPortfolio().getUser();
+        return user.isEmailVerified() ? user.getEmail() : null;
+    }
+
+    private String describeOrder(Order order) {
+        String side = order.getType() == OrderType.BUY ? "buy" : "sell";
+        return side + " " + order.getQuantity().stripTrailingZeros().toPlainString() + " " + order.getTicker().getSymbol();
     }
 
     private void rejectOrder(Long orderId, String reason) {
@@ -364,7 +385,12 @@ public class PortfolioService {
                 orderRepository.save(order);
                 return new UserNotice(order.getPortfolio().getUser().getId(), new OrderRejectedMessage(
                         "ORDER_REJECTED", order.getId(), order.getTicker().getSymbol(),
-                        order.getType(), order.getQuantity(), shortReason));
+                        order.getType(), order.getQuantity(), shortReason),
+                        confirmedEmailOf(order),
+                        "Order rejected: " + describeOrder(order),
+                        "Your order to " + describeOrder(order) + " could not be filled: " + shortReason + "\n\n"
+                                + "The money or shares it was holding have been released.\n"
+                                + "See your orders in Meridian: " + publicUrl);
             });
             if (notice != null) {
                 sendToUser(notice);
@@ -394,9 +420,19 @@ public class PortfolioService {
         if (!shouldFill) return null;
 
         fillPendingOrder(order, currentPrice);
+        String kindWords = switch (order.getKind()) {
+            case MARKET -> "queued market order";
+            case LIMIT -> "limit order";
+            case STOP_LOSS -> "stop-loss order";
+        };
+        String price = order.getPrice().setScale(2, RoundingMode.HALF_UP).toPlainString();
         return new UserNotice(order.getPortfolio().getUser().getId(), new OrderFilledMessage(
                 "ORDER_FILLED", order.getId(), order.getTicker().getSymbol(),
-                order.getType(), order.getQuantity(), order.getPrice(), order.getExecutedAt()));
+                order.getType(), order.getQuantity(), order.getPrice(), order.getExecutedAt()),
+                confirmedEmailOf(order),
+                "Order filled: " + describeOrder(order) + " @ $" + price,
+                "Your " + kindWords + " to " + describeOrder(order) + " was filled at $" + price + ".\n\n"
+                        + "See it in Meridian: " + publicUrl);
     }
 
     private void fillPendingOrder(Order order, BigDecimal fillPrice) {
@@ -441,6 +477,7 @@ public class PortfolioService {
         } catch (Exception e) {
             log.warn("Failed to send order notification to user {}", notice.userId(), e);
         }
+        emailNotifier.send(notice.emailTo(), notice.emailSubject(), notice.emailBody());
     }
 
     // USD trades settle from the portfolio's cash, checked against availableCash

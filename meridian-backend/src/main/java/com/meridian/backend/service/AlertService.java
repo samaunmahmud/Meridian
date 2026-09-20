@@ -13,10 +13,14 @@ import com.meridian.backend.model.User;
 import com.meridian.backend.repository.AlertRepository;
 import com.meridian.backend.repository.TickerRepository;
 import com.meridian.backend.websocket.PriceWebSocketHandler;
+import com.meridian.backend.mail.EmailNotifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.math.RoundingMode;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -30,15 +34,21 @@ public class AlertService {
     private final TickerRepository tickerRepository;
     private final PriceWebSocketHandler priceWebSocketHandler;
     private final ObjectMapper objectMapper;
+    private final EmailNotifier emailNotifier;
+    private final String publicUrl;
 
     public AlertService(AlertRepository alertRepository,
                          TickerRepository tickerRepository,
                          PriceWebSocketHandler priceWebSocketHandler,
-                         ObjectMapper objectMapper) {
+                         ObjectMapper objectMapper,
+                         EmailNotifier emailNotifier,
+                         @Value("${app.public-url:http://localhost}") String publicUrl) {
         this.alertRepository = alertRepository;
         this.tickerRepository = tickerRepository;
         this.priceWebSocketHandler = priceWebSocketHandler;
         this.objectMapper = objectMapper;
+        this.emailNotifier = emailNotifier;
+        this.publicUrl = publicUrl.endsWith("/") ? publicUrl.substring(0, publicUrl.length() - 1) : publicUrl;
     }
 
     public AlertResponse createAlert(AlertRequest request, User user) {
@@ -65,6 +75,11 @@ public class AlertService {
     // Called every time a new price is saved. Checks every untriggered alert
     // for that specific ticker (across ALL users, since alerts are personal
     // but prices are shared) and fires any that just crossed their target.
+    //
+    // @Transactional because this runs on the price-polling thread, which has no database session of its
+    // own: without one, reading the alert's lazy ticker/user threw LazyInitializationException, the alert was
+    // still marked triggered, and nobody was ever told. The user is told after the change has committed.
+    @Transactional
     public void checkAlertsForTicker(Ticker ticker, BigDecimal currentPrice) {
         List<Alert> candidates = alertRepository.findByTickerIdAndTriggeredFalse(ticker.getId());
 
@@ -79,21 +94,35 @@ public class AlertService {
                 alert.setTriggeredAt(triggeredAt);
                 alertRepository.save(alert);
 
-                broadcastTrigger(alert, currentPrice, triggeredAt);
+                notifyTrigger(alert, currentPrice, triggeredAt);
             }
         }
     }
 
-    private void broadcastTrigger(Alert alert, BigDecimal currentPrice, Instant triggeredAt) {
+    // Everything is read here, inside the transaction; the sending happens after it commits.
+    private void notifyTrigger(Alert alert, BigDecimal currentPrice, Instant triggeredAt) {
         try {
-            AlertTriggeredMessage message = new AlertTriggeredMessage(
-                    "ALERT_TRIGGERED", alert.getId(), alert.getTicker().getSymbol(),
-                    alert.getDirection(), alert.getTargetPrice(), currentPrice, triggeredAt
-            );
-            String json = objectMapper.writeValueAsString(message);
-            priceWebSocketHandler.broadcastToUser(alert.getUser().getId(), json);
+            String symbol = alert.getTicker().getSymbol();
+            Long userId = alert.getUser().getId();
+            String json = objectMapper.writeValueAsString(new AlertTriggeredMessage(
+                    "ALERT_TRIGGERED", alert.getId(), symbol,
+                    alert.getDirection(), alert.getTargetPrice(), currentPrice, triggeredAt));
+
+            String verb = alert.getDirection() == AlertDirection.ABOVE ? "rose above" : "fell below";
+            String emailTo = alert.getUser().isEmailVerified() ? alert.getUser().getEmail() : null;
+            String subject = symbol + " " + verb + " $" + alert.getTargetPrice().setScale(2, RoundingMode.HALF_UP);
+            String body = "Your Meridian price alert fired.\n\n"
+                    + symbol + " " + verb + " your target of $" + alert.getTargetPrice().setScale(2, RoundingMode.HALF_UP)
+                    + " and is now $" + currentPrice.setScale(2, RoundingMode.HALF_UP) + ".\n\n"
+                    + "Open Meridian: " + publicUrl + "\n\n"
+                    + "You set this alert on the Alerts page, where you can also remove it.";
+
+            AfterCommit.run(() -> {
+                priceWebSocketHandler.broadcastToUser(userId, json);
+                emailNotifier.send(emailTo, subject, body);
+            });
         } catch (Exception e) {
-            log.warn("Failed to broadcast alert trigger for alert {}", alert.getId(), e);
+            log.warn("Failed to notify alert {}", alert.getId(), e);
         }
     }
 

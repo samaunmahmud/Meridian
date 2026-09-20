@@ -3,6 +3,7 @@ package com.meridian.backend;
 import com.meridian.backend.dto.OrderRequest;
 import com.meridian.backend.dto.OrderResponse;
 import com.meridian.backend.dto.RecurringOrderRequest;
+import com.meridian.backend.mail.MailService;
 import com.meridian.backend.model.AssetType;
 import com.meridian.backend.model.Holding;
 import com.meridian.backend.model.Order;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.TestPropertySource;
@@ -27,6 +29,11 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /**
  * Trading hours are ON here (the other tests switch them off) and the clock is under the test's
@@ -49,6 +56,7 @@ class MarketHoursOrderTest extends IntegrationTestBase {
         }
     }
 
+    @MockBean MailService mail;
     @Autowired MutableClock clock;
     @Autowired PortfolioService portfolioService;
     @Autowired RecurringOrderService recurringOrderService;
@@ -208,5 +216,48 @@ class MarketHoursOrderTest extends IntegrationTestBase {
         recurringOrderService.runDue();
 
         assertThat(orderRepository.findByPortfolioIdOrderByCreatedAtDesc(portfolioOf(user).getId())).hasSize(1);
+    }
+
+    private User userWithConfirmedEmail(String cash) {
+        User user = newUser(cash);
+        user.setEmailVerified(true);
+        return userRepository.save(user);
+    }
+
+    @Test
+    void aQueuedOrderThatFillsWhileYouAreAwayIsEmailedToAConfirmedAddress() {
+        User user = userWithConfirmedEmail("10000.00");
+        Ticker ticker = newTicker("100.00");
+        portfolioService.placeOrder(marketOrder(ticker, OrderType.BUY, "2"), user);
+
+        openTheMarket();
+        portfolioService.checkPendingOrders(ticker, new BigDecimal("103.00"));
+
+        verify(mail).send(eq(user.getEmail()), eq("Order filled: buy 2 " + ticker.getSymbol() + " @ $103.00"),
+                contains("queued market order"));
+    }
+
+    @Test
+    void anUnconfirmedAddressIsNotEmailedAboutTradingActivity() {
+        User user = newUser("10000.00");
+        Ticker ticker = newTicker("100.00");
+        portfolioService.placeOrder(marketOrder(ticker, OrderType.BUY, "2"), user);
+
+        openTheMarket();
+        portfolioService.checkPendingOrders(ticker, new BigDecimal("103.00"));
+
+        verify(mail, never()).send(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void aRejectedQueuedOrderIsEmailedWithTheReason() {
+        User user = userWithConfirmedEmail("1000.00");
+        Ticker ticker = newTicker("100.00");
+        portfolioService.placeOrder(marketOrder(ticker, OrderType.BUY, "9"), user);
+
+        openTheMarket();
+        portfolioService.checkPendingOrders(ticker, new BigDecimal("130.00"));
+
+        verify(mail).send(eq(user.getEmail()), eq("Order rejected: buy 9 " + ticker.getSymbol()), contains("Insufficient funds"));
     }
 }
