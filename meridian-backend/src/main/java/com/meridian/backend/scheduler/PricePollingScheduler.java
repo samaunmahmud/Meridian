@@ -5,7 +5,9 @@ import com.meridian.backend.exception.MarketDataUnavailableException;
 import com.meridian.backend.exception.MarketDataUnreachableException;
 import com.meridian.backend.market.MarketCalendar;
 import com.meridian.backend.model.AssetType;
+import com.meridian.backend.model.OrderStatus;
 import com.meridian.backend.model.PriceHistory;
+import com.meridian.backend.repository.OrderRepository;
 import com.meridian.backend.repository.PriceHistoryRepository;
 import com.meridian.backend.model.Ticker;
 import com.meridian.backend.repository.TickerRepository;
@@ -18,7 +20,9 @@ import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 // Polls whatever tickers actually exist in the database, one per poll, in
 // rotation — adding a ticker means it joins the rotation automatically.
@@ -26,6 +30,10 @@ import java.util.List;
 // A stock is not polled while its market is closed once its closing price is recorded: the provider would
 // only repeat that price, and every such request comes out of the daily allowance. Crypto is polled around
 // the clock. When nothing needs a poll the tick does nothing and costs no request.
+//
+// At the open, stocks with orders waiting on them (market orders queued overnight, limit and stop orders)
+// jump the queue: each is polled before the rotation resumes, so a queued order fills on the first price
+// of the day instead of whenever the rotation happens to reach its ticker.
 //
 // The tick itself is cheap (every 20 s) but a poll only happens when at
 // least marketdata.getTickerPollSpacingMs() has passed since the last one.
@@ -41,6 +49,10 @@ public class PricePollingScheduler {
 
     private int index = 0;
     private Instant lastPollAt;
+    // Waited-on tickers already polled out of turn in the session that opened at jumpedSession: one jump each,
+    // so a ticker the provider keeps failing on cannot hold up the rotation all day.
+    private Instant jumpedSession;
+    private final Set<Long> jumped = new HashSet<>();
 
     private final MarketDataService marketDataService;
     private final TickerRepository tickerRepository;
@@ -48,19 +60,22 @@ public class PricePollingScheduler {
     private final Clock clock;
     private final MarketCalendar marketCalendar;
     private final PriceHistoryRepository priceHistoryRepository;
+    private final OrderRepository orderRepository;
 
     public PricePollingScheduler(MarketDataService marketDataService,
                                  TickerRepository tickerRepository,
                                  MarketDataProperties properties,
                                  Clock clock,
                                  MarketCalendar marketCalendar,
-                                 PriceHistoryRepository priceHistoryRepository) {
+                                 PriceHistoryRepository priceHistoryRepository,
+                                 OrderRepository orderRepository) {
         this.marketDataService = marketDataService;
         this.tickerRepository = tickerRepository;
         this.properties = properties;
         this.clock = clock;
         this.marketCalendar = marketCalendar;
         this.priceHistoryRepository = priceHistoryRepository;
+        this.orderRepository = orderRepository;
     }
 
     @Scheduled(fixedRate = 20000)
@@ -79,6 +94,16 @@ public class PricePollingScheduler {
             index = 0; // list shrank or grew since last tick — stay safe
         }
 
+        Ticker waitedOn = firstWaitedOnSinceTheOpen(tickers, now);
+        if (waitedOn != null) {
+            // Out of turn: the rotation index stays where it is and carries on afterwards.
+            if (poll(waitedOn)) {
+                jumped.add(waitedOn.getId());
+                lastPollAt = now;
+            }
+            return;
+        }
+
         // The next ticker in the rotation that has a reason to be polled.
         int chosen = -1;
         for (int i = 0; i < tickers.size(); i++) {
@@ -92,15 +117,23 @@ public class PricePollingScheduler {
             return; // every stock market is closed and every price is already the close: nothing to ask for
         }
         index = chosen;
-        Ticker ticker = tickers.get(index);
+        if (!poll(tickers.get(index))) {
+            return;
+        }
+        lastPollAt = now;
+        index = (index + 1) % tickers.size();
+    }
 
+    // False when the provider's allowance is used up: nothing was sent, so the caller neither counts
+    // it as a poll nor moves on.
+    private boolean poll(Ticker ticker) {
         try {
             marketDataService.pollAndStore(ticker.getSymbol(), ticker.getName(), ticker.getExchange(), ticker.getAssetType());
         } catch (MarketDataUnavailableException e) {
             // Allowance used up / provider limit: stay on this ticker and try
             // again on a later tick without making any request.
             log.info("Price poll skipped: {}", e.getMessage());
-            return;
+            return false;
         } catch (MarketDataUnreachableException e) {
             // The provider is down or answering nonsense. One line, not a stack trace on every
             // poll; the spacing below still applies, so an outage does not use up the budget.
@@ -108,9 +141,38 @@ public class PricePollingScheduler {
         } catch (Exception e) {
             log.warn("Scheduled poll failed for {}", ticker.getSymbol(), e);
         }
+        return true;
+    }
 
-        lastPollAt = now;
-        index = (index + 1) % tickers.size();
+    // A stock that has pending orders and no price since this session opened, or null. Only while the
+    // stock market is open: before that there is no price to fill at.
+    private Ticker firstWaitedOnSinceTheOpen(List<Ticker> tickers, Instant now) {
+        Instant open = marketCalendar.currentStockOpen(now);
+        if (open == null) {
+            return null;
+        }
+        if (!open.equals(jumpedSession)) {
+            jumpedSession = open;
+            jumped.clear();
+        }
+        Set<Long> pending = new HashSet<>(orderRepository.findDistinctTickerIdsByStatus(OrderStatus.PENDING));
+        if (pending.isEmpty()) {
+            return null;
+        }
+        for (Ticker ticker : tickers) {
+            if (ticker.getAssetType() == AssetType.STOCK && pending.contains(ticker.getId())
+                    && !jumped.contains(ticker.getId()) && latestPriceBefore(ticker, open)) {
+                return ticker;
+            }
+        }
+        return null;
+    }
+
+    private boolean latestPriceBefore(Ticker ticker, Instant moment) {
+        return priceHistoryRepository.findFirstByTickerIdOrderByRecordedAtDesc(ticker.getId())
+                .map(PriceHistory::getRecordedAt)
+                .map(recordedAt -> recordedAt.isBefore(moment))
+                .orElse(true);
     }
 
     // Crypto: always. A stock: while its market is open, and once after the close so that the closing price
@@ -123,10 +185,7 @@ public class PricePollingScheduler {
         if (lastClose == null) {
             return true; // trading hours are not enforced
         }
-        return priceHistoryRepository.findFirstByTickerIdOrderByRecordedAtDesc(ticker.getId())
-                .map(PriceHistory::getRecordedAt)
-                .map(recordedAt -> recordedAt.isBefore(lastClose))
-                .orElse(true);
+        return latestPriceBefore(ticker, lastClose);
     }
 
     private static String rootCause(Throwable e) {

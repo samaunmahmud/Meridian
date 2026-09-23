@@ -72,6 +72,15 @@ public class MarketCalendar {
     }
 
     /**
+     * When the stock session that is running now opened, or null when the stock market is closed or trading
+     * hours are not enforced. A price recorded before this moment is from before the open.
+     */
+    public Instant currentStockOpen(Instant now) {
+        if (!enforced || !status(AssetType.STOCK, now).open()) return null;
+        return now.atZone(NEW_YORK).toLocalDate().atTime(OPEN).atZone(NEW_YORK).toInstant();
+    }
+
+    /**
      * When the stock session last closed (at or before {@code now}), or null when trading hours are not
      * enforced. A price recorded after this moment is the closing price: nothing will move until the next open.
      */

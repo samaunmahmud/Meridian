@@ -5,7 +5,9 @@ import com.meridian.backend.config.MarketDataProperties;
 import com.meridian.backend.exception.MarketDataUnavailableException;
 import com.meridian.backend.exception.MarketDataUnreachableException;
 import com.meridian.backend.market.MarketCalendar;
+import com.meridian.backend.model.OrderStatus;
 import com.meridian.backend.model.PriceHistory;
+import com.meridian.backend.repository.OrderRepository;
 import com.meridian.backend.repository.PriceHistoryRepository;
 import com.meridian.backend.model.AssetType;
 import com.meridian.backend.model.Ticker;
@@ -38,6 +40,7 @@ class PricePollingSchedulerTest {
     private MutableClock clock;
     private PricePollingScheduler scheduler;
     private PriceHistoryRepository prices;
+    private OrderRepository orders;
 
     @BeforeEach
     void setUp() {
@@ -49,9 +52,10 @@ class PricePollingSchedulerTest {
         clock = new MutableClock(Instant.parse("2026-09-19T10:00:00Z"));
         // Alpha Vantage free-plan defaults: one price poll roughly every 85 minutes.
         prices = mock(PriceHistoryRepository.class);
+        orders = mock(OrderRepository.class); // no pending orders unless a test says so
         // trading hours off: every ticker is always due (the rotation tests below are about the rotation)
         scheduler = new PricePollingScheduler(service, tickers, new MarketDataProperties(), clock,
-                new MarketCalendar(clock, false), prices);
+                new MarketCalendar(clock, false), prices, orders);
     }
 
     @Test
@@ -110,7 +114,7 @@ class PricePollingSchedulerTest {
         TickerRepository repo = mock(TickerRepository.class);
         when(repo.findAll()).thenReturn(tickers);
         return new PricePollingScheduler(service, repo, new MarketDataProperties(), clock,
-                new MarketCalendar(clock, true), prices);
+                new MarketCalendar(clock, true), prices, orders);
     }
 
     private static Ticker stock(long id, String symbol) {
@@ -198,5 +202,95 @@ class PricePollingSchedulerTest {
         s.pollNextTicker();
 
         verify(service).pollAndStore(eq("AAA"), any(), any(), any());
+    }
+
+    // ---- the open: tickers with queued orders first
+
+    private static final Instant MONDAY_OPEN = Instant.parse("2026-09-21T13:30:00Z"); // 09:30 New York
+
+    private void pendingOrdersOn(Long... tickerIds) {
+        when(orders.findDistinctTickerIdsByStatus(OrderStatus.PENDING)).thenReturn(List.of(tickerIds));
+    }
+
+    @Test
+    void atTheOpenATickerWithQueuedOrdersIsPolledBeforeTheRotation() {
+        clock.set(MONDAY_OPEN.plusSeconds(20));
+        latestPriceAt(1, FRIDAY_CLOSE.plusSeconds(300));
+        latestPriceAt(2, FRIDAY_CLOSE.plusSeconds(300));
+        latestPriceAt(3, FRIDAY_CLOSE.plusSeconds(300));
+        pendingOrdersOn(3L);
+        PricePollingScheduler s = withHours(List.of(stock(1, "AAA"), stock(2, "BBB"), stock(3, "CCC")));
+
+        s.pollNextTicker();
+        verify(service).pollAndStore(eq("CCC"), any(), any(), any());
+
+        // CCC now has a price from after the open; the rotation carries on from where it was.
+        latestPriceAt(3, MONDAY_OPEN.plusSeconds(20));
+        clock.advance(Duration.ofMinutes(86));
+        s.pollNextTicker();
+        verify(service).pollAndStore(eq("AAA"), any(), any(), any());
+        clock.advance(Duration.ofMinutes(86));
+        s.pollNextTicker();
+        verify(service).pollAndStore(eq("BBB"), any(), any(), any());
+    }
+
+    @Test
+    void theJumpStillRespectsTheSpacing() {
+        clock.set(MONDAY_OPEN.plusSeconds(20));
+        latestPriceAt(1, FRIDAY_CLOSE.plusSeconds(300));
+        latestPriceAt(2, FRIDAY_CLOSE.plusSeconds(300));
+        pendingOrdersOn(1L, 2L);
+        PricePollingScheduler s = withHours(List.of(stock(1, "AAA"), stock(2, "BBB")));
+
+        s.pollNextTicker();
+        clock.advance(Duration.ofSeconds(20));
+        s.pollNextTicker();
+
+        verify(service).pollAndStore(eq("AAA"), any(), any(), any());
+        verify(service, never()).pollAndStore(eq("BBB"), any(), any(), any()); // not due yet
+    }
+
+    @Test
+    void aWaitedOnTickerThatAlreadyHasAPriceSinceTheOpenTakesItsNormalTurn() {
+        clock.set(MONDAY_OPEN.plusSeconds(3600));
+        latestPriceAt(1, MONDAY_OPEN.plusSeconds(600));
+        latestPriceAt(2, MONDAY_OPEN.plusSeconds(60)); // polled since the open already
+        pendingOrdersOn(2L);
+        PricePollingScheduler s = withHours(List.of(stock(1, "AAA"), stock(2, "BBB")));
+
+        s.pollNextTicker();
+
+        verify(service).pollAndStore(eq("AAA"), any(), any(), any());
+        verify(service, never()).pollAndStore(eq("BBB"), any(), any(), any());
+    }
+
+    @Test
+    void aWaitedOnTickerTheProviderKeepsFailingOnJumpsOnlyOnce() {
+        clock.set(MONDAY_OPEN.plusSeconds(20));
+        latestPriceAt(1, FRIDAY_CLOSE.plusSeconds(300));
+        latestPriceAt(2, FRIDAY_CLOSE.plusSeconds(300));
+        pendingOrdersOn(2L);
+        doThrow(new MarketDataUnreachableException("down", new RuntimeException("HTTP 500")))
+                .when(service).pollAndStore(eq("BBB"), any(), any(), any());
+        PricePollingScheduler s = withHours(List.of(stock(1, "AAA"), stock(2, "BBB")));
+
+        s.pollNextTicker();                    // BBB out of turn, fails
+        clock.advance(Duration.ofMinutes(86));
+        s.pollNextTicker();                    // not BBB again: the rotation goes on
+
+        verify(service).pollAndStore(eq("BBB"), any(), any(), any());
+        verify(service).pollAndStore(eq("AAA"), any(), any(), any());
+    }
+
+    @Test
+    void queuedOrdersDoNotCauseRequestsWhileTheMarketIsClosed() {
+        clock.set(SATURDAY);
+        latestPriceAt(1, FRIDAY_CLOSE.plusSeconds(300));
+        pendingOrdersOn(1L);
+        PricePollingScheduler s = withHours(List.of(stock(1, "AAA")));
+
+        s.pollNextTicker();
+
+        verifyNoMoreInteractions(service);
     }
 }

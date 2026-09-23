@@ -167,4 +167,13 @@ class MarketCalendarTest {
     void thereIsNoLastCloseWhenHoursAreNotEnforced() {
         assertThat(new MarketCalendar(Clock.systemUTC(), false).lastStockClose(at("2026-09-20", "12:00"))).isNull();
     }
+
+    @Test
+    void currentStockOpenIsThisSessionsOpenAndNullWhileClosed() {
+        assertThat(calendar.currentStockOpen(at("2026-09-16", "11:00"))).isEqualTo(at("2026-09-16", "09:30"));
+        assertThat(calendar.currentStockOpen(at("2026-09-16", "09:29"))).isNull();
+        assertThat(calendar.currentStockOpen(at("2026-09-16", "16:00"))).isNull();
+        assertThat(calendar.currentStockOpen(at("2026-09-19", "11:00"))).isNull(); // Saturday
+        assertThat(new MarketCalendar(Clock.systemUTC(), false).currentStockOpen(at("2026-09-16", "11:00"))).isNull();
+    }
 }
