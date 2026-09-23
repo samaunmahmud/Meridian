@@ -11,29 +11,46 @@ try {
   // storage unavailable (private mode etc.) — nothing to clean up
 }
 
+// Errors carry the HTTP status as `status`; 0 means the server could not be reached at all.
+function apiError(message, status) {
+  const err = new Error(message);
+  err.status = status;
+  return err;
+}
+
+/** True when an error means the server is down or unreachable, not that the request was refused. */
+export function isServerUnavailable(err) {
+  return err?.status === 0 || err?.status >= 500;
+}
+
 async function apiFetch(path, options = {}) {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      // Custom header the server requires on cookie-authenticated requests
-      // that change data: another website can't add it, so it can't forge them.
-      "X-Requested-With": "meridian",
-      ...options.headers,
-    },
-  });
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        // Custom header the server requires on cookie-authenticated requests
+        // that change data: another website can't add it, so it can't forge them.
+        "X-Requested-With": "meridian",
+        ...options.headers,
+      },
+    });
+  } catch {
+    throw apiError("Cannot reach Meridian. Check your connection and try again.", 0);
+  }
 
   // A 401 on a normal call means the session ended. On the auth calls it just
   // means "wrong password" / "not signed in", which the caller handles itself.
   if (res.status === 401 && !path.startsWith("/auth/")) {
     window.dispatchEvent(new Event("meridian:session-expired"));
-    throw new Error("Your session has expired. Please log in again.");
+    throw apiError("Your session has expired. Please log in again.", 401);
   }
 
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.message || "Request failed");
+    throw apiError(body?.message || "Request failed", res.status);
   }
 
   const text = await res.text();

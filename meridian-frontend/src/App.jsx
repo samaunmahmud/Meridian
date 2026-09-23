@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import AuthPage from "./components/AuthPage";
 import Sidebar, { MobileNav } from "./components/Sidebar";
@@ -18,7 +18,8 @@ import ActivityFeed from "./components/ActivityFeed";
 import RecurringOrdersPanel from "./components/RecurringOrdersPanel";
 import ToastContainer from "./components/ToastContainer";
 import VerifyEmailBanner from "./components/VerifyEmailBanner";
-import { getMe, logout, verifyEmail } from "./lib/api";
+import ServiceUnavailable from "./components/ServiceUnavailable";
+import { getMe, isServerUnavailable, logout, verifyEmail } from "./lib/api";
 import { usePriceSocket } from "./lib/usePriceSocket";
 import { showToast } from "./lib/toast";
 
@@ -46,7 +47,9 @@ const LINK_PARAMS = (() => {
 })();
 
 export default function App() {
-  const [session, setSession] = useState(undefined);
+  const [session, setSession] = useState(undefined); // undefined while asking, false when signed out
+  const [unavailable, setUnavailable] = useState(false); // the server could not answer that question
+  const [checking, setChecking] = useState(false);
   const [resetToken, setResetToken] = useState(LINK_PARAMS.reset);
   const [linkNotice, setLinkNotice] = useState(null); // result of opening an email-verification link
   const [activeTab, setActiveTab] = useState("overview");
@@ -63,20 +66,29 @@ export default function App() {
   }, [session, activeTab]);
 
   // Ask the server whether the session cookie is still valid (the page can't
-  // read the cookie itself).
-  useEffect(() => {
-    let cancelled = false;
-    getMe()
+  // read the cookie itself). If the server is down it cannot tell us, and the
+  // login page would be wrong: say it is unavailable and keep asking.
+  const checkSession = useCallback(() => {
+    setChecking(true);
+    return getMe()
       .then((me) => {
-        if (!cancelled) setSession({ email: me.email, emailVerified: me.emailVerified });
+        setUnavailable(false);
+        setSession({ email: me.email, emailVerified: me.emailVerified });
       })
-      .catch(() => {
-        if (!cancelled) setSession(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .catch((err) => {
+        if (isServerUnavailable(err)) {
+          setUnavailable(true);
+        } else {
+          setUnavailable(false);
+          setSession(false);
+        }
+      })
+      .finally(() => setChecking(false));
   }, []);
+
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
 
   // Opened from the "confirm your email" link.
   useEffect(() => {
@@ -168,6 +180,7 @@ export default function App() {
     setActiveTab("portfolio");
   }
 
+  if (unavailable && !session) return <ServiceUnavailable onRetry={checkSession} retrying={checking} />;
   if (session === undefined) return null;
   // Opening a reset link always shows the "choose a new password" form, even
   // if someone is signed in (the reset ends their session anyway).

@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { axeViolations } from "./test/axe";
 
 // Links in emails open the site as /?verify=<token> or /?reset=<token>.
 vi.mock("./lib/api", async (importOriginal) => ({
@@ -59,5 +60,38 @@ describe("opening the site from an email link", () => {
     expect(await screen.findByText("Welcome back")).toBeInTheDocument();
     expect(screen.queryByText("Choose a new password")).not.toBeInTheDocument();
     expect(api.verifyEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe("opening the site while the server is down", () => {
+  function unavailable(status) {
+    const err = new Error("down");
+    err.status = status;
+    return err;
+  }
+
+  it("says Meridian is unavailable instead of showing the login page", async () => {
+    await openSiteAt("/", (a) => a.getMe.mockRejectedValue(unavailable(503)));
+
+    expect(await screen.findByRole("heading", { name: "Meridian is unavailable" })).toBeInTheDocument();
+    expect(screen.queryByText("Welcome back")).not.toBeInTheDocument();
+    expect(await axeViolations(document.body, { page: true })).toEqual([]);
+  });
+
+  it("says the same when the server cannot be reached at all", async () => {
+    await openSiteAt("/", (a) => a.getMe.mockRejectedValue(unavailable(0)));
+
+    expect(await screen.findByRole("heading", { name: "Meridian is unavailable" })).toBeInTheDocument();
+  });
+
+  it("Try again goes straight to the login page once the server answers that nobody is signed in", async () => {
+    const api = await openSiteAt("/", (a) => a.getMe.mockRejectedValueOnce(unavailable(503)));
+    await screen.findByRole("heading", { name: "Meridian is unavailable" });
+
+    api.getMe.mockRejectedValueOnce(unavailable(401));
+    screen.getByRole("button", { name: "Try again" }).click();
+
+    expect(await screen.findByText("Welcome back")).toBeInTheDocument();
+    expect(api.getMe).toHaveBeenCalledTimes(2);
   });
 });
