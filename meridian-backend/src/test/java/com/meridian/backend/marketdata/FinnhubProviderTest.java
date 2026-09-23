@@ -32,6 +32,7 @@ class FinnhubProviderTest {
 
     private MockRestServiceServer server;
     private FinnhubProvider provider;
+    private MutableClock clock;
 
     @BeforeEach
     void setUp() {
@@ -39,8 +40,9 @@ class FinnhubProviderTest {
         server = MockRestServiceServer.bindTo(builder).build();
         MarketDataProperties props = new MarketDataProperties();
         props.setProvider("finnhub");
-        RequestBudget budget = new RequestBudget(props, new MutableClock(Instant.parse("2026-09-19T10:00:00Z")));
-        provider = new FinnhubProvider(builder, budget, "secret-key");
+        clock = new MutableClock(Instant.parse("2026-09-19T10:00:00Z"));
+        RequestBudget budget = new RequestBudget(props, clock);
+        provider = new FinnhubProvider(builder, budget, "secret-key", "https://finnhub.io/api/v1", clock);
     }
 
     @Test
@@ -64,6 +66,31 @@ class FinnhubProviderTest {
         server.expect(requestTo(containsString("symbol=BINANCE:BTCUSDT"))).andRespond(withSuccess("{\"c\":96420.5}", MediaType.APPLICATION_JSON));
 
         assertThat(provider.fetchCryptoPrice("BTC")).isEqualByComparingTo("96420.5");
+    }
+
+    @Test
+    void oneForexReplyServesEveryCurrencyOfARefresh() {
+        server.expect(ExpectedCount.once(), requestTo(containsString("/forex/rates?base=USD")))
+                .andRespond(withSuccess("{\"base\":\"USD\",\"quote\":{\"EUR\":0.8,\"GBP\":0.5}}", MediaType.APPLICATION_JSON));
+
+        assertThat(provider.fetchUsdRate(SupportedCurrency.EUR)).isEqualByComparingTo("1.25");
+        assertThat(provider.fetchUsdRate(SupportedCurrency.GBP)).isEqualByComparingTo("2");
+
+        server.verify(); // exactly one request
+    }
+
+    @Test
+    void theNextRefreshAsksAgain() {
+        server.expect(requestTo(containsString("/forex/rates")))
+                .andRespond(withSuccess("{\"quote\":{\"EUR\":0.8}}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo(containsString("/forex/rates")))
+                .andRespond(withSuccess("{\"quote\":{\"EUR\":0.5}}", MediaType.APPLICATION_JSON));
+
+        assertThat(provider.fetchUsdRate(SupportedCurrency.EUR)).isEqualByComparingTo("1.25");
+        clock.advance(java.time.Duration.ofSeconds(61));
+        assertThat(provider.fetchUsdRate(SupportedCurrency.EUR)).isEqualByComparingTo("2");
+
+        server.verify();
     }
 
     @Test

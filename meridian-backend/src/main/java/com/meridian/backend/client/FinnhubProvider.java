@@ -17,6 +17,9 @@ import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -33,22 +36,34 @@ public class FinnhubProvider implements MarketDataProvider {
 
     private static final Logger log = LoggerFactory.getLogger(FinnhubProvider.class);
     private static final int MAX_SEARCH_RESULTS = 10;
+    // One /forex/rates reply has every currency, and a refresh asks for them one after another: reuse the
+    // reply for this long instead of spending a request per currency. Far shorter than the FX refresh interval.
+    static final Duration FOREX_REUSE = Duration.ofSeconds(60);
 
     private final RestClient restClient;
     private final RequestBudget budget;
+    private final Clock clock;
+    private JsonNode forexRates;
+    private Instant forexRatesAt;
 
     static final String DEFAULT_BASE_URL = "https://finnhub.io/api/v1";
 
     public FinnhubProvider(RestClient.Builder builder, RequestBudget budget, String apiKey) {
-        this(builder, budget, apiKey, DEFAULT_BASE_URL);
+        this(builder, budget, apiKey, DEFAULT_BASE_URL, Clock.systemUTC());
+    }
+
+    public FinnhubProvider(RestClient.Builder builder, RequestBudget budget, String apiKey, String baseUrl) {
+        this(builder, budget, apiKey, baseUrl, Clock.systemUTC());
     }
 
     // The base URL is a setting only so tests and a stand-in server can replace it.
     @Autowired
     public FinnhubProvider(RestClient.Builder builder, RequestBudget budget, @Value("${FINNHUB_API_KEY}") String apiKey,
-                           @Value("${marketdata.finnhub.base-url:" + DEFAULT_BASE_URL + "}") String baseUrl) {
+                           @Value("${marketdata.finnhub.base-url:" + DEFAULT_BASE_URL + "}") String baseUrl,
+                           Clock clock) {
         this.restClient = builder.baseUrl(baseUrl).defaultHeader("X-Finnhub-Token", apiKey).build();
         this.budget = budget;
+        this.clock = clock;
     }
 
     private JsonNode get(Function<org.springframework.web.util.UriBuilder, java.net.URI> uri) {
@@ -92,13 +107,22 @@ public class FinnhubProvider implements MarketDataProvider {
     // /forex/rates?base=USD gives "how many EUR per 1 USD"; we want USD per 1 EUR.
     @Override
     public BigDecimal fetchUsdRate(SupportedCurrency currency) {
-        JsonNode body = get(u -> u.path("/forex/rates").queryParam("base", "USD").build());
+        JsonNode body = forexRates();
         double perUsd = body == null ? 0 : body.path("quote").path(currency.name()).asDouble(0);
         if (perUsd <= 0) {
             log.warn("No FX rate returned for {}/USD", currency);
             return null;
         }
         return BigDecimal.ONE.divide(BigDecimal.valueOf(perUsd), 8, RoundingMode.HALF_UP);
+    }
+
+    private synchronized JsonNode forexRates() {
+        Instant now = clock.instant();
+        if (forexRates == null || !now.isBefore(forexRatesAt.plus(FOREX_REUSE))) {
+            forexRates = get(u -> u.path("/forex/rates").queryParam("base", "USD").build());
+            forexRatesAt = now;
+        }
+        return forexRates;
     }
 
     @Override
