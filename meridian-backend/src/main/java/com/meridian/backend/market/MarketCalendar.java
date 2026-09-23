@@ -95,6 +95,25 @@ public class MarketCalendar {
         return day.atTime(closeTime(day)).atZone(NEW_YORK).toInstant();
     }
 
+    /**
+     * The close of the session before the one {@code at} belongs to: the price a day's change is measured
+     * from. A moment belongs to the latest session that opened at or before it, so on Saturday, or on
+     * Friday after 16:00, this is Thursday's close; during Monday's session it is Friday's. Null when
+     * trading hours are not enforced.
+     */
+    public Instant previousStockClose(Instant at) {
+        if (!enforced) return null;
+        ZonedDateTime local = at.atZone(NEW_YORK);
+        LocalDate session = local.toLocalDate();
+        if (!(isTradingDay(session) && !local.toLocalTime().isBefore(OPEN))) {
+            session = session.minusDays(1);
+            while (!isTradingDay(session)) session = session.minusDays(1);
+        }
+        LocalDate before = session.minusDays(1);
+        while (!isTradingDay(before)) before = before.minusDays(1);
+        return before.atTime(closeTime(before)).atZone(NEW_YORK).toInstant();
+    }
+
     boolean isTradingDay(LocalDate day) {
         DayOfWeek dow = day.getDayOfWeek();
         return dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY && !holidays(day.getYear()).contains(day);

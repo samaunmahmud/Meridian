@@ -78,6 +78,15 @@ export function getMarketStatus() {
   return apiFetch("/market/status");
 }
 
+/**
+ * Biggest moves today: { gainers: [...], losers: [...] }, each row { symbol, name, exchange, assetType, price,
+ * referencePrice, change, changePercent, recordedAt, referenceAt }. Stocks move from the previous close,
+ * crypto over 24 hours.
+ */
+export function getMovers(limit = 5) {
+  return apiFetch(`/market/movers?limit=${limit}`);
+}
+
 export function getTickers() {
   return apiFetch("/tickers");
 }

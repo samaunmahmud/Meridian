@@ -22,6 +22,9 @@ public interface PriceHistoryRepository extends JpaRepository<PriceHistory, Long
 
     Optional<PriceHistory> findFirstByTickerIdOrderByRecordedAtDesc(Long tickerId);
 
+    /** The last price recorded at or before {@code at}: what a price was at that moment. */
+    Optional<PriceHistory> findFirstByTickerIdAndRecordedAtLessThanEqualOrderByRecordedAtDesc(Long tickerId, Instant at);
+
     /** One ticker's prices up to {@code upTo}, after (afterAt, afterId), oldest first: one page for the retention job. */
     @Query("select p.id as id, p.recordedAt as recordedAt from PriceHistory p where p.ticker.id = :group and p.recordedAt <= :upTo "
             + "and (p.recordedAt > :afterAt or (p.recordedAt = :afterAt and p.id > :afterId)) order by p.recordedAt, p.id")

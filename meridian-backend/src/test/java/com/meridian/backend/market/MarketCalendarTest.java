@@ -176,4 +176,20 @@ class MarketCalendarTest {
         assertThat(calendar.currentStockOpen(at("2026-09-19", "11:00"))).isNull(); // Saturday
         assertThat(new MarketCalendar(Clock.systemUTC(), false).currentStockOpen(at("2026-09-16", "11:00"))).isNull();
     }
+
+    @Test
+    void previousStockCloseIsTheCloseBeforeTheSessionAMomentBelongsTo() {
+        // during Monday's session: Friday's close
+        assertThat(calendar.previousStockClose(at("2026-09-21", "10:00"))).isEqualTo(at("2026-09-18", "16:00"));
+        // Friday after the close and all weekend: still Friday's session, so Thursday's close
+        assertThat(calendar.previousStockClose(at("2026-09-18", "16:05"))).isEqualTo(at("2026-09-17", "16:00"));
+        assertThat(calendar.previousStockClose(at("2026-09-20", "12:00"))).isEqualTo(at("2026-09-17", "16:00"));
+        // Monday before the open: Friday's session
+        assertThat(calendar.previousStockClose(at("2026-09-21", "08:00"))).isEqualTo(at("2026-09-17", "16:00"));
+        // after Thanksgiving (Thu 2026-11-26 closed) the Friday session measures from Wednesday's close,
+        // and the Monday after from Friday's early close
+        assertThat(calendar.previousStockClose(at("2026-11-27", "11:00"))).isEqualTo(at("2026-11-25", "16:00"));
+        assertThat(calendar.previousStockClose(at("2026-11-30", "11:00"))).isEqualTo(at("2026-11-27", "13:00"));
+        assertThat(new MarketCalendar(Clock.systemUTC(), false).previousStockClose(at("2026-09-21", "10:00"))).isNull();
+    }
 }

@@ -6,6 +6,7 @@ import Topbar from "./components/Topbar";
 import OverviewStrip from "./components/OverviewStrip";
 import StockHero from "./components/StockHero";
 import Watchlist from "./components/Watchlist";
+import TopMovers from "./components/TopMovers";
 import PortfolioSummary from "./components/PortfolioSummary";
 import PortfolioAllocation from "./components/PortfolioAllocation";
 import EquityChart from "./components/EquityChart";
@@ -231,6 +232,7 @@ export default function App() {
                     liveUpdate={liveUpdate}
                   />
                 </div>
+                <TopMovers onSelect={setSelectedTicker} liveUpdate={liveUpdate} />
               </main>
             )}
 
