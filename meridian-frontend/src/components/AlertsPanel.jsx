@@ -54,8 +54,8 @@ export default function AlertsPanel() {
 
   return (
     <main id="main-content" tabIndex={-1} data-ring-parent className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 px-4 sm:px-6 lg:px-8 pb-8 max-w-[1240px] fade-in">
-      <section className="bg-panel border border-line rounded-[20px] p-6">
-        <h2 className="text-base font-semibold mb-4">Your alerts</h2>
+      <section className="bg-panel rounded-[28px] p-6">
+        <h2 className="text-lg font-bold mb-4">Your alerts</h2>
 
         {loading ? (
           <div className="space-y-3">
@@ -101,8 +101,8 @@ export default function AlertsPanel() {
         )}
       </section>
 
-      <section className="bg-panel border border-line rounded-[20px] p-6 h-fit">
-        <h2 className="text-base font-semibold mb-1">New alert</h2>
+      <section className="bg-panel rounded-[28px] p-6 h-fit">
+        <h2 className="text-lg font-bold mb-1">New alert</h2>
         <p className="text-xs text-muted mb-4">
           You'll be told here the moment it fires, and by email once your address is confirmed.
         </p>
@@ -113,7 +113,7 @@ export default function AlertsPanel() {
               id={`${uid}-symbol`}
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
-              className="w-full bg-panel-2 border border-control rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+              className="w-full bg-panel-2 border border-control rounded-2xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors"
             >
               {tickers.map((t) => (
                 <option key={t.symbol} value={t.symbol}>
@@ -123,9 +123,9 @@ export default function AlertsPanel() {
             </select>
           </div>
 
-          <div role="group" aria-label="Alert direction" className="relative bg-panel-2 rounded-xl p-1 grid grid-cols-2">
+          <div role="group" aria-label="Alert direction" className="relative bg-panel-2 rounded-full p-1 grid grid-cols-2">
             <div
-              className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-md bg-accent transition-transform duration-200 ${
+              className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-full bg-accent transition-transform duration-200 ${
                 direction === "ABOVE" ? "translate-x-0" : "translate-x-[calc(100%+8px)]"
               }`}
             />
@@ -161,14 +161,14 @@ export default function AlertsPanel() {
               value={targetPrice}
               onChange={(e) => setTargetPrice(e.target.value)}
               placeholder="0.00"
-              className="w-full bg-panel-2 border border-control rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
+              className="w-full bg-panel-2 border border-control rounded-2xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
             />
           </div>
 
           <button
             type="submit"
             disabled={submitting || !symbol || !targetPrice}
-            className="w-full py-2.5 rounded-xl bg-accent hover:brightness-110 transition-all active:scale-[0.98] text-accent-ink text-sm font-medium disabled:opacity-50"
+            className="w-full py-2.5 rounded-full bg-accent hover:brightness-110 transition-all active:scale-[0.98] text-accent-ink text-sm font-medium disabled:opacity-50"
           >
             {submitting ? "Creating..." : "Create alert"}
           </button>

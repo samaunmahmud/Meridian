@@ -8,7 +8,7 @@ export default function ThemeToggle() {
     <div
       role="group"
       aria-label="Colour theme"
-      className="flex items-center gap-0.5 p-1 rounded-xl bg-panel-2"
+      className="flex items-center gap-0.5 p-1 rounded-full bg-panel"
     >
       {[
         { key: "light", icon: "sun", label: "Light theme" },
@@ -22,8 +22,8 @@ export default function ThemeToggle() {
             aria-label={opt.label}
             aria-pressed={active}
             onClick={() => setTheme(opt.key)}
-            className={`w-8 h-8 rounded-[9px] flex items-center justify-center transition-colors ${
-              active ? "bg-accent-dim text-accent" : "text-dim hover:text-bone"
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+              active ? "bg-panel-2 text-bone" : "text-dim hover:text-bone"
             }`}
           >
             <Icon name={opt.icon} size={16} />

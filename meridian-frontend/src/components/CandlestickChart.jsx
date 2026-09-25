@@ -49,7 +49,7 @@ function ChartTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
-    <div className="bg-panel-2 border border-line rounded-lg px-3 py-2 text-xs shadow-xl font-mono">
+    <div className="bg-panel-2 border border-line rounded-xl px-3 py-2 text-xs shadow-xl font-mono">
       <div className="text-bone text-sm mb-1">${d.close.toFixed(2)}</div>
       <div className="text-dim">O {d.open.toFixed(2)} &middot; H {d.high.toFixed(2)}</div>
       <div className="text-dim">L {d.low.toFixed(2)} &middot; C {d.close.toFixed(2)}</div>

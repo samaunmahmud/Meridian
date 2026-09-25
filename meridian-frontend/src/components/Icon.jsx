@@ -1,5 +1,13 @@
 // One small stroke-icon set (24px grid, currentColor) used across the app.
 const PATHS = {
+  home: (
+    <>
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5 9v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9" />
+    </>
+  ),
+  back: <path d="M15 18l-6-6 6-6" />,
+  right: <path d="m9 18 6-6-6-6" />,
   dash: (
     <>
       <rect x="3" y="3" width="7" height="9" rx="1.5" />

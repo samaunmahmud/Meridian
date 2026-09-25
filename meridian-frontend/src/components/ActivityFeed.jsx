@@ -65,9 +65,9 @@ function MonthSummary({ transactions }) {
   ];
 
   return (
-    <section className="bg-panel border border-line rounded-[20px] px-5 pt-5 pb-2">
+    <section className="bg-panel rounded-[28px] px-5 pt-5 pb-2">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-base font-semibold">This month</h2>
+        <h2 className="text-lg font-bold">This month</h2>
         <div className="text-xs text-muted">{now.toLocaleString("en-US", { month: "long" })} · USD</div>
       </div>
       {rows.map((r, i) => (
@@ -122,7 +122,7 @@ export default function ActivityFeed({ refreshKey }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
-        <section className="bg-panel border border-line rounded-[20px] px-5 sm:px-6 pb-3">
+        <section className="bg-panel rounded-[28px] px-5 sm:px-6 pb-3">
           {!transactions ? (
             <div className="py-5 space-y-3">
               {[1, 2, 3, 4].map((i) => (
@@ -177,7 +177,7 @@ export default function ActivityFeed({ refreshKey }) {
               type="button"
               disabled={transactions.length === 0}
               onClick={() => exportCsv(transactions)}
-              className="w-full h-12 rounded-[14px] bg-panel border border-line text-sm font-medium flex items-center justify-center gap-2 hover:bg-panel-2 transition-colors disabled:opacity-40"
+              className="w-full h-12 rounded-full bg-panel text-sm font-medium flex items-center justify-center gap-2 hover:bg-panel-2 transition-colors disabled:opacity-40"
             >
               <Icon name="download" size={16} />
               Export CSV

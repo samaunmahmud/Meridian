@@ -86,8 +86,8 @@ export default function StockDetails({ ticker, liveUpdate, refreshKey }) {
   const isCrypto = ticker.assetType === "CRYPTO";
 
   return (
-    <section aria-labelledby="stock-details-heading" className="bg-panel border border-line rounded-[20px] p-5 sm:p-7 fade-in">
-      <h2 id="stock-details-heading" className="text-base font-semibold mb-4">
+    <section aria-labelledby="stock-details-heading" className="bg-panel rounded-[28px] p-5 sm:p-7 fade-in">
+      <h2 id="stock-details-heading" className="text-lg font-bold mb-4">
         {ticker.symbol} today and your position
       </h2>
 

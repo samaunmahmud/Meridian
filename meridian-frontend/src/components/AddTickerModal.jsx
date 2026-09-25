@@ -58,7 +58,7 @@ export default function AddTickerModal({ onClose, onAdded }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by company name or symbol..."
-          className="w-full bg-panel-2 border border-control rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors mb-3"
+          className="w-full bg-panel-2 border border-control rounded-2xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors mb-3"
         />
 
         <div role="status" className="sr-only">
@@ -88,7 +88,7 @@ export default function AddTickerModal({ onClose, onAdded }) {
                 onClick={() => handleAdd(r)}
                 disabled={addingSymbol === r.symbol}
                 aria-label={`Add ${r.symbol} to the watchlist`}
-                className="text-xs bg-accent hover:brightness-110 transition-colors text-accent-ink px-3 py-1.5 rounded-md disabled:opacity-50 shrink-0"
+                className="text-xs bg-accent hover:brightness-110 transition-colors text-accent-ink px-3.5 py-1.5 rounded-full font-semibold disabled:opacity-50 shrink-0"
               >
                 {addingSymbol === r.symbol ? "Adding..." : "Add"}
               </button>

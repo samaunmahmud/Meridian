@@ -27,15 +27,15 @@ const CHART_TYPES = [
 
 function Segmented({ options, value, onChange, label }) {
   return (
-    <div role="group" aria-label={label} className="flex gap-0.5 bg-panel-2 rounded-xl p-1 text-[13px]">
+    <div role="group" aria-label={label} className="flex gap-1 text-[13px]">
       {options.map((o) => (
         <button
           key={o.key}
           type="button"
           aria-pressed={value === o.key}
           onClick={() => onChange(o.key)}
-          className={`px-3.5 py-1.5 rounded-[9px] transition-colors ${
-            value === o.key ? "bg-accent-dim text-accent font-semibold" : "text-muted font-medium hover:text-bone"
+          className={`h-8 px-3.5 rounded-full font-semibold transition-colors ${
+            value === o.key ? "bg-bone text-ink" : "text-muted hover:text-bone hover:bg-panel-2"
           }`}
         >
           {o.label}
@@ -45,7 +45,9 @@ function Segmented({ options, value, onChange, label }) {
   );
 }
 
-export default function StockHero({ ticker, liveUpdate, onTrade }) {
+// `tradeBesideChart`: a trade form is shown next to this on wide screens, so the Buy/Sell
+// buttons are only needed on narrower ones.
+export default function StockHero({ ticker, liveUpdate, onTrade, tradeBesideChart = false }) {
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState("1D");
@@ -100,7 +102,7 @@ export default function StockHero({ ticker, liveUpdate, onTrade }) {
 
   if (loading) {
     return (
-      <section className="bg-panel border border-line rounded-[20px] p-5 sm:p-7 space-y-4">
+      <section className="bg-panel rounded-[28px] p-5 sm:p-7 space-y-4">
         <div className="flex items-center gap-3">
           <Skeleton className="h-11 w-11 rounded-full" />
           <div className="space-y-1.5">
@@ -124,7 +126,7 @@ export default function StockHero({ ticker, liveUpdate, onTrade }) {
     : [];
 
   return (
-    <section className="bg-panel border border-line rounded-[20px] p-5 sm:p-7 fade-in">
+    <section aria-label={`${ticker.name} price`} className="bg-panel rounded-[28px] p-5 sm:p-7 fade-in">
       <div className="flex flex-wrap justify-between items-start gap-4 mb-5">
         <div className="flex items-center gap-3.5">
           <TickerAvatar symbol={ticker.symbol} size={48} />
@@ -141,7 +143,7 @@ export default function StockHero({ ticker, liveUpdate, onTrade }) {
 
         {latest && (
           <div className="sm:text-right">
-            <div className="text-[34px] font-mono font-medium leading-none" style={{ letterSpacing: "-0.04em" }}>
+            <div className="font-display text-[40px] leading-none" style={{ letterSpacing: "-0.035em" }}>
               ${formatNumber(animatedPrice)}
             </div>
             <div
@@ -194,17 +196,17 @@ export default function StockHero({ ticker, liveUpdate, onTrade }) {
             ))}
           </dl>
 
-          <div className="grid grid-cols-2 gap-3 mt-5">
+          <div className={`grid grid-cols-2 gap-3 mt-5 ${tradeBesideChart ? "lg:hidden" : ""}`}>
             <button
               onClick={() => onTrade(ticker.symbol, "BUY")}
-              className="h-12 rounded-[14px] bg-accent text-accent-ink text-[15px] font-semibold flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all"
+              className="h-12 rounded-full bg-accent text-accent-ink text-[15px] font-semibold flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all"
             >
               <Icon name="up" size={16} strokeWidth={2.2} />
               Buy {ticker.symbol}
             </button>
             <button
               onClick={() => onTrade(ticker.symbol, "SELL")}
-              className="h-12 rounded-[14px] bg-loss-dim text-loss text-[15px] font-semibold flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all"
+              className="h-12 rounded-full bg-loss-dim text-loss text-[15px] font-semibold flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all"
             >
               <Icon name="down" size={16} strokeWidth={2.2} />
               Sell

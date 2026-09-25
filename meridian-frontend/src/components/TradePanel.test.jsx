@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TradePanel from "./TradePanel";
-import { placeOrder } from "../lib/api";
+import { getTickers, placeOrder } from "../lib/api";
 import { showToast } from "../lib/toast";
 
 vi.mock("../lib/api", () => ({
@@ -114,5 +114,21 @@ describe("TradePanel: paying from a wallet", () => {
     await userEvent.click(screen.getByRole("button", { name: "Buy NVDA" }));
 
     expect(showToast).toHaveBeenCalledWith("error", "Insufficient EUR balance: need 183.6456 but only 100 available");
+  });
+});
+
+describe("TradePanel: opened for a particular stock", () => {
+  it("keeps that stock when the list of stocks arrives after it", async () => {
+    let resolveTickers;
+    getTickers.mockImplementationOnce(() => new Promise((r) => (resolveTickers = r)));
+    render(<TradePanel onOrderPlaced={vi.fn()} refreshKey={0} prefill={{ symbol: "BTC", type: "SELL", nonce: 1 }} />);
+
+    resolveTickers([
+      { symbol: "NVDA", name: "NVIDIA Corporation" },
+      { symbol: "BTC", name: "Bitcoin" },
+    ]);
+
+    expect(await screen.findByRole("button", { name: "Sell BTC" })).toBeInTheDocument();
+    expect(pickers()[0]).toHaveValue("BTC");
   });
 });

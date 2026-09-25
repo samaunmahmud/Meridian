@@ -20,7 +20,7 @@ function Toast({ toast, onDismiss }) {
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
-      className={`toast-in flex items-start gap-3 rounded-xl border pl-4 pr-2 py-3 text-sm shadow-2xl backdrop-blur ${
+      className={`toast-in flex items-start gap-3 rounded-2xl border pl-4 pr-2 py-3 text-sm shadow-2xl backdrop-blur ${
         toast.kind === "success"
           ? "bg-gain-dim/95 border-gain/30 text-gain"
           : toast.kind === "error"
@@ -33,7 +33,7 @@ function Toast({ toast, onDismiss }) {
         type="button"
         onClick={() => onDismiss(toast.id)}
         aria-label="Dismiss notification"
-        className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center hover:bg-black/10 transition-colors"
+        className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center hover:bg-black/10 transition-colors"
       >
         <span aria-hidden="true" className="text-lg leading-none">
           &times;

@@ -49,7 +49,7 @@ function WalletCard({ wallet, onChanged }) {
   }
 
   return (
-    <div className="bg-panel border border-line rounded-[20px] p-6 flex flex-col transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10">
+    <div className="bg-panel rounded-[28px] p-6 flex flex-col transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <div
@@ -90,13 +90,13 @@ function WalletCard({ wallet, onChanged }) {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
-            className="flex-1 min-w-0 bg-panel-2 border border-control rounded-xl px-3 py-2 text-sm font-mono outline-none focus:border-accent transition-colors"
+            className="flex-1 min-w-0 bg-panel-2 border border-control rounded-2xl px-3 py-2 text-sm font-mono outline-none focus:border-accent transition-colors"
           />
           <button
             type="submit"
             disabled={submitting}
             aria-label={`Confirm ${mode}`}
-            className="px-3 py-2 rounded-xl bg-accent hover:brightness-110 text-accent-ink text-xs font-medium disabled:opacity-50 transition-colors shrink-0"
+            className="px-3 py-2 rounded-full bg-accent hover:brightness-110 text-accent-ink text-xs font-medium disabled:opacity-50 transition-colors shrink-0"
           >
             {submitting ? "..." : "Confirm"}
           </button>
@@ -115,7 +115,7 @@ function WalletCard({ wallet, onChanged }) {
             ref={(el) => (openers.current.deposit = el)}
             onClick={() => setMode("deposit")}
             aria-label={`Deposit ${wallet.currency}`}
-            className="flex-1 h-10 rounded-xl bg-accent-dim text-accent text-[13px] font-medium flex items-center justify-center gap-1.5 hover:brightness-110 transition-all"
+            className="flex-1 h-10 rounded-full bg-accent-dim text-accent text-[13px] font-medium flex items-center justify-center gap-1.5 hover:brightness-110 transition-all"
           >
             <Icon name="plus" size={15} strokeWidth={2.2} />
             Deposit
@@ -124,7 +124,7 @@ function WalletCard({ wallet, onChanged }) {
             ref={(el) => (openers.current.withdraw = el)}
             onClick={() => setMode("withdraw")}
             aria-label={`Withdraw ${wallet.currency}`}
-            className="flex-1 h-10 rounded-xl bg-panel-2 text-bone text-[13px] font-medium flex items-center justify-center gap-1.5 hover:brightness-110 transition-all"
+            className="flex-1 h-10 rounded-full bg-panel-2 text-bone text-[13px] font-medium flex items-center justify-center gap-1.5 hover:brightness-110 transition-all"
           >
             <Icon name="up" size={15} strokeWidth={2} />
             Withdraw
@@ -151,7 +151,7 @@ export default function AccountsPanel() {
         <p className="text-sm text-muted">Your balances by currency.</p>
         <button
           onClick={() => setShowConvert(true)}
-          className="h-10 px-4 rounded-xl bg-accent hover:brightness-110 transition-all text-accent-ink text-sm font-semibold active:scale-[0.98] flex items-center gap-2"
+          className="h-10 px-4 rounded-full bg-accent hover:brightness-110 transition-all text-accent-ink text-sm font-semibold active:scale-[0.98] flex items-center gap-2"
         >
           <Icon name="swap" size={15} strokeWidth={2.2} />
           Convert currency

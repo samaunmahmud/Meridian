@@ -46,7 +46,7 @@ function Field({ label, icon, trailing, ...inputProps }) {
       <label htmlFor={id} className="text-[13px] font-medium block mb-2">
         {label}
       </label>
-      <div className="flex items-center gap-3 h-[52px] px-4 rounded-[14px] bg-panel border border-control focus-within:border-accent has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-accent transition-colors">
+      <div className="flex items-center gap-3 h-[52px] px-4 rounded-2xl bg-panel border border-control focus-within:border-accent has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-accent transition-colors">
         <Icon name={icon} size={18} className="text-dim" />
         <input
           id={id}
@@ -152,17 +152,17 @@ export default function AuthPage({ onAuthenticated, resetToken = null, onResetDo
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-ink text-bone">
       {/* Left: brand panel */}
-      <aside aria-label="About Meridian" className="hidden lg:flex flex-col p-14 relative overflow-hidden bg-panel border-r border-line">
+      <aside aria-label="About Meridian" className="hidden lg:flex flex-col p-14 relative overflow-hidden bg-panel">
         <Globe />
         <div className="relative z-10">
           <Logo size={30} />
         </div>
 
         <div className="relative z-10 mt-auto mb-10 max-w-[520px]">
-          <p className="font-display font-normal text-[52px] xl:text-[60px] leading-[1.05]" style={{ letterSpacing: "-0.04em" }}>
+          <p className="font-display text-[56px] xl:text-[64px] leading-[1.02]" style={{ letterSpacing: "-0.03em" }}>
             Invest in
             <br />
-            <em className="text-accent italic">every currency.</em>
+            <span className="text-accent">every currency.</span>
           </p>
           <p className="text-muted text-base leading-relaxed mt-5 max-w-[440px]">
             Stocks, crypto and multi-currency wallets in one calm place. Practice with $10,000 in virtual cash.
@@ -192,7 +192,7 @@ export default function AuthPage({ onAuthenticated, resetToken = null, onResetDo
           </div>
 
           {isTab ? (
-          <div role="tablist" aria-label="Log in or sign up" className="grid grid-cols-2 gap-1 p-1 rounded-[14px] bg-panel-2 mb-7">
+          <div role="tablist" aria-label="Log in or sign up" className="grid grid-cols-2 gap-1 p-1 rounded-full bg-panel-2 mb-7">
             {TABS.map((t) => (
               <button
                 key={t.key}
@@ -204,8 +204,8 @@ export default function AuthPage({ onAuthenticated, resetToken = null, onResetDo
                 tabIndex={mode === t.key ? 0 : -1}
                 onClick={() => goTo(t.key)}
                 onKeyDown={handleTabKeyDown}
-                className={`h-10 rounded-[10px] text-sm font-semibold transition-colors ${
-                  mode === t.key ? "bg-panel border border-line text-bone" : "text-muted hover:text-bone"
+                className={`h-10 rounded-full text-sm font-semibold transition-colors ${
+                  mode === t.key ? "bg-bone text-ink" : "text-muted hover:text-bone"
                 }`}
               >
                 {t.label}
@@ -227,7 +227,7 @@ export default function AuthPage({ onAuthenticated, resetToken = null, onResetDo
             role={isTab ? "tabpanel" : undefined}
             aria-labelledby={isTab ? `auth-tab-${mode}` : undefined}
           >
-          <h1 className="font-display font-normal text-[38px] leading-none" style={{ letterSpacing: "-0.035em" }}>
+          <h1 className="font-display text-[38px] leading-none" style={{ letterSpacing: "-0.035em" }}>
             {COPY.title}
           </h1>
           <p className="text-[15px] text-muted mt-2 mb-8">{COPY.subtitle}</p>
@@ -306,7 +306,7 @@ export default function AuthPage({ onAuthenticated, resetToken = null, onResetDo
             <button
               type="submit"
               disabled={submitting}
-              className="w-full h-[52px] rounded-[14px] bg-accent text-accent-ink text-base font-semibold hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-50"
+              className="w-full h-[52px] rounded-full bg-accent text-accent-ink text-base font-semibold hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-50"
             >
               {submitting ? "Please wait…" : COPY.button}
             </button>

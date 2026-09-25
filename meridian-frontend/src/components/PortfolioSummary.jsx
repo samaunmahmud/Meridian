@@ -7,7 +7,7 @@ import Skeleton from "./Skeleton";
 
 function StatCard({ label, value, sub, display, className = "" }) {
   return (
-    <div className={`bg-panel border border-line rounded-[20px] p-4 sm:p-5 min-w-0 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 ${className}`}>
+    <div className={`bg-panel rounded-[28px] p-4 sm:p-5 min-w-0 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 ${className}`}>
       <div className="text-xs font-medium text-muted mb-2.5">{label}</div>
       <div
         className={`leading-none truncate ${display ? "font-display text-[28px]" : "font-mono text-2xl"}`}
@@ -69,9 +69,9 @@ export default function PortfolioSummary({ refreshKey, children }) {
 
       {children}
 
-      <section className="bg-panel border border-line rounded-[20px] p-5 sm:p-6">
+      <section className="bg-panel rounded-[28px] p-5 sm:p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold">Holdings</h2>
+          <h2 className="text-lg font-bold">Holdings</h2>
           <div className="text-[13px] text-muted">
             {portfolio.holdings.length} {portfolio.holdings.length === 1 ? "position" : "positions"}
           </div>

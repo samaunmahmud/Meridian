@@ -69,7 +69,7 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
                 id={`${uid}-from`}
                 value={fromCurrency}
                 onChange={(e) => setFromCurrency(e.target.value)}
-                className="w-full bg-panel-2 border border-control rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+                className="w-full bg-panel-2 border border-control rounded-2xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
               >
                 {CURRENCIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -82,7 +82,7 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
                 id={`${uid}-to`}
                 value={toCurrency}
                 onChange={(e) => setToCurrency(e.target.value)}
-                className="w-full bg-panel-2 border border-control rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+                className="w-full bg-panel-2 border border-control rounded-2xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
               >
                 {CURRENCIES.filter((c) => c !== fromCurrency).map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -104,7 +104,7 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
-              className="w-full bg-panel-2 border border-control rounded-xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
+              className="w-full bg-panel-2 border border-control rounded-2xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
             />
           </div>
 
@@ -117,7 +117,7 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
           <button
             type="submit"
             disabled={submitting || !amount}
-            className="w-full py-2.5 rounded-xl bg-accent hover:brightness-110 transition-all active:scale-[0.98] text-accent-ink text-sm font-medium disabled:opacity-50"
+            className="w-full py-2.5 rounded-full bg-accent hover:brightness-110 transition-all active:scale-[0.98] text-accent-ink text-sm font-medium disabled:opacity-50"
           >
             {submitting ? "Converting..." : "Convert"}
           </button>

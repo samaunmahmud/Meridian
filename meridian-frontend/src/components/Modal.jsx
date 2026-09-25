@@ -4,7 +4,8 @@ import { createPortal } from "react-dom";
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-// An accessible modal dialog: it has a name, keeps Tab inside itself, closes on Escape,
+// An accessible modal dialog, shown as a bottom sheet on phones and a centred card on
+// wider screens: it has a name, keeps Tab inside itself, closes on Escape,
 // makes the page behind it inert (so a screen reader cannot wander off into it) and puts
 // focus back on whatever opened it. It is rendered into <body>, outside #root, which is
 // what lets #root be inert while the dialog and the toasts stay reachable.
@@ -62,7 +63,7 @@ export default function Modal({ title, onClose, children }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/60 z-40 flex items-start justify-center pt-24 px-4"
+      className="fixed inset-0 bg-black/60 z-40 flex items-end sm:items-start justify-center sm:pt-24 sm:px-4"
       onMouseDown={(e) => {
         // A click on the dim backdrop (not on the dialog) dismisses it.
         if (e.target === e.currentTarget) onCloseRef.current();
@@ -76,17 +77,19 @@ export default function Modal({ title, onClose, children }) {
         tabIndex={-1}
         data-ring-parent
         onKeyDown={handleKeyDown}
-        className="bg-panel border border-line rounded-[20px] w-full max-w-md p-5 fade-in outline-none text-bone"
+        className="bg-panel rounded-t-[28px] sm:rounded-[28px] w-full sm:max-w-md max-h-[92vh] overflow-y-auto px-5 pt-3 pb-[max(env(safe-area-inset-bottom),20px)] sm:p-6 sheet-in outline-none text-bone"
       >
-        <div className="flex items-center justify-between mb-4">
-          <h2 id={titleId} className="text-sm font-medium">
+        {/* The grab handle a bottom sheet has on a phone (decoration only). */}
+        <div className="sm:hidden mx-auto mb-3 h-1 w-10 rounded-full bg-line" aria-hidden="true" />
+        <div className="flex items-center justify-between mb-5">
+          <h2 id={titleId} className="font-display text-xl" style={{ letterSpacing: "-0.02em" }}>
             {title}
           </h2>
           <button
             type="button"
             onClick={() => onCloseRef.current()}
             aria-label="Close"
-            className="w-8 h-8 -mr-2 rounded-lg flex items-center justify-center text-dim hover:text-bone transition-colors"
+            className="w-9 h-9 -mr-1 rounded-full bg-panel-2 flex items-center justify-center text-muted hover:text-bone transition-colors"
           >
             <span aria-hidden="true" className="text-lg leading-none">
               &times;

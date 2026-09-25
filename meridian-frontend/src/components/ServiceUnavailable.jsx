@@ -24,7 +24,7 @@ export default function ServiceUnavailable({ onRetry, retrying }) {
           type="button"
           onClick={onRetry}
           disabled={retrying}
-          className="h-10 px-5 rounded-xl bg-accent text-accent-ink font-semibold disabled:opacity-60"
+          className="h-10 px-5 rounded-full bg-accent text-accent-ink font-semibold disabled:opacity-60"
         >
           {retrying ? "Trying…" : "Try again"}
         </button>

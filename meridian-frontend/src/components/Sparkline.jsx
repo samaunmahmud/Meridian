@@ -1,7 +1,8 @@
 // Renders a tiny line chart from an array of numbers. No library needed —
 // just maps values onto an SVG viewBox. Used in the watchlist so each row
 // shows real recent movement, not a placeholder icon.
-export default function Sparkline({ values, positive, width = 64, height = 24 }) {
+// `fluid` stretches it to the width of its container (the line keeps its thickness).
+export default function Sparkline({ values, positive, width = 64, height = 24, fluid = false }) {
   if (!values || values.length < 2) {
     return <svg width={width} height={height} />;
   }
@@ -18,12 +19,20 @@ export default function Sparkline({ values, positive, width = 64, height = 24 })
   });
 
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="shrink-0" aria-hidden="true">
+    <svg
+      width={fluid ? "100%" : width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio={fluid ? "none" : undefined}
+      className="shrink-0 block"
+      aria-hidden="true"
+    >
       <polyline
+        vectorEffect="non-scaling-stroke"
         points={points.join(" ")}
         fill="none"
         stroke={positive ? "var(--c-gain)" : "var(--c-loss)"}
-        strokeWidth="1.75"
+        strokeWidth={fluid ? 2.25 : 1.75}
         strokeLinecap="round"
         strokeLinejoin="round"
       />

@@ -6,32 +6,34 @@
    first paint by the script in index.html, toggled by lib/useTheme.js).
    Charts and SVGs read these variables directly: var(--c-gain) etc.
 ------------------------------------------------------------------- */
+/* Revolut-style palette: near-black (dark) or cool grey (light) page, borderless
+   rounded cards, one bright blue accent, green/red only for gains and losses. */
 :root,
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --c-bg: #090c0e;
-  --c-surface: #10161a;
-  --c-surface-2: #172026;
-  --c-line: #222c32;
-  --c-text: #edf2f1;
-  --c-muted: #8e9da3;
-  --c-dim: #829298;
+  --c-bg: #000000;
+  --c-surface: #161618;
+  --c-surface-2: #222226;
+  --c-line: #26262b;
+  --c-text: #ffffff;
+  --c-muted: #a0a0a8;
+  --c-dim: #9a9aa3;
   /* Border of form fields: 3:1 against the surface (WCAG 1.4.11). --c-line stays decorative. */
-  --c-control: #5d6c72;
-  --c-accent: #35c9d8;
-  --c-accent-ink: #04262b;
-  --c-accent-soft: #0f2d33;
-  --c-gain: #3ddc97;
-  --c-gain-soft: #0f2b22;
-  --c-loss: #ff6b7a;
-  --c-loss-soft: #341219;
-  --c-on-loss: #2a0a10;
-  --c-cash: #4a575d;
+  --c-control: #6e6e78;
+  --c-accent: #7d97ff;
+  --c-accent-ink: #000000;
+  --c-accent-soft: #1b2240;
+  --c-gain: #35d07f;
+  --c-gain-soft: #0e2a1c;
+  --c-loss: #ff6b6b;
+  --c-loss-soft: #3a1418;
+  --c-on-loss: #1a0506;
+  --c-cash: #4a4a52;
   /* categorical series colours (allocation, avatars) */
-  --c-s1: #35c9d8;
+  --c-s1: #7d97ff;
   --c-s2: #f5b53f;
-  --c-s3: #8b7cf6;
-  --c-s4: #4c9aff;
+  --c-s3: #b18cff;
+  --c-s4: #35c9d8;
   --c-s5: #f0708a;
   --c-s6: #76b900;
   --c-s7: #f7931a;
@@ -40,27 +42,27 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --c-bg: #f5f3ee;
+  --c-bg: #f2f2f7;
   --c-surface: #ffffff;
-  --c-surface-2: #efece5;
-  --c-line: #e3dfd5;
-  --c-text: #12181b;
-  --c-muted: #5b686d;
-  --c-dim: #5e676c;
-  --c-control: #78848a;
-  --c-accent: #0a707d;
+  --c-surface-2: #ececf1;
+  --c-line: #e4e4ea;
+  --c-text: #0b0b0f;
+  --c-muted: #5c5c66;
+  --c-dim: #5c5c66;
+  --c-control: #7c7c86;
+  --c-accent: #1f4ff0;
   --c-accent-ink: #ffffff;
-  --c-accent-soft: #dceef0;
-  --c-gain: #0a744b;
-  --c-gain-soft: #ddf1e8;
-  --c-loss: #be2d3e;
-  --c-loss-soft: #fadde0;
+  --c-accent-soft: #e6ebff;
+  --c-gain: #0a7a41;
+  --c-gain-soft: #e2f5ea;
+  --c-loss: #c81e2c;
+  --c-loss-soft: #fde6e6;
   --c-on-loss: #ffffff;
-  --c-cash: #a9b2b5;
-  --c-s1: #0b7f8e;
+  --c-cash: #b4b4bd;
+  --c-s1: #1f4ff0;
   --c-s2: #c98a0a;
-  --c-s3: #6b5bd6;
-  --c-s4: #2563eb;
+  --c-s3: #6b4fd6;
+  --c-s4: #0b7f8e;
   --c-s5: #d14868;
   --c-s6: #4e7a00;
   --c-s7: #b8650a;
@@ -88,10 +90,16 @@
   --color-on-loss: var(--c-on-loss);
 }
 
+/* One sans-serif family, as in a banking app. Figures (font-mono) use Inter with tabular
+   digits so columns of numbers line up; big balances and titles use the tighter, bolder cut. */
 @theme {
-  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
-  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Inter Tight", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+.font-mono {
+  font-variant-numeric: tabular-nums;
 }
 
 body {
@@ -123,9 +131,21 @@ body {
   color: var(--c-accent);
 }
 
-/* Big display figures: Fraunces with lining numerals and tight tracking */
+/* Big balances and page titles: bold, tight, tabular so a changing balance does not jiggle */
 .font-display {
-  font-variant-numeric: lining-nums;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Big amount fields: no up/down arrows */
+.no-spin::-webkit-outer-spin-button,
+.no-spin::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spin {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -171,6 +191,14 @@ body {
   animation: toastIn 0.2s ease-out;
 }
 
+@keyframes sheetIn {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.sheet-in {
+  animation: sheetIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .fade-in, .toast-in, .skeleton { animation: none; }
+  .fade-in, .toast-in, .skeleton, .sheet-in { animation: none; }
 }

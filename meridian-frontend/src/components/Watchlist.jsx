@@ -17,7 +17,7 @@ function dayChange(price, reference) {
   return ((price - reference) / reference) * 100;
 }
 
-export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
+export default function Watchlist({ onSelect, liveUpdate }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -47,9 +47,6 @@ export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
     );
     setRows(withPrices);
     setLoading(false);
-    if (!selectedSymbol && withPrices.length > 0) {
-      onSelect(withPrices[0]);
-    }
   }
 
   useEffect(() => {
@@ -81,13 +78,13 @@ export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
 
   return (
     <>
-      <div className="bg-panel border border-line rounded-[20px] p-4 sm:p-5 fade-in h-fit">
-        <div className="flex items-center justify-between mb-1 px-1.5">
-          <h2 className="text-base font-semibold">Watchlist</h2>
+      <section aria-labelledby="watchlist-heading" className="bg-panel rounded-[28px] p-4 sm:p-5 fade-in h-fit">
+        <div className="flex items-center justify-between mb-1 px-2">
+          <h2 id="watchlist-heading" className="text-lg font-bold">Watchlist</h2>
           <button
             onClick={() => setShowAddModal(true)}
             aria-label="Add a stock to the watchlist"
-            className="flex items-center gap-1 h-8 px-2 -mr-2 text-[13px] text-accent hover:brightness-110 transition-all font-medium"
+            className="flex items-center gap-1 h-8 px-3 -mr-1 rounded-full bg-accent-dim text-[13px] text-accent hover:brightness-110 transition-all font-semibold"
           >
             <Icon name="plus" size={14} strokeWidth={2.2} />
             Add
@@ -107,7 +104,7 @@ export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Filter tickers..."
-              className="w-full bg-panel-2 border border-control rounded-lg px-3 py-1.5 text-xs my-2 outline-none focus:border-accent transition-colors"
+              className="w-full bg-panel-2 border border-control rounded-full px-4 py-2 text-sm my-2 outline-none focus:border-accent transition-colors"
             />
 
             {filtered.length === 0 && (
@@ -117,30 +114,26 @@ export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
             {filtered.map((row, i) => {
               const pct = dayChange(row.latest?.price, references[row.symbol]);
               const isUp = (pct ?? 0) >= 0;
-              const isSelected = row.symbol === selectedSymbol;
               return (
                 <button
                   key={row.symbol}
                   onClick={() => onSelect(row)}
-                  aria-pressed={isSelected}
-                  className={`w-full flex items-center gap-3 h-[58px] px-2.5 rounded-[14px] text-left transition-colors ${
-                    isSelected ? "bg-panel-2" : "hover:bg-panel-2/60"
-                  }`}
+                  className="w-full flex items-center gap-3 h-16 px-2 rounded-2xl text-left hover:bg-panel-2 transition-colors"
                 >
-                  <TickerAvatar symbol={row.symbol} size={36} />
+                  <TickerAvatar symbol={row.symbol} size={40} />
 
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold truncate">{row.symbol}</div>
-                    <div className="text-xs text-muted truncate">{row.name}</div>
+                    <div className="text-[15px] font-semibold truncate">{row.symbol}</div>
+                    <div className="text-[13px] text-muted truncate">{row.name}</div>
                   </div>
 
                   <Sparkline values={row.sparkline} positive={isUp} width={52} height={22} />
 
                   <div className="text-right w-[84px] shrink-0">
-                    <div className="text-[13px] font-mono font-medium">
+                    <div className="text-[15px] font-mono font-semibold">
                       {row.latest ? `$${formatNumber(row.latest.price)}` : "\u2014"}
                     </div>
-                    <div className={`text-xs font-mono ${pct == null ? "text-dim" : isUp ? "text-gain" : "text-loss"}`}>
+                    <div className={`text-[13px] font-mono font-medium ${pct == null ? "text-dim" : isUp ? "text-gain" : "text-loss"}`}>
                       {pct == null ? "" : `${isUp ? "+" : ""}${pct.toFixed(2)}%`}
                       {pct != null && <span className="sr-only"> today</span>}
                     </div>
@@ -150,7 +143,7 @@ export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
             })}
           </>
         )}
-      </div>
+      </section>
 
       {showAddModal && (
         <AddTickerModal onClose={() => setShowAddModal(false)} onAdded={load} />

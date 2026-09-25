@@ -6,7 +6,7 @@ function ChartTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
   return (
-    <div className="bg-panel-2 border border-line rounded-lg px-3 py-2 text-xs shadow-xl font-mono">
+    <div className="bg-panel-2 border border-line rounded-xl px-3 py-2 text-xs shadow-xl font-mono">
       <div className="text-bone text-sm">${formatNumber(point.price)}</div>
       <div className="text-dim mt-0.5">{new Date(point.recordedAt).toLocaleString()}</div>
     </div>

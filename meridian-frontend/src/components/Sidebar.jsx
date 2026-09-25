@@ -1,24 +1,21 @@
 import { motion } from "framer-motion";
-import AccountSummary from "./AccountSummary";
 import Icon from "./Icon";
 import Logo from "./Logo";
 
 export const NAV_ITEMS = [
-  { key: "overview", label: "Overview", icon: "dash" },
+  { key: "home", label: "Home", icon: "home" },
   { key: "portfolio", label: "Portfolio", icon: "pie" },
   { key: "alerts", label: "Alerts", icon: "bell" },
   { key: "accounts", label: "Accounts", icon: "wallet" },
   { key: "activity", label: "Activity", icon: "pulse" },
 ];
 
-export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout, refreshKey }) {
+export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout }) {
   return (
-    <aside className="hidden lg:flex w-[248px] shrink-0 bg-panel border-r border-line flex-col h-screen sticky top-0 px-4 pt-6 pb-5 gap-6">
-      <div className="px-2">
+    <aside className="hidden lg:flex w-[240px] shrink-0 bg-ink flex-col h-screen sticky top-0 px-4 pt-7 pb-5 gap-8">
+      <div className="px-3">
         <Logo size={24} />
       </div>
-
-      <AccountSummary refreshKey={refreshKey} />
 
       <nav className="flex flex-col gap-1" aria-label="Main">
         {NAV_ITEMS.map((item) => {
@@ -28,19 +25,19 @@ export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout, r
               key={item.key}
               onClick={() => onTabChange(item.key)}
               aria-current={active ? "page" : undefined}
-              className={`relative h-11 w-full flex items-center gap-3 px-3 rounded-xl text-sm transition-colors ${
-                active ? "text-accent font-semibold" : "text-muted font-medium hover:bg-panel-2 hover:text-bone"
+              className={`relative h-12 w-full flex items-center gap-3 px-4 rounded-full text-[15px] transition-colors ${
+                active ? "text-bone font-semibold" : "text-muted font-medium hover:bg-panel hover:text-bone"
               }`}
             >
               {active && (
                 <motion.div
                   layoutId="sidebar-active-pill"
-                  className="absolute inset-0 bg-accent-dim rounded-xl"
+                  className="absolute inset-0 bg-panel-2 rounded-full"
                   transition={{ type: "spring", stiffness: 500, damping: 40 }}
                 />
               )}
               <span className="relative z-10 flex items-center gap-3">
-                <Icon name={item.icon} size={18} />
+                <Icon name={item.icon} size={20} strokeWidth={active ? 2.1 : 1.8} />
                 {item.label}
               </span>
             </button>
@@ -51,7 +48,7 @@ export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout, r
       <div className="flex-1" />
 
       <div className="flex items-center gap-2.5 px-1 pt-1">
-        <div className="w-[34px] h-[34px] rounded-full bg-accent-dim text-accent flex items-center justify-center text-sm font-semibold shrink-0">
+        <div className="w-9 h-9 rounded-full bg-accent text-accent-ink flex items-center justify-center text-sm font-semibold shrink-0">
           {(userEmail?.[0] ?? "?").toUpperCase()}
         </div>
         <div className="flex-1 min-w-0 text-xs text-muted truncate" title={userEmail}>
@@ -60,7 +57,7 @@ export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout, r
         <button
           onClick={onLogout}
           aria-label="Log out"
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-dim hover:text-bone hover:bg-panel-2 transition-colors"
+          className="w-9 h-9 rounded-full flex items-center justify-center text-dim hover:text-bone hover:bg-panel-2 transition-colors"
         >
           <Icon name="logout" size={16} />
         </button>
@@ -74,7 +71,7 @@ export function MobileNav({ activeTab, onTabChange }) {
   return (
     <nav
       aria-label="Main"
-      className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-panel border-t border-line grid grid-cols-5 pt-2 pb-[max(env(safe-area-inset-bottom),10px)]"
+      className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-panel/90 backdrop-blur-xl border-t border-line grid grid-cols-5 pt-2 pb-[max(env(safe-area-inset-bottom),10px)]"
     >
       {NAV_ITEMS.map((item) => {
         const active = activeTab === item.key;
@@ -84,7 +81,7 @@ export function MobileNav({ activeTab, onTabChange }) {
             onClick={() => onTabChange(item.key)}
             aria-current={active ? "page" : undefined}
             className={`flex flex-col items-center gap-1 py-1 transition-colors ${
-              active ? "text-accent" : "text-dim"
+              active ? "text-bone" : "text-dim"
             }`}
           >
             <Icon name={item.icon} size={22} strokeWidth={active ? 2 : 1.8} />

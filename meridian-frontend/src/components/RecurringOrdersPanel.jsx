@@ -61,8 +61,8 @@ export default function RecurringOrdersPanel({ refreshKey }) {
   }
 
   return (
-    <section className="bg-panel border border-line rounded-[20px] p-6">
-      <h2 className="text-base font-semibold mb-4">Recurring buys</h2>
+    <section className="bg-panel rounded-[28px] p-6">
+      <h2 className="text-lg font-bold mb-4">Recurring buys</h2>
 
       {!loading && orders.length > 0 && (
         <div className="space-y-1 mb-4">
@@ -92,7 +92,7 @@ export default function RecurringOrdersPanel({ refreshKey }) {
             aria-label="Symbol"
             value={symbol}
             onChange={(e) => setSymbol(e.target.value)}
-            className="bg-panel-2 border border-control rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+            className="bg-panel-2 border border-control rounded-2xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
           >
             {tickers.map((t) => (
               <option key={t.symbol} value={t.symbol}>
@@ -108,7 +108,7 @@ export default function RecurringOrdersPanel({ refreshKey }) {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder={`Amount (${currencySymbol(currency).trim()})`}
-            className="bg-panel-2 border border-control rounded-xl px-3 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
+            className="bg-panel-2 border border-control rounded-2xl px-3 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
           />
         </div>
 
@@ -118,7 +118,7 @@ export default function RecurringOrdersPanel({ refreshKey }) {
             id={`${uid}-currency`}
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
-            className="w-full bg-panel-2 border border-control rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+            className="w-full bg-panel-2 border border-control rounded-2xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
           >
             {(wallets.length ? wallets : [{ currency: "USD", balance: 0 }]).map((w) => (
               <option key={w.currency} value={w.currency}>
@@ -134,14 +134,14 @@ export default function RecurringOrdersPanel({ refreshKey }) {
           )}
         </div>
 
-        <div role="group" aria-label="How often" className="flex gap-1 bg-panel-2 rounded-xl p-1 text-xs">
+        <div role="group" aria-label="How often" className="flex gap-1 bg-panel-2 rounded-full p-1 text-xs">
           {FREQUENCIES.map((f) => (
             <button
               key={f.key}
               type="button"
               aria-pressed={frequency === f.key}
               onClick={() => setFrequency(f.key)}
-              className={`flex-1 py-1.5 rounded-md transition-colors ${
+              className={`flex-1 py-1.5 rounded-full transition-colors ${
                 frequency === f.key ? "bg-accent-dim text-accent" : "text-dim"
               }`}
             >
@@ -153,7 +153,7 @@ export default function RecurringOrdersPanel({ refreshKey }) {
         <button
           type="submit"
           disabled={submitting || !symbol || !amount}
-          className="w-full py-2.5 rounded-xl bg-accent hover:brightness-110 transition-all active:scale-[0.98] text-accent-ink text-sm font-medium disabled:opacity-50"
+          className="w-full py-2.5 rounded-full bg-accent hover:brightness-110 transition-all active:scale-[0.98] text-accent-ink text-sm font-medium disabled:opacity-50"
         >
           {submitting ? "Setting up..." : "Set up recurring buy"}
         </button>

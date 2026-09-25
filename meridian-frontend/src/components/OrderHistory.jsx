@@ -34,7 +34,7 @@ export default function OrderHistory({ refreshKey }) {
 
   if (loading) {
     return (
-      <section className="bg-panel border border-line rounded-[20px] p-6 space-y-3">
+      <section className="bg-panel rounded-[28px] p-6 space-y-3">
         <Skeleton className="h-4 w-28" />
         {[1, 2, 3].map((i) => (
           <Skeleton key={i} className="h-8 w-full" />
@@ -44,8 +44,8 @@ export default function OrderHistory({ refreshKey }) {
   }
 
   return (
-    <section className="bg-panel border border-line rounded-[20px] p-6 fade-in">
-      <h2 className="text-base font-semibold mb-4">Order history</h2>
+    <section className="bg-panel rounded-[28px] p-6 fade-in">
+      <h2 className="text-lg font-bold mb-4">Order history</h2>
 
       {orders.length === 0 ? (
         <div className="text-sm text-dim">No orders placed yet.</div>
@@ -73,7 +73,7 @@ export default function OrderHistory({ refreshKey }) {
               <tr key={o.id} className="border-b border-line/60 last:border-0">
                 <td className="py-3">
                   <span
-                    className={`font-sans text-xs font-medium px-2 py-1 rounded-md ${
+                    className={`font-sans text-xs font-medium px-2.5 py-1 rounded-full ${
                       o.type === "BUY" ? "text-gain bg-gain-dim" : "text-loss bg-loss-dim"
                     }`}
                   >
@@ -84,7 +84,7 @@ export default function OrderHistory({ refreshKey }) {
                 <td className="py-3">
                   <span
                     title={o.rejectionReason ?? undefined}
-                    className={`font-sans text-xs font-medium px-2 py-1 rounded-md ${STATUS_STYLES[o.status] ?? "text-dim"}`}
+                    className={`font-sans text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_STYLES[o.status] ?? "text-dim"}`}
                   >
                     {o.status}
                     {o.status === "PENDING" && o.kind !== "MARKET" ? ` (${o.kind === "LIMIT" ? o.limitPrice?.toFixed(2) : o.stopPrice?.toFixed(2)})` : ""}

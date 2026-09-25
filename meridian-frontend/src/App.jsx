@@ -3,9 +3,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import AuthPage from "./components/AuthPage";
 import Sidebar, { MobileNav } from "./components/Sidebar";
 import Topbar from "./components/Topbar";
-import OverviewStrip from "./components/OverviewStrip";
-import StockHero from "./components/StockHero";
-import StockDetails from "./components/StockDetails";
+import BalanceHero from "./components/BalanceHero";
+import InvestmentsList from "./components/InvestmentsList";
+import StockPage from "./components/StockPage";
 import Watchlist from "./components/Watchlist";
 import TopMovers from "./components/TopMovers";
 import PortfolioSummary from "./components/PortfolioSummary";
@@ -20,12 +20,15 @@ import RecurringOrdersPanel from "./components/RecurringOrdersPanel";
 import ToastContainer from "./components/ToastContainer";
 import VerifyEmailBanner from "./components/VerifyEmailBanner";
 import ServiceUnavailable from "./components/ServiceUnavailable";
-import { getMe, isServerUnavailable, logout, verifyEmail } from "./lib/api";
+import Modal from "./components/Modal";
+import AddMoneyModal from "./components/AddMoneyModal";
+import ConvertModal from "./components/ConvertModal";
+import { getMe, getTickers, getWallets, isServerUnavailable, logout, verifyEmail } from "./lib/api";
 import { usePriceSocket } from "./lib/usePriceSocket";
 import { showToast } from "./lib/toast";
 
 const TITLES = {
-  overview: "Overview",
+  home: "Home",
   portfolio: "Portfolio",
   alerts: "Alerts",
   accounts: "Accounts",
@@ -53,18 +56,27 @@ export default function App() {
   const [checking, setChecking] = useState(false);
   const [resetToken, setResetToken] = useState(LINK_PARAMS.reset);
   const [linkNotice, setLinkNotice] = useState(null); // result of opening an email-verification link
-  const [activeTab, setActiveTab] = useState("overview");
-  const [selectedTicker, setSelectedTicker] = useState(null);
+  const [activeTab, setActiveTab] = useState("home");
+  const [stock, setStock] = useState(null); // the stock whose page is open, over the tab
   const [refreshKey, setRefreshKey] = useState(0);
-  const [tradePrefill, setTradePrefill] = useState(null);
+  const [sheet, setSheet] = useState(null); // { kind: "trade" | "exchange" | "addMoney", ... }
 
   const liveUpdate = usePriceSocket(session ? session.email : null);
 
   // There is no router, so keep the page title in step with the tab for screen-reader
   // users and the browser history/tab strip.
   useEffect(() => {
-    document.title = session ? `${TITLES[activeTab]} · Meridian` : "Meridian";
-  }, [session, activeTab]);
+    document.title = session ? `${stock ? stock.symbol : TITLES[activeTab]} · Meridian` : "Meridian";
+  }, [session, activeTab, stock]);
+
+  // A stock's page is a history entry, so the browser's (or the phone's) back gesture closes it.
+  useEffect(() => {
+    function handlePop(e) {
+      setStock(e.state?.meridianStock ?? null);
+    }
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
+  }, []);
 
   // Ask the server whether the session cookie is still valid (the page can't
   // read the cookie itself). If the server is down it cannot tell us, and the
@@ -176,9 +188,43 @@ export default function App() {
     setRefreshKey((k) => k + 1);
   }
 
+  // Rows from different lists carry different fields (a holding has no exchange or asset type),
+  // so look the full ticker up before showing its page.
+  function openStock(item) {
+    const show = (ticker) => {
+      window.history.pushState({ meridianStock: ticker }, "", window.location.pathname);
+      setStock(ticker);
+      window.scrollTo?.(0, 0);
+    };
+    if (item.assetType && item.exchange) return show(item);
+    getTickers()
+      .then((list) => show(list.find((t) => t.symbol === item.symbol) ?? item))
+      .catch(() => show(item));
+  }
+
+  function closeStock() {
+    if (window.history.state?.meridianStock) window.history.back();
+    else setStock(null);
+  }
+
+  function changeTab(tab) {
+    if (stock) closeStock();
+    setActiveTab(tab);
+  }
+
   function handleTrade(symbol, type) {
-    setTradePrefill({ symbol, type, nonce: Date.now() });
-    setActiveTab("portfolio");
+    setSheet({ kind: "trade", prefill: { symbol, type, nonce: Date.now() } });
+  }
+
+  function openExchange() {
+    getWallets()
+      .then((wallets) => setSheet({ kind: "exchange", wallets }))
+      .catch((err) => showToast("error", err.message));
+  }
+
+  function handleSheetOrderPlaced() {
+    setSheet(null);
+    handleOrderPlaced();
   }
 
   if (unavailable && !session) return <ServiceUnavailable onRetry={checkSession} retrying={checking} />;
@@ -215,45 +261,59 @@ export default function App() {
         Skip to main content
       </a>
       <ToastContainer />
-      <Sidebar
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        userEmail={session.email}
-        onLogout={handleLogout}
-        refreshKey={refreshKey}
-      />
+      <Sidebar activeTab={activeTab} onTabChange={changeTab} userEmail={session.email} onLogout={handleLogout} />
 
       <div className="flex-1 min-w-0 pb-24 lg:pb-0">
-        <Topbar title={TITLES[activeTab]} onLogout={handleLogout} />
+        <Topbar
+          title={stock ? stock.name : TITLES[activeTab]}
+          onLogout={handleLogout}
+          onBack={stock ? closeStock : undefined}
+        />
         {session.emailVerified === false && <VerifyEmailBanner email={session.email} />}
 
         <AnimatePresence mode="wait">
           <motion.div
-            key={activeTab}
+            key={stock ? `stock-${stock.symbol}` : activeTab}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
           >
-            {activeTab === "overview" && (
-              <main id="main-content" tabIndex={-1} data-ring-parent className={`${PAGE_PADDING} space-y-6`}>
-                <OverviewStrip refreshKey={refreshKey} />
-                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6">
-                  <div className="space-y-6 min-w-0">
-                    <StockHero ticker={selectedTicker} liveUpdate={liveUpdate} onTrade={handleTrade} />
-                    <StockDetails ticker={selectedTicker} liveUpdate={liveUpdate} refreshKey={refreshKey} />
-                  </div>
-                  <Watchlist
-                    selectedSymbol={selectedTicker?.symbol}
-                    onSelect={setSelectedTicker}
-                    liveUpdate={liveUpdate}
-                  />
-                </div>
-                <TopMovers onSelect={setSelectedTicker} liveUpdate={liveUpdate} />
+            {stock && (
+              <main id="main-content" tabIndex={-1} data-ring-parent className={PAGE_PADDING}>
+                <StockPage
+                  ticker={stock}
+                  liveUpdate={liveUpdate}
+                  refreshKey={refreshKey}
+                  onTrade={handleTrade}
+                  onOrderPlaced={handleOrderPlaced}
+                />
               </main>
             )}
 
-            {activeTab === "portfolio" && (
+            {!stock && activeTab === "home" && (
+              <main id="main-content" tabIndex={-1} data-ring-parent className={`${PAGE_PADDING} grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start`}>
+                <div className="space-y-6 min-w-0">
+                  <BalanceHero
+                    refreshKey={refreshKey}
+                    onBuy={() => handleTrade(undefined, "BUY")}
+                    onSell={() => handleTrade(undefined, "SELL")}
+                    onExchange={openExchange}
+                    onAddMoney={() => setSheet({ kind: "addMoney" })}
+                  />
+                  <InvestmentsList
+                    refreshKey={refreshKey}
+                    liveUpdate={liveUpdate}
+                    onSelect={openStock}
+                    onStart={() => handleTrade(undefined, "BUY")}
+                  />
+                  <TopMovers onSelect={openStock} liveUpdate={liveUpdate} />
+                </div>
+                <Watchlist onSelect={openStock} liveUpdate={liveUpdate} />
+              </main>
+            )}
+
+            {!stock && activeTab === "portfolio" && (
               <main id="main-content" tabIndex={-1} data-ring-parent className={`${PAGE_PADDING} grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6`}>
                 <div className="space-y-6 min-w-0">
                   <PortfolioSummary refreshKey={refreshKey}>
@@ -262,21 +322,31 @@ export default function App() {
                   <OrderHistory refreshKey={refreshKey} />
                 </div>
                 <div className="space-y-6 min-w-0">
-                  <TradePanel onOrderPlaced={handleOrderPlaced} prefill={tradePrefill} refreshKey={refreshKey} />
+                  <TradePanel onOrderPlaced={handleOrderPlaced} refreshKey={refreshKey} />
                   <PortfolioAllocation refreshKey={refreshKey} />
                   <RecurringOrdersPanel refreshKey={refreshKey} />
                 </div>
               </main>
             )}
 
-            {activeTab === "alerts" && <AlertsPanel />}
-            {activeTab === "accounts" && <AccountsPanel />}
-            {activeTab === "activity" && <ActivityFeed refreshKey={refreshKey} />}
+            {!stock && activeTab === "alerts" && <AlertsPanel />}
+            {!stock && activeTab === "accounts" && <AccountsPanel />}
+            {!stock && activeTab === "activity" && <ActivityFeed refreshKey={refreshKey} />}
           </motion.div>
         </AnimatePresence>
       </div>
 
-      <MobileNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <MobileNav activeTab={activeTab} onTabChange={changeTab} />
+
+      {sheet?.kind === "trade" && (
+        <Modal title="Trade" onClose={() => setSheet(null)}>
+          <TradePanel bare prefill={sheet.prefill} refreshKey={refreshKey} onOrderPlaced={handleSheetOrderPlaced} />
+        </Modal>
+      )}
+      {sheet?.kind === "exchange" && (
+        <ConvertModal wallets={sheet.wallets} onClose={() => setSheet(null)} onConverted={handleOrderPlaced} />
+      )}
+      {sheet?.kind === "addMoney" && <AddMoneyModal onClose={() => setSheet(null)} onAdded={handleOrderPlaced} />}
     </div>
   );
 }

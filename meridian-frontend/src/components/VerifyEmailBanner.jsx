@@ -24,7 +24,7 @@ export default function VerifyEmailBanner({ email }) {
   return (
     <div
       role="status"
-      className="mx-4 sm:mx-6 lg:mx-8 mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[14px] border border-line bg-accent-dim px-4 py-3 text-sm max-w-[1240px]"
+      className="mx-4 sm:mx-6 lg:mx-8 mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-accent-dim px-4 py-3 text-sm max-w-[1240px]"
     >
       <Icon name="mail" size={16} className="text-accent shrink-0" />
       <span className="text-bone">

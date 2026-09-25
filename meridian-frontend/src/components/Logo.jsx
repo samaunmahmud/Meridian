@@ -19,15 +19,14 @@ export function LogoMark({ size = 28, className = "" }) {
   );
 }
 
-// Mark + wordmark. The wordmark is set in Fraunces (a serif), which is what
-// gives Meridian its own identity next to the sans-serif interface.
+// Mark + wordmark, set in the bold display cut of the interface font.
 export default function Logo({ size = 24 }) {
   return (
     <div className="flex items-center text-bone select-none" style={{ gap: size * 0.36 }}>
       <LogoMark size={Math.round(size * 1.05)} className="text-accent" />
       <span
-        className="font-display font-semibold leading-none"
-        style={{ fontSize: size, letterSpacing: "-0.02em" }}
+        className="font-display font-extrabold leading-none"
+        style={{ fontSize: size, letterSpacing: "-0.035em" }}
       >
         Meridian
       </span>

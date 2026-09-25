@@ -11,9 +11,9 @@ const REFRESH_DEBOUNCE_MS = 2000;
 function MoverList({ title, rows, positive, onSelect, empty }) {
   return (
     <div className="min-w-0">
-      <h3 className="text-[13px] font-medium text-muted mb-1 px-1.5">{title}</h3>
+      <h3 className="text-[13px] font-semibold text-muted mb-1 px-2">{title}</h3>
       {rows.length === 0 ? (
-        <p className="text-xs text-dim px-1.5 py-3">{empty}</p>
+        <p className="text-sm text-muted px-2 py-3">{empty}</p>
       ) : (
         <ul>
           {rows.map((m) => (
@@ -21,16 +21,16 @@ function MoverList({ title, rows, positive, onSelect, empty }) {
               <button
                 type="button"
                 onClick={() => onSelect(m)}
-                className="w-full flex items-center gap-3 h-[52px] px-1.5 rounded-[14px] text-left hover:bg-panel-2/60 transition-colors"
+                className="w-full flex items-center gap-3 h-16 px-2 rounded-2xl text-left hover:bg-panel-2 transition-colors"
               >
-                <TickerAvatar symbol={m.symbol} size={32} />
+                <TickerAvatar symbol={m.symbol} size={40} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold truncate">{m.symbol}</div>
-                  <div className="text-xs text-muted truncate">{m.name}</div>
+                  <div className="text-[15px] font-semibold truncate">{m.symbol}</div>
+                  <div className="text-[13px] text-muted truncate">{m.name}</div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-[13px] font-mono font-medium">${formatNumber(m.price)}</div>
-                  <div className={`text-xs font-mono ${positive ? "text-gain" : "text-loss"}`}>
+                  <div className="text-[15px] font-mono font-semibold">${formatNumber(m.price)}</div>
+                  <div className={`text-[13px] font-mono font-medium ${positive ? "text-gain" : "text-loss"}`}>
                     {positive ? "+" : ""}
                     {Number(m.changePercent).toFixed(2)}%
                   </div>
@@ -72,9 +72,9 @@ export default function TopMovers({ onSelect, liveUpdate }) {
   }, [liveUpdate]);
 
   return (
-    <section aria-labelledby="top-movers-heading" className="bg-panel border border-line rounded-[20px] p-4 sm:p-5 fade-in">
-      <div className="flex items-baseline justify-between gap-3 mb-3 px-1.5">
-        <h2 id="top-movers-heading" className="text-base font-semibold">
+    <section aria-labelledby="top-movers-heading" className="bg-panel rounded-[28px] p-4 sm:p-5 fade-in">
+      <div className="flex items-baseline justify-between gap-3 mb-3 px-2">
+        <h2 id="top-movers-heading" className="text-lg font-bold">
           Top movers
         </h2>
         <span className="text-xs text-muted">Stocks since the last close · crypto 24h</span>
