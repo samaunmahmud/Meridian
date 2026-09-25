@@ -25,6 +25,9 @@ class MySqlMigrationTest {
     private static final String OLD_ORDER_STATUS = "alter table orders modify column status "
             + "enum('CANCELLED','FILLED','PENDING') not null";
 
+    private static final String[] ORDER_COLUMNS_ADDED_LATER =
+            {"reserved_amount", "rejection_reason", "settlement_currency", "settlement_amount"};
+
     @BeforeAll
     static void onlyAgainstAThrowawayDatabase() {
         MySqlTestDatabase.assertSafeToWipe();
@@ -89,6 +92,9 @@ class MySqlMigrationTest {
         JdbcTemplate jdbc = MySqlTestDatabase.jdbc();
         jdbc.execute("drop table flyway_schema_history");
         jdbc.execute(OLD_ORDER_STATUS);
+        // ...and from before the orders table had these columns (a real database made by an old
+        // version of the app looked like this, and would not start).
+        for (String column : ORDER_COLUMNS_ADDED_LATER) jdbc.execute("alter table orders drop column " + column);
         jdbc.update("insert into users (email, password_hash, created_at) values ('old@example.com', 'x', now(6))");
         jdbc.update("insert into portfolio (user_id, cash_balance, reserved_cash) select id, 100, 0 from users");
         jdbc.update("insert into wallets (portfolio_id, currency, balance) select id, 'EUR', 50 from portfolio");
@@ -102,6 +108,10 @@ class MySqlMigrationTest {
             assertTrue(live.queryForObject("select column_type from information_schema.columns "
                     + "where table_schema = database() and table_name = 'orders' and column_name = 'status'",
                     String.class).contains("'REJECTED'"));
+            for (String column : ORDER_COLUMNS_ADDED_LATER) {
+                assertEquals(1, live.queryForObject("select count(*) from information_schema.columns where table_schema = "
+                        + "database() and table_name = 'orders' and column_name = ?", Integer.class, column), column);
+            }
             assertEquals(1, live.queryForObject("select count(*) from users where email = 'old@example.com'", Integer.class));
             // accounts that existed before email verification start unverified, with no session cutoff
             assertEquals(0, live.queryForObject("select count(*) from users where email_verified <> 0 or password_changed_at is not null", Integer.class));
