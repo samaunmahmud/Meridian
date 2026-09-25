@@ -139,4 +139,22 @@ class MoversServiceTest {
         assertThat(movers.gainers()).isEmpty();
         assertThat(movers.losers()).isEmpty();
     }
+
+    @Test
+    void changesListsEveryTickerWithAReferenceIncludingOnesThatDidNotMove() {
+        Ticker up = ticker("UP", AssetType.CRYPTO);
+        price(up, "100", MON_11AM.minusSeconds(25 * 3600));
+        price(up, "104", MON_11AM);
+        Ticker flat = ticker("FLAT", AssetType.CRYPTO);
+        price(flat, "50", MON_11AM.minusSeconds(25 * 3600));
+        price(flat, "50", MON_11AM);
+        Ticker fresh = ticker("NEW", AssetType.CRYPTO);
+        price(fresh, "10", MON_11AM);
+
+        List<MoverResponse> changes = service(true).changes();
+
+        assertThat(changes).extracting(MoverResponse::symbol).containsExactlyInAnyOrder("UP", "FLAT");
+        assertThat(changes).filteredOn(m -> m.symbol().equals("FLAT")).singleElement()
+                .satisfies(m -> assertThat(m.changePercent()).isEqualByComparingTo("0.00"));
+    }
 }

@@ -1,5 +1,6 @@
 package com.meridian.backend.controller;
 
+import com.meridian.backend.dto.MoverResponse;
 import com.meridian.backend.dto.MoversResponse;
 import com.meridian.backend.market.MarketCalendar;
 import com.meridian.backend.market.MarketStatus;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 
 // Whether stocks and crypto can be traded right now (see MarketCalendar), and what moved most today.
@@ -33,5 +35,11 @@ public class MarketController {
     @GetMapping("/movers")
     public MoversResponse movers(@RequestParam(defaultValue = "5") int limit) {
         return moversService.movers(limit);
+    }
+
+    // Today's change for every ticker (same measure as the movers), for the watchlist.
+    @GetMapping("/changes")
+    public List<MoverResponse> changes() {
+        return moversService.changes();
     }
 }

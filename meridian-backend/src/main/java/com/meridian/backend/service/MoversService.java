@@ -46,10 +46,7 @@ public class MoversService {
     @Transactional(readOnly = true)
     public MoversResponse movers(int limit) {
         int n = Math.max(1, Math.min(limit, MAX_LIMIT));
-        List<MoverResponse> moves = new ArrayList<>();
-        for (Ticker ticker : tickerRepository.findAll()) {
-            move(ticker).ifPresent(moves::add);
-        }
+        List<MoverResponse> moves = changes();
         List<MoverResponse> gainers = moves.stream()
                 .filter(m -> m.change().signum() > 0)
                 .sorted(Comparator.comparing(MoverResponse::changePercent).reversed())
@@ -59,6 +56,16 @@ public class MoversService {
                 .sorted(Comparator.comparing(MoverResponse::changePercent))
                 .limit(n).toList();
         return new MoversResponse(gainers, losers);
+    }
+
+    /** Every tracked ticker's move today, unsorted, including those that did not move (the watchlist shows them all). */
+    @Transactional(readOnly = true)
+    public List<MoverResponse> changes() {
+        List<MoverResponse> moves = new ArrayList<>();
+        for (Ticker ticker : tickerRepository.findAll()) {
+            move(ticker).ifPresent(moves::add);
+        }
+        return moves;
     }
 
     private Optional<MoverResponse> move(Ticker ticker) {

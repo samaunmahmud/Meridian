@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { getTickers, getPrices } from "../lib/api";
+import { useEffect, useRef, useState } from "react";
+import { getChanges, getTickers, getPrices } from "../lib/api";
 import Sparkline from "./Sparkline";
 import TickerAvatar from "./TickerAvatar";
 import Skeleton from "./Skeleton";
@@ -7,26 +7,40 @@ import Icon from "./Icon";
 import AddTickerModal from "./AddTickerModal";
 import { formatNumber } from "../lib/formatMoney";
 
+// The % under each price is today's change: a stock since the previous close, crypto over 24 hours (the
+// server's measure, as in Top movers). A live price is compared with that same reference; the references
+// themselves are re-read shortly after updates, so they roll over when a new session starts.
+const CHANGES_REFRESH_MS = 2000;
+
+function dayChange(price, reference) {
+  if (price == null || !reference) return null;
+  return ((price - reference) / reference) * 100;
+}
+
 export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [references, setReferences] = useState({}); // symbol -> price today's change is measured from
+  const refreshTimer = useRef(null);
+
+  function loadChanges() {
+    return getChanges()
+      .then((changes) => setReferences(Object.fromEntries(changes.map((c) => [c.symbol, c.referencePrice]))))
+      .catch(() => {}); // no % shown rather than a wrong one
+  }
 
   async function load() {
     setLoading(true);
-    const tickers = await getTickers();
+    const [tickers] = await Promise.all([getTickers(), loadChanges()]);
     const withPrices = await Promise.all(
       tickers.map(async (t) => {
         const history = await getPrices(t.symbol);
         const chronological = [...history].reverse();
-        const latest = history[0];
-        const previous = history[1];
-        const delta = latest && previous ? latest.price - previous.price : 0;
         return {
           ...t,
-          latest,
-          delta,
+          latest: history[0],
           sparkline: chronological.map((p) => p.price),
         };
       })
@@ -40,6 +54,7 @@ export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
 
   useEffect(() => {
     load();
+    return () => clearTimeout(refreshTimer.current);
   }, []);
 
   useEffect(() => {
@@ -47,15 +62,15 @@ export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
     setRows((prev) =>
       prev.map((row) => {
         if (row.symbol !== liveUpdate.symbol) return row;
-        const previousPrice = row.latest?.price ?? liveUpdate.price;
         return {
           ...row,
           latest: { price: liveUpdate.price, recordedAt: liveUpdate.recordedAt },
-          delta: liveUpdate.price - previousPrice,
           sparkline: [...row.sparkline, liveUpdate.price],
         };
       })
     );
+    clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(loadChanges, CHANGES_REFRESH_MS);
   }, [liveUpdate]);
 
   const filtered = rows.filter(
@@ -100,10 +115,9 @@ export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
             )}
 
             {filtered.map((row, i) => {
-              const isUp = row.delta >= 0;
+              const pct = dayChange(row.latest?.price, references[row.symbol]);
+              const isUp = (pct ?? 0) >= 0;
               const isSelected = row.symbol === selectedSymbol;
-              const previous = row.latest ? row.latest.price - row.delta : 0;
-              const pct = previous ? (row.delta / previous) * 100 : 0;
               return (
                 <button
                   key={row.symbol}
@@ -126,8 +140,9 @@ export default function Watchlist({ selectedSymbol, onSelect, liveUpdate }) {
                     <div className="text-[13px] font-mono font-medium">
                       {row.latest ? `$${formatNumber(row.latest.price)}` : "\u2014"}
                     </div>
-                    <div className={`text-xs font-mono ${isUp ? "text-gain" : "text-loss"}`}>
-                      {row.latest ? `${isUp ? "+" : ""}${pct.toFixed(2)}%` : ""}
+                    <div className={`text-xs font-mono ${pct == null ? "text-dim" : isUp ? "text-gain" : "text-loss"}`}>
+                      {pct == null ? "" : `${isUp ? "+" : ""}${pct.toFixed(2)}%`}
+                      {pct != null && <span className="sr-only"> today</span>}
                     </div>
                   </div>
                 </button>

@@ -104,6 +104,11 @@ export function getMovers(limit = 5) {
   return apiFetch(`/market/movers?limit=${limit}`);
 }
 
+/** Today's move for every ticker that has one (same rows and measure as getMovers), in no order. */
+export function getChanges() {
+  return apiFetch("/market/changes");
+}
+
 export function getTickers() {
   return apiFetch("/tickers");
 }
