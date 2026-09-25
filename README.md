@@ -1,9 +1,41 @@
+<div align="center">
+
 # Meridian
 
-A paper-trading app: practise buying and selling stocks and crypto with virtual money, in USD, EUR or GBP, without risking any real cash.
+**Practise trading stocks and crypto with virtual money, in USD, EUR or GBP, without risking any real cash.**
+
+![Java 21](https://img.shields.io/badge/Java_21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot_3.3-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)
+![React 19](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![MySQL](https://img.shields.io/badge/MySQL_8.4-00758F?style=for-the-badge&logo=mysql&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_4-0F172A?style=for-the-badge&logo=tailwindcss&logoColor=38BDF8)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+[![CI](https://github.com/samaunmahmud/Meridian/actions/workflows/ci.yml/badge.svg)](https://github.com/samaunmahmud/Meridian/actions/workflows/ci.yml)
+
+![Meridian on desktop and phone](docs/screenshots/hero.png)
+
+</div>
+
+## Screenshots
+
+| Home | A stock's page |
+| :---: | :---: |
+| ![Home, dark theme](docs/screenshots/home-dark.png) | ![Stock page with chart and trade form](docs/screenshots/stock-dark.png) |
+| **Home, light theme** | **Portfolio** |
+| ![Home, light theme](docs/screenshots/home-light.png) | ![Portfolio with holdings, orders and allocation](docs/screenshots/portfolio-light.png) |
+
+<p align="center">
+  <img src="docs/screenshots/phone-home-dark.png" width="240" alt="Home on a phone, dark theme" />
+  &nbsp;
+  <img src="docs/screenshots/phone-stock-light.png" width="240" alt="A stock's page on a phone" />
+  &nbsp;
+  <img src="docs/screenshots/phone-buy-light.png" width="240" alt="Buying from the trade sheet on a phone" />
+</p>
+
+## Built with
 
 - **Backend:** Spring Boot 3.3, Java 21, MySQL 8.4, Flyway migrations, JWT session in an HttpOnly cookie, WebSocket for live prices.
-- **Frontend:** React 19, Vite, Tailwind 4 (dark and light themes, works on phones).
+- **Frontend:** React 19, Vite, Tailwind 4: a banking-app style interface with dark and light themes, built for phones and desktops.
 - **Deployment:** one `docker-compose.yml` (MySQL + backend + nginx).
 
 ## Features
