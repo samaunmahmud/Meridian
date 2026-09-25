@@ -5,6 +5,7 @@ import Sidebar, { MobileNav } from "./components/Sidebar";
 import Topbar from "./components/Topbar";
 import OverviewStrip from "./components/OverviewStrip";
 import StockHero from "./components/StockHero";
+import StockDetails from "./components/StockDetails";
 import Watchlist from "./components/Watchlist";
 import TopMovers from "./components/TopMovers";
 import PortfolioSummary from "./components/PortfolioSummary";
@@ -238,7 +239,10 @@ export default function App() {
               <main id="main-content" tabIndex={-1} data-ring-parent className={`${PAGE_PADDING} space-y-6`}>
                 <OverviewStrip refreshKey={refreshKey} />
                 <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6">
-                  <StockHero ticker={selectedTicker} liveUpdate={liveUpdate} onTrade={handleTrade} />
+                  <div className="space-y-6 min-w-0">
+                    <StockHero ticker={selectedTicker} liveUpdate={liveUpdate} onTrade={handleTrade} />
+                    <StockDetails ticker={selectedTicker} liveUpdate={liveUpdate} refreshKey={refreshKey} />
+                  </div>
                   <Watchlist
                     selectedSymbol={selectedTicker?.symbol}
                     onSelect={setSelectedTicker}
