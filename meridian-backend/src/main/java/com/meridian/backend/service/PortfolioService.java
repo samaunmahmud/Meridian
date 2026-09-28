@@ -359,6 +359,24 @@ public class PortfolioService {
         };
     }
 
+    private static final int MAX_NOTE_LENGTH = 500;
+
+    /** Sets or (with a blank note) clears the note on one of the user's orders, in any status. */
+    @Transactional
+    public OrderResponse setNote(Long orderId, String note, User user) {
+        Portfolio portfolio = getOrCreatePortfolio(user);
+        Order order = orderRepository.findByIdAndPortfolioId(orderId, portfolio.getId())
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+        String trimmed = note == null ? "" : note.strip();
+        if (trimmed.length() > MAX_NOTE_LENGTH) {
+            throw new InvalidRequestException("A note can be at most " + MAX_NOTE_LENGTH + " characters");
+        }
+        order.setNote(trimmed.isEmpty() ? null : trimmed);
+        Map<Long, BigDecimal> realized = PnlReplay.realizedByOrder(
+                orderRepository.findByPortfolioIdOrderByCreatedAtDesc(portfolio.getId()));
+        return toResponse(orderRepository.save(order), realized.get(order.getId()));
+    }
+
     private void releaseReservation(Order order) {
         Portfolio portfolio = order.getPortfolio();
         if (order.getType() == OrderType.BUY) {
@@ -767,7 +785,7 @@ public class PortfolioService {
                 order.getId(), order.getTicker().getSymbol(), order.getType(), order.getKind(), order.getStatus(),
                 order.getQuantity(), order.getLimitPrice(), order.getStopPrice(), order.getPrice(), order.getFeeAmount(),
                 order.getCreatedAt(), order.getExecutedAt(), realizedPnL, order.getRejectionReason(),
-                order.getSettlementCurrency(), order.getSettlementAmount(), order.getTrailPercent()
+                order.getSettlementCurrency(), order.getSettlementAmount(), order.getTrailPercent(), order.getNote()
         );
     }
 

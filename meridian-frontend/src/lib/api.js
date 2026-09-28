@@ -181,6 +181,11 @@ export function replaceOrder(id, terms) {
   return apiFetch(`/orders/${id}`, { method: "PUT", body: JSON.stringify(terms) });
 }
 
+/** Sets the user's note on an order; an empty note removes it. Returns the order. */
+export function setOrderNote(id, note) {
+  return apiFetch(`/orders/${id}/note`, { method: "PUT", body: JSON.stringify({ note }) });
+}
+
 export function cancelOrder(id) {
   return apiFetch(`/orders/${id}`, { method: "DELETE" });
 }

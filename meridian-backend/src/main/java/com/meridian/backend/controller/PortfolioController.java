@@ -2,6 +2,7 @@ package com.meridian.backend.controller;
 
 import com.meridian.backend.dto.DepositRequest;
 import com.meridian.backend.dto.OrderRequest;
+import com.meridian.backend.dto.OrderNoteRequest;
 import com.meridian.backend.dto.OrderResponse;
 import com.meridian.backend.dto.PerformanceResponse;
 import com.meridian.backend.dto.PortfolioResponse;
@@ -80,6 +81,12 @@ public class PortfolioController {
     public OrderResponse replaceOrder(@PathVariable Long id, @RequestBody ReplaceOrderRequest request,
                                       @AuthenticationPrincipal User user) {
         return portfolioService.replaceOrder(id, request, user);
+    }
+
+    @PutMapping("/orders/{id}/note")
+    public OrderResponse setNote(@PathVariable Long id, @RequestBody OrderNoteRequest request,
+                                 @AuthenticationPrincipal User user) {
+        return portfolioService.setNote(id, request.note(), user);
     }
 
     @DeleteMapping("/orders/{id}")

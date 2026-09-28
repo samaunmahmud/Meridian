@@ -3,6 +3,7 @@ import { getOrders, cancelOrder } from "../lib/api";
 import { showToast } from "../lib/toast";
 import Skeleton from "./Skeleton";
 import EditOrderModal from "./EditOrderModal";
+import OrderNoteModal from "./OrderNoteModal";
 
 const STATUS_STYLES = {
   FILLED: "text-muted bg-panel-2",
@@ -14,6 +15,7 @@ const STATUS_STYLES = {
 export default function OrderHistory({ refreshKey, onChanged }) {
   const [orders, setOrders] = useState([]);
   const [editing, setEditing] = useState(null);
+  const [noting, setNoting] = useState(null);
   const [loading, setLoading] = useState(true);
 
   function load() {
@@ -82,7 +84,14 @@ export default function OrderHistory({ refreshKey, onChanged }) {
                     {o.type}
                   </span>
                 </td>
-                <td className="py-3 font-sans">{o.symbol}</td>
+                <td className="py-3 font-sans">
+                  {o.symbol}
+                  {o.note && (
+                    <div className="text-xs text-muted max-w-[180px] truncate whitespace-nowrap" title={o.note}>
+                      {o.note}
+                    </div>
+                  )}
+                </td>
                 <td className="py-3">
                   <span
                     title={o.rejectionReason ?? undefined}
@@ -105,6 +114,13 @@ export default function OrderHistory({ refreshKey, onChanged }) {
                   {new Date(o.executedAt ?? o.createdAt).toLocaleString([], { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
                 </td>
                 <td className="py-3 text-right">
+                  <button
+                    onClick={() => setNoting(o)}
+                    aria-label={`${o.note ? "Edit note on" : "Add a note to"} ${o.type.toLowerCase()} order: ${o.symbol}`}
+                    className="font-sans text-xs text-dim hover:text-bone transition-colors px-2 py-1"
+                  >
+                    {o.note ? "Note" : "+ Note"}
+                  </button>
                   {o.status === "PENDING" && o.kind !== "MARKET" && (
                     <button
                       onClick={() => setEditing(o)}
@@ -129,6 +145,16 @@ export default function OrderHistory({ refreshKey, onChanged }) {
           </tbody>
         </table>
         </div>
+      )}
+      {noting && (
+        <OrderNoteModal
+          order={noting}
+          onClose={() => setNoting(null)}
+          onSaved={(updated) => {
+            setNoting(null);
+            setOrders((list) => list.map((o) => (o.id === updated.id ? updated : o)));
+          }}
+        />
       )}
       {editing && (
         <EditOrderModal

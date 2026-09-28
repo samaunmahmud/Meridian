@@ -76,6 +76,10 @@ public class Order {
     @Column(name = "settlement_amount", precision = 14, scale = 4)
     private BigDecimal settlementAmount;
 
+    // The user's own note on the order, e.g. why they placed it.
+    @Column(length = 500)
+    private String note;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -213,6 +217,14 @@ public class Order {
 
     public void setRejectionReason(String rejectionReason) {
         this.rejectionReason = rejectionReason;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 
     public Instant getCreatedAt() {

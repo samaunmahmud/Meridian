@@ -23,6 +23,7 @@ const ORDER_COLUMNS = [
   ["Settlement currency", (o) => o.settlementCurrency ?? (o.status === "FILLED" ? "USD" : null)],
   ["Settlement amount", (o) => o.settlementAmount],
   ["Rejection reason", (o) => o.rejectionReason],
+  ["Note", (o) => o.note],
 ];
 
 const TRANSACTION_COLUMNS = [
