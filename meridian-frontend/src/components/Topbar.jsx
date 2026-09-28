@@ -5,7 +5,10 @@ import ThemeToggle from "./ThemeToggle";
 // The page header. A tab shows its title in large bold type; a stock's page shows a round
 // back button instead of the logo on phones and next to the title on wide screens.
 // Phones have no sidebar, so the logo and a way to Settings (which has log-out) live here too.
-export default function Topbar({ title, onSettings, settingsActive, onBack }) {
+// Mac keyboards show ⌘ for the search shortcut, everything else Ctrl.
+const SHORTCUT = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform ?? "") ? "⌘K" : "Ctrl K";
+
+export default function Topbar({ title, onSettings, settingsActive, onSearch, onBack }) {
   return (
     <header className="px-4 sm:px-6 lg:px-8 pt-4 pb-3 lg:pt-7 lg:pb-5 flex flex-wrap lg:flex-nowrap items-center justify-between gap-y-4">
       <div className="lg:hidden order-1">
@@ -17,6 +20,17 @@ export default function Topbar({ title, onSettings, settingsActive, onBack }) {
       </div>
 
       <div className="order-2 lg:order-3 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onSearch}
+          aria-label="Search"
+          aria-keyshortcuts="Meta+K Control+K /"
+          className="h-10 w-10 sm:w-auto sm:pl-3.5 sm:pr-2 rounded-full bg-panel text-muted flex items-center justify-center gap-2 hover:text-bone transition-colors"
+        >
+          <Icon name="search" size={17} />
+          <span className="hidden sm:inline text-sm">Search</span>
+          <kbd className="hidden sm:inline font-sans text-[11px] px-1.5 py-0.5 rounded-md bg-panel-2 text-dim">{SHORTCUT}</kbd>
+        </button>
         <ThemeToggle />
         <button
           type="button"

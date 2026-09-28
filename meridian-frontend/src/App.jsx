@@ -25,9 +25,12 @@ import ServiceUnavailable from "./components/ServiceUnavailable";
 import Modal from "./components/Modal";
 import AddMoneyModal from "./components/AddMoneyModal";
 import ConvertModal from "./components/ConvertModal";
+import CommandPalette from "./components/CommandPalette";
+import { NAV_ITEMS } from "./components/Sidebar";
 import { getMe, getTickers, getWallets, isServerUnavailable, logout, verifyEmail } from "./lib/api";
 import { usePriceSocket } from "./lib/usePriceSocket";
 import { showToast } from "./lib/toast";
+import { setTheme } from "./lib/useTheme";
 
 const TITLES = {
   home: "Home",
@@ -63,6 +66,7 @@ export default function App() {
   const [stock, setStock] = useState(null); // the stock whose page is open, over the tab
   const [refreshKey, setRefreshKey] = useState(0);
   const [sheet, setSheet] = useState(null); // { kind: "trade" | "exchange" | "addMoney", ... }
+  const [searching, setSearching] = useState(false);
 
   const liveUpdate = usePriceSocket(session ? session.email : null);
 
@@ -80,6 +84,23 @@ export default function App() {
     window.addEventListener("popstate", handlePop);
     return () => window.removeEventListener("popstate", handlePop);
   }, []);
+
+  // ⌘K / Ctrl+K opens search from anywhere; "/" does too, unless you are typing in a field.
+  useEffect(() => {
+    if (!session) return undefined;
+    function handleKey(e) {
+      const typing = e.target.closest?.("input, textarea, select, [contenteditable=true]");
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearching((open) => !open);
+      } else if (e.key === "/" && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setSearching(true);
+      }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [session]);
 
   // Ask the server whether the session cookie is still valid (the page can't
   // read the cookie itself). If the server is down it cannot tell us, and the
@@ -236,6 +257,23 @@ export default function App() {
     handleOrderPlaced();
   }
 
+  const commands = [
+    ...NAV_ITEMS.map((item) => ({
+      id: `tab-${item.key}`,
+      group: "Go to",
+      label: item.label,
+      icon: item.icon,
+      run: () => changeTab(item.key),
+    })),
+    { id: "buy", group: "Actions", label: "Buy", icon: "up", keywords: ["trade", "order"], run: () => handleTrade(undefined, "BUY") },
+    { id: "sell", group: "Actions", label: "Sell", icon: "down", keywords: ["trade", "order"], run: () => handleTrade(undefined, "SELL") },
+    { id: "add", group: "Actions", label: "Add money", icon: "plus", keywords: ["deposit", "top up"], run: () => setSheet({ kind: "addMoney" }) },
+    { id: "exchange", group: "Actions", label: "Exchange currencies", icon: "swap", keywords: ["convert", "fx", "eur", "gbp"], run: openExchange },
+    { id: "light", group: "Actions", label: "Light theme", icon: "sun", keywords: ["appearance", "mode"], run: () => setTheme("light") },
+    { id: "dark", group: "Actions", label: "Dark theme", icon: "moon", keywords: ["appearance", "mode"], run: () => setTheme("dark") },
+    { id: "logout", group: "Actions", label: "Log out", icon: "logout", keywords: ["sign out"], run: handleLogout },
+  ];
+
   if (unavailable && !session) return <ServiceUnavailable onRetry={checkSession} retrying={checking} />;
   if (session === undefined) return null;
   // Opening a reset link always shows the "choose a new password" form, even
@@ -276,6 +314,7 @@ export default function App() {
         <Topbar
           title={stock ? stock.name : TITLES[activeTab]}
           onSettings={() => changeTab("settings")}
+          onSearch={() => setSearching(true)}
           settingsActive={!stock && activeTab === "settings"}
           onBack={stock ? closeStock : undefined}
         />
@@ -360,6 +399,7 @@ export default function App() {
       {sheet?.kind === "exchange" && (
         <ConvertModal wallets={sheet.wallets} onClose={() => setSheet(null)} onConverted={handleOrderPlaced} />
       )}
+      {searching && <CommandPalette commands={commands} onOpenStock={openStock} onClose={() => setSearching(false)} />}
       {sheet?.kind === "addMoney" && <AddMoneyModal onClose={() => setSheet(null)} onAdded={handleOrderPlaced} />}
     </div>
   );
