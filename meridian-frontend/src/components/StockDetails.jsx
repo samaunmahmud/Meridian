@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { getAlerts, getChanges, getOrders, getPortfolio } from "../lib/api";
 import { formatNumber } from "../lib/formatMoney";
 
-const KIND_LABELS = { MARKET: "Market", LIMIT: "Limit", STOP_LOSS: "Stop" };
+const KIND_LABELS = { MARKET: "Market", LIMIT: "Limit", STOP_LOSS: "Stop", TRAILING_STOP: "Trailing stop" };
 
 function formatQuantity(q) {
   return Number(q).toLocaleString("en-US", { maximumFractionDigits: 8 });
@@ -26,6 +26,7 @@ function orderText(o) {
   const at =
     o.kind === "LIMIT" ? ` at $${formatNumber(o.limitPrice)}`
     : o.kind === "STOP_LOSS" ? ` if it falls to $${formatNumber(o.stopPrice)}`
+    : o.kind === "TRAILING_STOP" ? ` ${Number(o.trailPercent)}% · now $${formatNumber(o.stopPrice)}`
     : " at the open";
   return `${side} ${formatQuantity(o.quantity)} · ${KIND_LABELS[o.kind] ?? o.kind}${at}`;
 }

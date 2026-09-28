@@ -15,11 +15,18 @@ public record OrderRequest(
         BigDecimal stopPrice,
         // Wallet to pay from (buy) or be paid into (sell). Null = USD.
         // A limit buy reserves the money in this wallet until it fills or is cancelled.
-        SupportedCurrency settlementCurrency
+        SupportedCurrency settlementCurrency,
+        // TRAILING_STOP only: the stop follows the highest price this many percent below it.
+        BigDecimal trailPercent
 ) {
     // Convenience for the common USD case.
     public OrderRequest(String symbol, OrderType type, OrderKind kind, BigDecimal quantity,
                         BigDecimal limitPrice, BigDecimal stopPrice) {
-        this(symbol, type, kind, quantity, limitPrice, stopPrice, null);
+        this(symbol, type, kind, quantity, limitPrice, stopPrice, null, null);
+    }
+
+    public OrderRequest(String symbol, OrderType type, OrderKind kind, BigDecimal quantity,
+                        BigDecimal limitPrice, BigDecimal stopPrice, SupportedCurrency settlementCurrency) {
+        this(symbol, type, kind, quantity, limitPrice, stopPrice, settlementCurrency, null);
     }
 }

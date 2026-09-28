@@ -49,6 +49,8 @@ public class PortfolioService {
     private static final BigDecimal STARTING_CASH = new BigDecimal("10000.00");
     // Extra cash held for a market buy queued while the market is closed (the price can gap at the open).
     private static final BigDecimal QUEUED_BUY_CUSHION = new BigDecimal("0.10");
+    private static final BigDecimal MIN_TRAIL_PERCENT = new BigDecimal("0.5");
+    private static final BigDecimal MAX_TRAIL_PERCENT = new BigDecimal("50");
 
     private final PortfolioRepository portfolioRepository;
     private final HoldingRepository holdingRepository;
@@ -163,9 +165,10 @@ public class PortfolioService {
             // While a stock market is closed a market order is queued and fills at the open.
             case MARKET -> marketCalendar.isOpen(ticker.getAssetType())
                     ? placeMarketOrder(portfolio, ticker, request.type(), quantity, settlement)
-                    : placePendingOrder(portfolio, ticker, request.type(), OrderKind.MARKET, quantity, null, null, settlement);
-            case LIMIT -> placePendingOrder(portfolio, ticker, request.type(), OrderKind.LIMIT, quantity, request.limitPrice(), null, settlement);
-            case STOP_LOSS -> placePendingOrder(portfolio, ticker, request.type(), OrderKind.STOP_LOSS, quantity, null, request.stopPrice(), settlement);
+                    : placePendingOrder(portfolio, ticker, request.type(), OrderKind.MARKET, quantity, null, null, null, settlement);
+            case LIMIT -> placePendingOrder(portfolio, ticker, request.type(), OrderKind.LIMIT, quantity, request.limitPrice(), null, null, settlement);
+            case STOP_LOSS -> placePendingOrder(portfolio, ticker, request.type(), OrderKind.STOP_LOSS, quantity, null, request.stopPrice(), null, settlement);
+            case TRAILING_STOP -> placeTrailingStop(portfolio, ticker, request.type(), quantity, request.trailPercent(), settlement);
         };
     }
 
@@ -206,7 +209,7 @@ public class PortfolioService {
     // rejected (see checkPendingOrders) rather than overdrawing the wallet.
     private OrderResponse placePendingOrder(Portfolio portfolio, Ticker ticker, OrderType type, OrderKind kind,
                                              BigDecimal quantity, BigDecimal limitPrice, BigDecimal stopPrice,
-                                             SupportedCurrency settlement) {
+                                             BigDecimal trailPercent, SupportedCurrency settlement) {
         if (kind == OrderKind.LIMIT) {
             if (limitPrice == null || limitPrice.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new InvalidRequestException("A limit order requires a positive limit price");
@@ -269,12 +272,35 @@ public class PortfolioService {
 
         Order order = new Order(portfolio, ticker, type, kind, quantity, limitPrice, stopPrice, Instant.now());
         order.setReservedAmount(reservedAmount); // in the settlement currency
+        order.setTrailPercent(trailPercent);
         if (settlement != SupportedCurrency.USD) {
             order.setSettlementCurrency(settlement);
         }
         order = orderRepository.save(order);
 
         return toResponse(order, null);
+    }
+
+    // A trailing stop starts with its stop trailPercent below the current price;
+    // from then on it works like a stop-loss whose stop is raised on every new
+    // high (see tryFill). It needs a fresh price to start from.
+    private OrderResponse placeTrailingStop(Portfolio portfolio, Ticker ticker, OrderType type, BigDecimal quantity,
+                                            BigDecimal trailPercent, SupportedCurrency settlement) {
+        if (type != OrderType.SELL) {
+            throw new InvalidRequestException("Trailing stop orders are only supported on the sell side");
+        }
+        if (trailPercent == null || trailPercent.compareTo(MIN_TRAIL_PERCENT) < 0 || trailPercent.compareTo(MAX_TRAIL_PERCENT) > 0) {
+            throw new InvalidRequestException("The trail must be between " + MIN_TRAIL_PERCENT.toPlainString()
+                    + "% and " + MAX_TRAIL_PERCENT.toPlainString() + "%");
+        }
+        BigDecimal percent = trailPercent.setScale(3, RoundingMode.HALF_UP);
+        BigDecimal stop = trailingStopFor(getTradablePrice(ticker), percent);
+        return placePendingOrder(portfolio, ticker, type, OrderKind.TRAILING_STOP, quantity, null, stop, percent, settlement);
+    }
+
+    private static BigDecimal trailingStopFor(BigDecimal price, BigDecimal trailPercent) {
+        BigDecimal keep = BigDecimal.ONE.subtract(trailPercent.movePointLeft(2));
+        return price.multiply(keep).setScale(4, RoundingMode.HALF_UP);
     }
 
     @Transactional
@@ -415,16 +441,27 @@ public class PortfolioService {
             case LIMIT -> order.getType() == OrderType.BUY
                     ? currentPrice.compareTo(order.getLimitPrice()) <= 0
                     : currentPrice.compareTo(order.getLimitPrice()) >= 0;
-            case STOP_LOSS -> currentPrice.compareTo(order.getStopPrice()) <= 0;
+            case STOP_LOSS, TRAILING_STOP -> currentPrice.compareTo(order.getStopPrice()) <= 0;
             case MARKET -> true; // queued while the market was closed: fills at the first price after the open
         };
-        if (!shouldFill) return null;
+        if (!shouldFill) {
+            // A new high pulls a trailing stop up behind it; it never moves down.
+            if (order.getKind() == OrderKind.TRAILING_STOP) {
+                BigDecimal raised = trailingStopFor(currentPrice, order.getTrailPercent());
+                if (raised.compareTo(order.getStopPrice()) > 0) {
+                    order.setStopPrice(raised);
+                    orderRepository.save(order);
+                }
+            }
+            return null;
+        }
 
         fillPendingOrder(order, currentPrice);
         String kindWords = switch (order.getKind()) {
             case MARKET -> "queued market order";
             case LIMIT -> "limit order";
             case STOP_LOSS -> "stop-loss order";
+            case TRAILING_STOP -> "trailing stop order";
         };
         String price = order.getPrice().setScale(2, RoundingMode.HALF_UP).toPlainString();
         return new UserNotice(order.getPortfolio().getUser().getId(), new OrderFilledMessage(
@@ -689,7 +726,7 @@ public class PortfolioService {
                 order.getId(), order.getTicker().getSymbol(), order.getType(), order.getKind(), order.getStatus(),
                 order.getQuantity(), order.getLimitPrice(), order.getStopPrice(), order.getPrice(), order.getFeeAmount(),
                 order.getCreatedAt(), order.getExecutedAt(), realizedPnL, order.getRejectionReason(),
-                order.getSettlementCurrency(), order.getSettlementAmount()
+                order.getSettlementCurrency(), order.getSettlementAmount(), order.getTrailPercent()
         );
     }
 

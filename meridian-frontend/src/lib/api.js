@@ -167,12 +167,12 @@ export function getOrders() {
   return apiFetch("/orders");
 }
 
-// settlementCurrency: which wallet a MARKET order pays from / is paid into
-// (null = USD). Limit and stop-loss orders always settle in USD.
-export function placeOrder(symbol, type, quantity, kind = "MARKET", limitPrice = null, stopPrice = null, settlementCurrency = null) {
+// settlementCurrency: which wallet the order pays from / is paid into (null = USD).
+// trailPercent: TRAILING_STOP only — the stop follows the highest price this many % below it.
+export function placeOrder(symbol, type, quantity, kind = "MARKET", limitPrice = null, stopPrice = null, settlementCurrency = null, trailPercent = null) {
   return apiFetch("/orders", {
     method: "POST",
-    body: JSON.stringify({ symbol, type, kind, quantity, limitPrice, stopPrice, settlementCurrency }),
+    body: JSON.stringify({ symbol, type, kind, quantity, limitPrice, stopPrice, settlementCurrency, trailPercent }),
   });
 }
 

@@ -48,6 +48,11 @@ public class Order {
     @Column(name = "stop_price", precision = 14, scale = 4)
     private BigDecimal stopPrice;
 
+    // TRAILING_STOP only: how far (in %) below the highest price seen the stop
+    // sits. stopPrice holds the current stop and is raised as the price climbs.
+    @Column(name = "trail_percent", precision = 6, scale = 3)
+    private BigDecimal trailPercent;
+
     // Commission charged when this order fills — null until FILLED.
     @Column(name = "fee_amount", precision = 14, scale = 4)
     private BigDecimal feeAmount;
@@ -156,6 +161,18 @@ public class Order {
 
     public BigDecimal getStopPrice() {
         return stopPrice;
+    }
+
+    public void setStopPrice(BigDecimal stopPrice) {
+        this.stopPrice = stopPrice;
+    }
+
+    public BigDecimal getTrailPercent() {
+        return trailPercent;
+    }
+
+    public void setTrailPercent(BigDecimal trailPercent) {
+        this.trailPercent = trailPercent;
     }
 
     public BigDecimal getFeeAmount() {

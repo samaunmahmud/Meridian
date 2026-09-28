@@ -92,7 +92,7 @@ describe("TradePanel: paying from a wallet", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Buy NVDA" }));
 
-    expect(placeOrder).toHaveBeenCalledWith("NVDA", "BUY", 2, "LIMIT", 100, null, "EUR");
+    expect(placeOrder).toHaveBeenCalledWith("NVDA", "BUY", 2, "LIMIT", 100, null, "EUR", null);
     expect(showToast).toHaveBeenCalledWith("success", "Limit order placed: buy 2 NVDA (from your EUR wallet)");
     expect(onOrderPlaced).toHaveBeenCalled();
   });
@@ -103,7 +103,7 @@ describe("TradePanel: paying from a wallet", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Buy NVDA" }));
 
-    expect(placeOrder).toHaveBeenCalledWith("NVDA", "BUY", 1, "MARKET", null, null, null);
+    expect(placeOrder).toHaveBeenCalledWith("NVDA", "BUY", 1, "MARKET", null, null, null, null);
   });
 
   it("shows the server's refusal, for example not enough money", async () => {
@@ -130,5 +130,31 @@ describe("TradePanel: opened for a particular stock", () => {
 
     expect(await screen.findByRole("button", { name: "Sell BTC" })).toBeInTheDocument();
     expect(pickers()[0]).toHaveValue("BTC");
+  });
+});
+
+describe("TradePanel: trailing stop", () => {
+  it("is sell-only, explains where the stop starts, and sends the trail", async () => {
+    placeOrder.mockResolvedValue({
+      id: 9, symbol: "NVDA", type: "SELL", kind: "TRAILING_STOP", status: "PENDING", quantity: 2, stopPrice: 108, trailPercent: 10,
+    });
+    const onOrderPlaced = await renderPanel();
+
+    expect(screen.getByRole("button", { name: "Trailing" })).toBeDisabled(); // buying is selected
+    await userEvent.click(screen.getByRole("button", { name: "Sell" }));
+    await userEvent.click(screen.getByRole("button", { name: "Trailing" }));
+
+    const trail = screen.getByLabelText("Trail (%)");
+    await userEvent.clear(trail);
+    await userEvent.type(trail, "10");
+    expect(screen.getByText(/The stop starts at \$108\.00 and rises as the price does/)).toBeInTheDocument();
+
+    await userEvent.clear(numbers()[0]);
+    await userEvent.type(numbers()[0], "2");
+    await userEvent.click(screen.getByRole("button", { name: "Sell NVDA" }));
+
+    expect(placeOrder).toHaveBeenCalledWith("NVDA", "SELL", 2, "TRAILING_STOP", null, null, null, 10);
+    expect(showToast).toHaveBeenCalledWith("success", "Trailing stop placed: sell 2 NVDA (stop now $108.00)");
+    expect(onOrderPlaced).toHaveBeenCalled();
   });
 });

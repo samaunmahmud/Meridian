@@ -9,7 +9,13 @@ const KINDS = [
   { key: "MARKET", label: "Market" },
   { key: "LIMIT", label: "Limit" },
   { key: "STOP_LOSS", label: "Stop-loss" },
+  { key: "TRAILING_STOP", label: "Trailing" },
 ];
+
+// Sell-only on the backend.
+const SELL_ONLY = new Set(["STOP_LOSS", "TRAILING_STOP"]);
+
+const KIND_WORDS = { LIMIT: "Limit order", STOP_LOSS: "Stop-loss order", TRAILING_STOP: "Trailing stop" };
 
 const COMMISSION_RATE = 0.0025;
 const MINIMUM_FEE = 1;
@@ -26,6 +32,7 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
   const [quantity, setQuantity] = useState("1");
   const [limitPrice, setLimitPrice] = useState("");
   const [stopPrice, setStopPrice] = useState("");
+  const [trailPercent, setTrailPercent] = useState("5");
   const [lastPrice, setLastPrice] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [wallets, setWallets] = useState([]);
@@ -53,10 +60,10 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
     if (prefill.type) setType(prefill.type);
   }, [prefill]);
 
-  // STOP_LOSS is sell-only on the backend — switching to BUY while it's
+  // Stop-loss and trailing stops are sell-only on the backend — switching to BUY while one is
   // selected would otherwise fail on submit with a confusing error.
   useEffect(() => {
-    if (type === "BUY" && kind === "STOP_LOSS") setKind("MARKET");
+    if (type === "BUY" && SELL_ONLY.has(kind)) setKind("MARKET");
   }, [type, kind]);
 
   useEffect(() => {
@@ -73,7 +80,13 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
   const queued = marketClosed && kind === "MARKET";
   const opensWhen = marketClosed ? formatWhen(market.stocks.nextOpen) : "";
 
-  const referencePrice = kind === "LIMIT" ? Number(limitPrice) || lastPrice : kind === "STOP_LOSS" ? Number(stopPrice) || lastPrice : lastPrice;
+  // Where a trailing stop starts: the given percentage below the last price.
+  const trailStart = lastPrice && Number(trailPercent) > 0 ? lastPrice * (1 - Number(trailPercent) / 100) : null;
+  const referencePrice =
+    kind === "LIMIT" ? Number(limitPrice) || lastPrice
+    : kind === "STOP_LOSS" ? Number(stopPrice) || lastPrice
+    : kind === "TRAILING_STOP" ? trailStart ?? lastPrice
+    : lastPrice;
   const notional = referencePrice && quantity ? referencePrice * Number(quantity) : null;
   const estimatedFee = notional ? Math.max(notional * COMMISSION_RATE, MINIMUM_FEE) : null;
 
@@ -105,12 +118,14 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
         kind,
         kind === "LIMIT" ? Number(limitPrice) : null,
         kind === "STOP_LOSS" ? Number(stopPrice) : null,
-        settleCurrency === "USD" ? null : settleCurrency
+        settleCurrency === "USD" ? null : settleCurrency,
+        kind === "TRAILING_STOP" ? Number(trailPercent) : null
       );
       if (order.status === "PENDING") {
         showToast(
           "success",
-          `${order.kind === "MARKET" ? "Market order queued for the open" : kind === "LIMIT" ? "Limit order placed" : "Stop-loss order placed"}: ${type === "BUY" ? "buy" : "sell"} ${order.quantity} ${order.symbol}` +
+          `${order.kind === "MARKET" ? "Market order queued for the open" : `${KIND_WORDS[kind]} placed`}: ${type === "BUY" ? "buy" : "sell"} ${order.quantity} ${order.symbol}` +
+            (order.kind === "TRAILING_STOP" ? ` (stop now $${order.stopPrice.toFixed(2)})` : "") +
             (order.settlementCurrency ? ` (${order.type === "BUY" ? "from" : "into"} your ${order.settlementCurrency} wallet)` : "")
         );
       } else {
@@ -165,7 +180,7 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
 
       <div role="group" aria-label="Order type" className="flex gap-1.5 mb-4 text-[13px]">
         {KINDS.map((k) => {
-          const disabled = k.key === "STOP_LOSS" && type === "BUY";
+          const disabled = SELL_ONLY.has(k.key) && type === "BUY";
           return (
             <button
               key={k.key}
@@ -259,6 +274,28 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
               placeholder={lastPrice ? lastPrice.toFixed(2) : "0.00"}
               className="w-full bg-panel-2 border border-control rounded-2xl px-4 py-3 text-sm font-mono outline-none focus:border-accent transition-colors"
             />
+          </div>
+        )}
+
+        {kind === "TRAILING_STOP" && (
+          <div>
+            <label htmlFor={`${uid}-trail`} className="text-[13px] text-muted block mb-1.5">Trail (%)</label>
+            <input
+              id={`${uid}-trail`}
+              type="number"
+              min="0.5"
+              max="50"
+              step="0.5"
+              value={trailPercent}
+              onChange={(e) => setTrailPercent(e.target.value)}
+              aria-describedby={`${uid}-trail-help`}
+              className="w-full bg-panel-2 border border-control rounded-2xl px-4 py-3 text-sm font-mono outline-none focus:border-accent transition-colors"
+            />
+            <p id={`${uid}-trail-help`} className="text-xs text-dim mt-1.5">
+              {trailStart
+                ? `Sells if the price falls ${trailPercent}% from its highest point. The stop starts at ${formatMoney(trailStart)} and rises as the price does.`
+                : "Sells if the price falls this far from its highest point."}
+            </p>
           </div>
         )}
 

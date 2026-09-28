@@ -41,12 +41,15 @@
 ## Features
 
 - Stocks and crypto, with a watchlist, price alerts and live prices pushed over WebSocket
-- Market, limit and stop-loss orders, recurring buys
+- Market, limit, stop-loss and trailing stop orders (the stop follows the price up by a set percentage), recurring buys
 - Trading hours: stocks trade in the exchange session (see "Trading hours" below); crypto is always open
 - Emails when you are not looking: a price alert fired, a queued or pending order filled or was rejected (to confirmed addresses only)
 - Chart ranges (1D / 1W / 1M / All) and a market open/closed badge on every stock; installable on a phone's home screen
 - USD, EUR and GBP wallets. Any order type can be paid from any wallet; a pending limit buy reserves its money (and commission) in that wallet
 - Portfolio with holdings, equity chart and an activity feed
+- Performance: realized and unrealized profit and loss, fees paid, win rate, best and worst trade, and a per-stock breakdown
+- Search from anywhere (<kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> or <kbd>/</kbd>): jump to any stock, page or action
+- Settings: change password (signs out other devices), download orders and activity as CSV, delete the account and all its data
 - Sign-up and login with database-backed rate limits, password reset, email verification
 
 Deposits are simulated. There is no connection to a real broker or payment provider.

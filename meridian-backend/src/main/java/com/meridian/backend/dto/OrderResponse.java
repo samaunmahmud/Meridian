@@ -23,6 +23,7 @@ public record OrderResponse(
         BigDecimal realizedPnL,
         String rejectionReason,
         SupportedCurrency settlementCurrency,   // wallet used, or null for USD
-        BigDecimal settlementAmount             // amount paid / received in that currency
+        BigDecimal settlementAmount,            // amount paid / received in that currency
+        BigDecimal trailPercent                 // TRAILING_STOP only; stopPrice is its current stop
 ) {
 }
