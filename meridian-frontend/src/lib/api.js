@@ -155,6 +155,14 @@ export function getPortfolioHistory() {
   return apiFetch("/portfolio/history");
 }
 
+/**
+ * Profit and loss in USD: { realizedPnL, unrealizedPnL, totalPnL, feesPaid, filledOrders, closedTrades,
+ * winningTrades, winRate (null before any sell), bestTrade, worstTrade, bySymbol: [...] }.
+ */
+export function getPerformance() {
+  return apiFetch("/portfolio/performance");
+}
+
 export function getOrders() {
   return apiFetch("/orders");
 }

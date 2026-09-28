@@ -39,6 +39,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class PortfolioService {
@@ -664,10 +665,15 @@ public class PortfolioService {
         );
     }
 
+    // Sells carry the gain or loss they realized (worked out by replaying the history, see PnlReplay).
+    // Reads each order's ticker, so it needs a session outside a web request too.
+    @Transactional
     public List<OrderResponse> getOrderHistory(User user) {
         Portfolio portfolio = getOrCreatePortfolio(user);
-        return orderRepository.findByPortfolioIdOrderByCreatedAtDesc(portfolio.getId()).stream()
-                .map(o -> toResponse(o, null))
+        List<Order> orders = orderRepository.findByPortfolioIdOrderByCreatedAtDesc(portfolio.getId());
+        Map<Long, BigDecimal> realized = PnlReplay.realizedByOrder(orders);
+        return orders.stream()
+                .map(o -> toResponse(o, realized.get(o.getId())))
                 .toList();
     }
 

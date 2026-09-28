@@ -3,11 +3,13 @@ package com.meridian.backend.controller;
 import com.meridian.backend.dto.DepositRequest;
 import com.meridian.backend.dto.OrderRequest;
 import com.meridian.backend.dto.OrderResponse;
+import com.meridian.backend.dto.PerformanceResponse;
 import com.meridian.backend.dto.PortfolioResponse;
 import com.meridian.backend.dto.PortfolioSnapshotResponse;
 import com.meridian.backend.dto.TransactionResponse;
 import com.meridian.backend.dto.WithdrawRequest;
 import com.meridian.backend.model.User;
+import com.meridian.backend.service.PerformanceService;
 import com.meridian.backend.service.PortfolioService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -19,9 +21,11 @@ import java.util.List;
 public class PortfolioController {
 
     private final PortfolioService portfolioService;
+    private final PerformanceService performanceService;
 
-    public PortfolioController(PortfolioService portfolioService) {
+    public PortfolioController(PortfolioService portfolioService, PerformanceService performanceService) {
         this.portfolioService = portfolioService;
+        this.performanceService = performanceService;
     }
 
     @GetMapping("/portfolio")
@@ -33,6 +37,11 @@ public class PortfolioController {
     public List<PortfolioSnapshotResponse> getPortfolioHistory(@AuthenticationPrincipal User user,
                                                                @RequestParam(required = false) Integer points) {
         return portfolioService.getPortfolioHistory(user, points);
+    }
+
+    @GetMapping("/portfolio/performance")
+    public PerformanceResponse getPerformance(@AuthenticationPrincipal User user) {
+        return performanceService.getPerformance(user);
     }
 
     @PostMapping("/portfolio/deposit")

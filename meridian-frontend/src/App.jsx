@@ -10,6 +10,7 @@ import Watchlist from "./components/Watchlist";
 import TopMovers from "./components/TopMovers";
 import PortfolioSummary from "./components/PortfolioSummary";
 import PortfolioAllocation from "./components/PortfolioAllocation";
+import PerformancePanel from "./components/PerformancePanel";
 import EquityChart from "./components/EquityChart";
 import TradePanel from "./components/TradePanel";
 import OrderHistory from "./components/OrderHistory";
@@ -328,6 +329,7 @@ export default function App() {
                   <PortfolioSummary refreshKey={refreshKey}>
                     <EquityChart refreshKey={refreshKey} />
                   </PortfolioSummary>
+                  <PerformancePanel refreshKey={refreshKey} onSelect={openStock} />
                   <OrderHistory refreshKey={refreshKey} />
                 </div>
                 <div className="space-y-6 min-w-0">
