@@ -30,6 +30,14 @@ public class Alert {
     @Column(nullable = false)
     private boolean triggered = false;
 
+    // Set for an alert created as a percentage move: the move asked for, and
+    // the price it was measured from. targetPrice is what actually triggers it.
+    @Column(name = "move_percent", precision = 6, scale = 2)
+    private BigDecimal movePercent;
+
+    @Column(name = "reference_price", precision = 12, scale = 4)
+    private BigDecimal referencePrice;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -65,6 +73,19 @@ public class Alert {
 
     public BigDecimal getTargetPrice() {
         return targetPrice;
+    }
+
+    public BigDecimal getMovePercent() {
+        return movePercent;
+    }
+
+    public BigDecimal getReferencePrice() {
+        return referencePrice;
+    }
+
+    public void setMove(BigDecimal movePercent, BigDecimal referencePrice) {
+        this.movePercent = movePercent;
+        this.referencePrice = referencePrice;
     }
 
     public boolean isTriggered() {

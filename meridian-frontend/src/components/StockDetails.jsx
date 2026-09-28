@@ -135,7 +135,9 @@ export default function StockDetails({ ticker, liveUpdate, refreshKey }) {
           <ul className="space-y-1.5 text-sm">
             {alerts.map((a) => (
               <li key={a.id}>
-                Tell me when it goes {a.direction === "ABOVE" ? "above" : "below"} ${formatNumber(a.targetPrice)}
+                {a.movePercent != null
+                  ? `Tell me if it ${a.direction === "ABOVE" ? "rises" : "falls"} ${Number(a.movePercent)}% from $${formatNumber(a.referencePrice)} (to $${formatNumber(a.targetPrice)})`
+                  : `Tell me when it goes ${a.direction === "ABOVE" ? "above" : "below"} $${formatNumber(a.targetPrice)}`}
               </li>
             ))}
           </ul>

@@ -4,6 +4,14 @@ import { showToast } from "../lib/toast";
 import TickerAvatar from "./TickerAvatar";
 import Skeleton from "./Skeleton";
 
+// "AAPL above $200.00", or for a percentage alert "AAPL down 5% from $210.00 ($199.50)".
+function describe(a) {
+  if (a.movePercent != null) {
+    return `${a.symbol} ${a.direction === "ABOVE" ? "up" : "down"} ${Number(a.movePercent)}% from $${a.referencePrice.toFixed(2)} ($${a.targetPrice.toFixed(2)})`;
+  }
+  return `${a.symbol} ${a.direction === "ABOVE" ? "above" : "below"} $${a.targetPrice.toFixed(2)}`;
+}
+
 export default function AlertsPanel() {
   const uid = useId();
   const [alerts, setAlerts] = useState([]);
@@ -12,6 +20,7 @@ export default function AlertsPanel() {
   const [symbol, setSymbol] = useState("");
   const [direction, setDirection] = useState("ABOVE");
   const [targetPrice, setTargetPrice] = useState("");
+  const [mode, setMode] = useState("PRICE"); // "PRICE" | "MOVE"
   const [submitting, setSubmitting] = useState(false);
 
   function refresh() {
@@ -32,8 +41,13 @@ export default function AlertsPanel() {
     if (!targetPrice) return;
     setSubmitting(true);
     try {
-      await createAlert(symbol, direction, Number(targetPrice));
-      showToast("success", `Alert set: ${symbol} ${direction === "ABOVE" ? "above" : "below"} $${targetPrice}`);
+      if (mode === "MOVE") {
+        const alert = await createAlert(symbol, direction, null, Number(targetPrice));
+        showToast("success", `Alert set: ${describe(alert)}`);
+      } else {
+        await createAlert(symbol, direction, Number(targetPrice));
+        showToast("success", `Alert set: ${symbol} ${direction === "ABOVE" ? "above" : "below"} $${targetPrice}`);
+      }
       setTargetPrice("");
       refresh();
     } catch (err) {
@@ -78,8 +92,20 @@ export default function AlertsPanel() {
                   <TickerAvatar symbol={a.symbol} size={32} />
                   <div>
                     <div className="text-sm font-medium">
-                      {a.symbol} {a.direction === "ABOVE" ? "above" : "below"}{" "}
-                      <span className="font-mono">${a.targetPrice.toFixed(2)}</span>
+                      {a.movePercent != null ? (
+                        <>
+                          {a.symbol} {a.direction === "ABOVE" ? "up" : "down"} <span className="font-mono">{Number(a.movePercent)}%</span>
+                          <span className="text-muted font-normal">
+                            {" "}from <span className="font-mono">${a.referencePrice.toFixed(2)}</span> ·{" "}
+                            <span className="font-mono">${a.targetPrice.toFixed(2)}</span>
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          {a.symbol} {a.direction === "ABOVE" ? "above" : "below"}{" "}
+                          <span className="font-mono">${a.targetPrice.toFixed(2)}</span>
+                        </>
+                      )}
                     </div>
                     <div className="text-xs text-dim">
                       {a.triggered
@@ -90,7 +116,7 @@ export default function AlertsPanel() {
                 </div>
                 <button
                   onClick={() => handleDelete(a.id)}
-                  aria-label={`Remove alert: ${a.symbol} ${a.direction === "ABOVE" ? "above" : "below"} $${a.targetPrice.toFixed(2)}`}
+                  aria-label={`Remove alert: ${describe(a)}`}
                   className="text-xs text-dim hover:text-loss transition-colors px-2 py-1"
                 >
                   Remove
@@ -123,6 +149,28 @@ export default function AlertsPanel() {
             </select>
           </div>
 
+          <div role="group" aria-label="Alert type" className="grid grid-cols-2 gap-1.5 text-[13px]">
+            {[
+              ["PRICE", "At a price"],
+              ["MOVE", "On a % move"],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={mode === key}
+                onClick={() => {
+                  setMode(key);
+                  setTargetPrice("");
+                }}
+                className={`h-8 rounded-full font-semibold transition-colors ${
+                  mode === key ? "bg-bone text-ink" : "bg-panel-2 text-muted hover:text-bone"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           <div role="group" aria-label="Alert direction" className="relative bg-panel-2 rounded-full p-1 grid grid-cols-2">
             <div
               className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-full bg-accent transition-transform duration-200 ${
@@ -137,7 +185,7 @@ export default function AlertsPanel() {
                 direction === "ABOVE" ? "text-accent-ink" : "text-muted"
               }`}
             >
-              Above
+              {mode === "MOVE" ? "Rises" : "Above"}
             </button>
             <button
               type="button"
@@ -147,20 +195,22 @@ export default function AlertsPanel() {
                 direction === "BELOW" ? "text-accent-ink" : "text-muted"
               }`}
             >
-              Below
+              {mode === "MOVE" ? "Falls" : "Below"}
             </button>
           </div>
 
           <div>
-            <label htmlFor={`${uid}-target`} className="text-xs text-dim block mb-1.5">Target price</label>
+            <label htmlFor={`${uid}-target`} className="text-xs text-dim block mb-1.5">
+              {mode === "MOVE" ? "Move (%) from the current price" : "Target price"}
+            </label>
             <input
               id={`${uid}-target`}
               type="number"
-              step="0.01"
+              step={mode === "MOVE" ? "0.1" : "0.01"}
               min="0"
               value={targetPrice}
               onChange={(e) => setTargetPrice(e.target.value)}
-              placeholder="0.00"
+              placeholder={mode === "MOVE" ? "5" : "0.00"}
               className="w-full bg-panel-2 border border-control rounded-2xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
             />
           </div>

@@ -226,8 +226,9 @@ export function getAlerts() {
   return apiFetch("/alerts");
 }
 
-export function createAlert(symbol, direction, targetPrice) {
-  return apiFetch("/alerts", { method: "POST", body: JSON.stringify({ symbol, direction, targetPrice }) });
+/** Set `targetPrice`, or leave it null and give `movePercent` for "tell me if it moves this % from now". */
+export function createAlert(symbol, direction, targetPrice, movePercent = null) {
+  return apiFetch("/alerts", { method: "POST", body: JSON.stringify({ symbol, direction, targetPrice, movePercent }) });
 }
 
 export function deleteAlert(id) {

@@ -15,6 +15,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
@@ -83,5 +84,40 @@ class AlertNotificationTest extends IntegrationTestBase {
 
         verify(mail, never()).send(anyString(), anyString(), anyString());
         verify(webSocket).broadcastToUser(eq(user.getId()), contains("ALERT_TRIGGERED"));
+    }
+
+    @Test
+    void aPercentageAlertTargetsThatMoveFromTheLatestPrice() {
+        User user = userWithConfirmedEmail();
+        Ticker ticker = newTicker("200.00");
+
+        var down = alertService.createAlert(new AlertRequest(ticker.getSymbol(), AlertDirection.BELOW, null, new BigDecimal("5")), user);
+        var up = alertService.createAlert(new AlertRequest(ticker.getSymbol(), AlertDirection.ABOVE, null, new BigDecimal("12.5")), user);
+
+        assertThat(down.targetPrice()).isEqualByComparingTo("190.00");
+        assertThat(down.movePercent()).isEqualByComparingTo("5");
+        assertThat(down.referencePrice()).isEqualByComparingTo("200.00");
+        assertThat(up.targetPrice()).isEqualByComparingTo("225.00");
+
+        alertService.checkAlertsForTicker(ticker, new BigDecimal("189.99"));
+
+        verify(mail).send(eq(user.getEmail()), contains("is down 5% from $200.00"), anyString());
+        assertThat(alertRepository.findByTickerIdAndTriggeredFalse(ticker.getId())).extracting(a -> a.getId()).containsExactly(up.id());
+    }
+
+    @Test
+    void alertsNeedADirectionAndASensibleTargetOrMove() {
+        User user = newUser("0.00");
+        Ticker ticker = newTicker("50.00");
+        String symbol = ticker.getSymbol();
+
+        assertThatThrownBy(() -> alertService.createAlert(new AlertRequest(symbol, null, new BigDecimal("60")), user))
+                .hasMessageContaining("rise or a fall");
+        assertThatThrownBy(() -> alertService.createAlert(new AlertRequest(symbol, AlertDirection.ABOVE, null), user))
+                .hasMessageContaining("greater than zero");
+        assertThatThrownBy(() -> alertService.createAlert(new AlertRequest(symbol, AlertDirection.BELOW, null, new BigDecimal("100")), user))
+                .hasMessageContaining("between");
+        assertThatThrownBy(() -> alertService.createAlert(new AlertRequest(symbol, AlertDirection.ABOVE, null, new BigDecimal("0.01")), user))
+                .hasMessageContaining("between");
     }
 }

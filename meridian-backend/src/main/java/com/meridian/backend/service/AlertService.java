@@ -5,12 +5,16 @@ import com.meridian.backend.dto.AlertRequest;
 import com.meridian.backend.dto.AlertResponse;
 import com.meridian.backend.dto.AlertTriggeredMessage;
 import com.meridian.backend.exception.AlertNotFoundException;
+import com.meridian.backend.exception.InvalidRequestException;
+import com.meridian.backend.exception.PriceUnavailableException;
 import com.meridian.backend.exception.TickerNotFoundException;
 import com.meridian.backend.model.Alert;
 import com.meridian.backend.model.AlertDirection;
+import com.meridian.backend.model.PriceHistory;
 import com.meridian.backend.model.Ticker;
 import com.meridian.backend.model.User;
 import com.meridian.backend.repository.AlertRepository;
+import com.meridian.backend.repository.PriceHistoryRepository;
 import com.meridian.backend.repository.TickerRepository;
 import com.meridian.backend.websocket.PriceWebSocketHandler;
 import com.meridian.backend.mail.EmailNotifier;
@@ -30,8 +34,12 @@ public class AlertService {
 
     private static final Logger log = LoggerFactory.getLogger(AlertService.class);
 
+    private static final BigDecimal MIN_MOVE_PERCENT = new BigDecimal("0.1");
+    private static final BigDecimal MAX_MOVE_PERCENT = new BigDecimal("1000");
+
     private final AlertRepository alertRepository;
     private final TickerRepository tickerRepository;
+    private final PriceHistoryRepository priceHistoryRepository;
     private final PriceWebSocketHandler priceWebSocketHandler;
     private final ObjectMapper objectMapper;
     private final EmailNotifier emailNotifier;
@@ -39,12 +47,14 @@ public class AlertService {
 
     public AlertService(AlertRepository alertRepository,
                          TickerRepository tickerRepository,
+                         PriceHistoryRepository priceHistoryRepository,
                          PriceWebSocketHandler priceWebSocketHandler,
                          ObjectMapper objectMapper,
                          EmailNotifier emailNotifier,
                          @Value("${app.public-url:http://localhost}") String publicUrl) {
         this.alertRepository = alertRepository;
         this.tickerRepository = tickerRepository;
+        this.priceHistoryRepository = priceHistoryRepository;
         this.priceWebSocketHandler = priceWebSocketHandler;
         this.objectMapper = objectMapper;
         this.emailNotifier = emailNotifier;
@@ -54,7 +64,31 @@ public class AlertService {
     public AlertResponse createAlert(AlertRequest request, User user) {
         Ticker ticker = tickerRepository.findBySymbol(request.symbol())
                 .orElseThrow(() -> new TickerNotFoundException(request.symbol()));
+        if (request.direction() == null) {
+            throw new InvalidRequestException("Choose whether the alert is for a rise or a fall");
+        }
 
+        if (request.movePercent() != null) {
+            BigDecimal percent = request.movePercent();
+            if (percent.compareTo(MIN_MOVE_PERCENT) < 0 || percent.compareTo(MAX_MOVE_PERCENT) > 0
+                    || (request.direction() == AlertDirection.BELOW && percent.compareTo(new BigDecimal("100")) >= 0)) {
+                throw new InvalidRequestException("The move must be between " + MIN_MOVE_PERCENT.toPlainString()
+                        + "% and " + MAX_MOVE_PERCENT.toPlainString() + "%");
+            }
+            BigDecimal reference = priceHistoryRepository.findFirstByTickerIdOrderByRecordedAtDesc(ticker.getId())
+                    .map(PriceHistory::getPrice)
+                    .orElseThrow(() -> new PriceUnavailableException(ticker.getSymbol()));
+            BigDecimal factor = request.direction() == AlertDirection.ABOVE
+                    ? BigDecimal.ONE.add(percent.movePointLeft(2))
+                    : BigDecimal.ONE.subtract(percent.movePointLeft(2));
+            Alert alert = new Alert(user, ticker, request.direction(), reference.multiply(factor).setScale(4, RoundingMode.HALF_UP));
+            alert.setMove(percent.setScale(2, RoundingMode.HALF_UP), reference);
+            return toResponse(alertRepository.save(alert));
+        }
+
+        if (request.targetPrice() == null || request.targetPrice().signum() <= 0) {
+            throw new InvalidRequestException("The target price must be greater than zero");
+        }
         Alert alert = alertRepository.save(new Alert(user, ticker, request.direction(), request.targetPrice()));
         return toResponse(alert);
     }
@@ -110,7 +144,11 @@ public class AlertService {
 
             String verb = alert.getDirection() == AlertDirection.ABOVE ? "rose above" : "fell below";
             String emailTo = alert.getUser().isEmailVerified() ? alert.getUser().getEmail() : null;
-            String subject = symbol + " " + verb + " $" + alert.getTargetPrice().setScale(2, RoundingMode.HALF_UP);
+            String subject = alert.getMovePercent() != null
+                    ? symbol + (alert.getDirection() == AlertDirection.ABOVE ? " is up " : " is down ")
+                            + alert.getMovePercent().stripTrailingZeros().toPlainString() + "% from $"
+                            + alert.getReferencePrice().setScale(2, RoundingMode.HALF_UP)
+                    : symbol + " " + verb + " $" + alert.getTargetPrice().setScale(2, RoundingMode.HALF_UP);
             String body = "Your Meridian price alert fired.\n\n"
                     + symbol + " " + verb + " your target of $" + alert.getTargetPrice().setScale(2, RoundingMode.HALF_UP)
                     + " and is now $" + currentPrice.setScale(2, RoundingMode.HALF_UP) + ".\n\n"
@@ -129,7 +167,8 @@ public class AlertService {
     private AlertResponse toResponse(Alert alert) {
         return new AlertResponse(
                 alert.getId(), alert.getTicker().getSymbol(), alert.getDirection(),
-                alert.getTargetPrice(), alert.isTriggered(), alert.getCreatedAt(), alert.getTriggeredAt()
+                alert.getTargetPrice(), alert.isTriggered(), alert.getCreatedAt(), alert.getTriggeredAt(),
+                alert.getMovePercent(), alert.getReferencePrice()
         );
     }
 }

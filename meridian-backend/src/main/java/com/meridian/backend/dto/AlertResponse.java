@@ -11,6 +11,8 @@ public record AlertResponse(
         BigDecimal targetPrice,
         boolean triggered,
         Instant createdAt,
-        Instant triggeredAt
+        Instant triggeredAt,
+        BigDecimal movePercent,     // null for an alert set at a price
+        BigDecimal referencePrice   // the price a percentage alert was measured from
 ) {
 }
