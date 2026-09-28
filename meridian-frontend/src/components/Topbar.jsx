@@ -4,8 +4,8 @@ import ThemeToggle from "./ThemeToggle";
 
 // The page header. A tab shows its title in large bold type; a stock's page shows a round
 // back button instead of the logo on phones and next to the title on wide screens.
-// Phones have no sidebar, so the logo and log-out live here too.
-export default function Topbar({ title, onLogout, onBack }) {
+// Phones have no sidebar, so the logo and a way to Settings (which has log-out) live here too.
+export default function Topbar({ title, onSettings, settingsActive, onBack }) {
   return (
     <header className="px-4 sm:px-6 lg:px-8 pt-4 pb-3 lg:pt-7 lg:pb-5 flex flex-wrap lg:flex-nowrap items-center justify-between gap-y-4">
       <div className="lg:hidden order-1">
@@ -20,11 +20,14 @@ export default function Topbar({ title, onLogout, onBack }) {
         <ThemeToggle />
         <button
           type="button"
-          onClick={onLogout}
-          aria-label="Log out"
-          className="lg:hidden w-10 h-10 rounded-full bg-panel text-muted flex items-center justify-center hover:text-bone transition-colors"
+          onClick={onSettings}
+          aria-label="Settings"
+          aria-current={settingsActive ? "page" : undefined}
+          className={`lg:hidden w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+            settingsActive ? "bg-bone text-ink" : "bg-panel text-muted hover:text-bone"
+          }`}
         >
-          <Icon name="logout" size={17} />
+          <Icon name="gear" size={18} />
         </button>
       </div>
 

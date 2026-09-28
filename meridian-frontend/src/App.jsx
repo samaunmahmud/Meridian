@@ -17,6 +17,7 @@ import AlertsPanel from "./components/AlertsPanel";
 import AccountsPanel from "./components/AccountsPanel";
 import ActivityFeed from "./components/ActivityFeed";
 import RecurringOrdersPanel from "./components/RecurringOrdersPanel";
+import SettingsPanel from "./components/SettingsPanel";
 import ToastContainer from "./components/ToastContainer";
 import VerifyEmailBanner from "./components/VerifyEmailBanner";
 import ServiceUnavailable from "./components/ServiceUnavailable";
@@ -33,6 +34,7 @@ const TITLES = {
   alerts: "Alerts",
   accounts: "Accounts",
   activity: "Activity",
+  settings: "Settings",
 };
 
 // Shared page gutter: 16px on phones, 24px on tablets, 32px on desktop.
@@ -184,6 +186,12 @@ export default function App() {
       .catch(() => showToast("error", "Could not log out. Check your connection and try again."));
   }
 
+  function handleAccountDeleted() {
+    setActiveTab("home");
+    setSession(false);
+    setLinkNotice({ kind: "success", message: "Your account has been deleted." }); // shown on the sign-in page
+  }
+
   function handleOrderPlaced() {
     setRefreshKey((k) => k + 1);
   }
@@ -266,7 +274,8 @@ export default function App() {
       <div className="flex-1 min-w-0 pb-24 lg:pb-0">
         <Topbar
           title={stock ? stock.name : TITLES[activeTab]}
-          onLogout={handleLogout}
+          onSettings={() => changeTab("settings")}
+          settingsActive={!stock && activeTab === "settings"}
           onBack={stock ? closeStock : undefined}
         />
         {session.emailVerified === false && <VerifyEmailBanner email={session.email} />}
@@ -332,6 +341,9 @@ export default function App() {
             {!stock && activeTab === "alerts" && <AlertsPanel />}
             {!stock && activeTab === "accounts" && <AccountsPanel />}
             {!stock && activeTab === "activity" && <ActivityFeed refreshKey={refreshKey} />}
+            {!stock && activeTab === "settings" && (
+              <SettingsPanel session={session} onLogout={handleLogout} onDeleted={handleAccountDeleted} />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>

@@ -1,6 +1,8 @@
 package com.meridian.backend.controller;
 
 import com.meridian.backend.dto.AuthResponse;
+import com.meridian.backend.dto.ChangePasswordRequest;
+import com.meridian.backend.dto.DeleteAccountRequest;
 import com.meridian.backend.dto.ForgotPasswordRequest;
 import com.meridian.backend.dto.LoginRequest;
 import com.meridian.backend.dto.MessageResponse;
@@ -10,11 +12,13 @@ import com.meridian.backend.dto.VerifyEmailRequest;
 import com.meridian.backend.model.User;
 import com.meridian.backend.security.AuthCookies;
 import com.meridian.backend.service.AccountService;
+import com.meridian.backend.service.AccountSettingsService;
 import com.meridian.backend.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,11 +31,14 @@ public class AuthController {
 
     private final AuthService authService;
     private final AccountService accountService;
+    private final AccountSettingsService settingsService;
     private final AuthCookies authCookies;
 
-    public AuthController(AuthService authService, AccountService accountService, AuthCookies authCookies) {
+    public AuthController(AuthService authService, AccountService accountService,
+                          AccountSettingsService settingsService, AuthCookies authCookies) {
         this.authService = authService;
         this.accountService = accountService;
+        this.settingsService = settingsService;
         this.authCookies = authCookies;
     }
 
@@ -84,6 +91,26 @@ public class AuthController {
     public MessageResponse resendVerification(@AuthenticationPrincipal User user) {
         accountService.resendVerification(user);
         return new MessageResponse("We've sent a new confirmation link to " + user.getEmail() + ".");
+    }
+
+    // Requires authentication (see SecurityConfig). Every other session ends;
+    // this one gets a new cookie so the user stays signed in here.
+    @PostMapping("/change-password")
+    public ResponseEntity<MessageResponse> changePassword(@RequestBody ChangePasswordRequest request,
+                                                         @AuthenticationPrincipal User user, HttpServletRequest http) {
+        String token = settingsService.changePassword(user, request.currentPassword(), request.newPassword(),
+                http.getRemoteAddr());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, authCookies.create(token).toString())
+                .body(new MessageResponse("Your password has been changed. Other devices have been signed out."));
+    }
+
+    // Requires authentication (see SecurityConfig).
+    @DeleteMapping("/account")
+    public ResponseEntity<Void> deleteAccount(@RequestBody DeleteAccountRequest request,
+                                              @AuthenticationPrincipal User user, HttpServletRequest http) {
+        settingsService.deleteAccount(user, request.password(), http.getRemoteAddr());
+        return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, authCookies.clear().toString()).build();
     }
 
     private ResponseEntity<AuthResponse> signedIn(AuthService.AuthResult result) {

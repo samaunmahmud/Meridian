@@ -90,6 +90,19 @@ export function resendVerification() {
   return apiFetch("/auth/resend-verification", { method: "POST" });
 }
 
+/** Needs the current password. Other sessions end; this one gets a new cookie. */
+export function changePassword(currentPassword, newPassword) {
+  return apiFetch("/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
+/** Deletes the account and everything in it, then signs out. */
+export function deleteAccount(password) {
+  return apiFetch("/auth/account", { method: "DELETE", body: JSON.stringify({ password }) });
+}
+
 /** Whether stocks and crypto can be traded right now: { stocks: {open, nextOpen, nextClose}, crypto: {...} }. */
 export function getMarketStatus() {
   return apiFetch("/market/status");

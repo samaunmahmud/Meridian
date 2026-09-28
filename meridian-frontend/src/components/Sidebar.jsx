@@ -8,6 +8,8 @@ export const NAV_ITEMS = [
   { key: "alerts", label: "Alerts", icon: "bell" },
   { key: "accounts", label: "Accounts", icon: "wallet" },
   { key: "activity", label: "Activity", icon: "pulse" },
+  // Phones reach Settings from the gear in the top bar instead of the tab bar.
+  { key: "settings", label: "Settings", icon: "gear", desktopOnly: true },
 ];
 
 export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout }) {
@@ -73,7 +75,7 @@ export function MobileNav({ activeTab, onTabChange }) {
       aria-label="Main"
       className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-panel/90 backdrop-blur-xl border-t border-line grid grid-cols-5 pt-2 pb-[max(env(safe-area-inset-bottom),10px)]"
     >
-      {NAV_ITEMS.map((item) => {
+      {NAV_ITEMS.filter((item) => !item.desktopOnly).map((item) => {
         const active = activeTab === item.key;
         return (
           <button
