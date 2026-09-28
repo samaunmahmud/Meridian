@@ -369,7 +369,7 @@ export default function App() {
                     <EquityChart refreshKey={refreshKey} />
                   </PortfolioSummary>
                   <PerformancePanel refreshKey={refreshKey} onSelect={openStock} />
-                  <OrderHistory refreshKey={refreshKey} />
+                  <OrderHistory refreshKey={refreshKey} onChanged={handleOrderPlaced} />
                 </div>
                 <div className="space-y-6 min-w-0">
                   <TradePanel onOrderPlaced={handleOrderPlaced} refreshKey={refreshKey} />

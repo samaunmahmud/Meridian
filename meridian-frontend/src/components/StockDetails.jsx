@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { getAlerts, getChanges, getOrders, getPortfolio } from "../lib/api";
+import { cancelOrder, getAlerts, getChanges, getOrders, getPortfolio } from "../lib/api";
+import { showToast } from "../lib/toast";
+import EditOrderModal from "./EditOrderModal";
 import { formatNumber } from "../lib/formatMoney";
 
 const KIND_LABELS = { MARKET: "Market", LIMIT: "Limit", STOP_LOSS: "Stop", TRAILING_STOP: "Trailing stop" };
@@ -36,8 +38,9 @@ function orderText(o) {
  * alerts you have waiting on it. Everything comes from the existing endpoints; a part that fails to
  * load is left out rather than shown wrong. The price follows live updates between reloads.
  */
-export default function StockDetails({ ticker, liveUpdate, refreshKey }) {
+export default function StockDetails({ ticker, liveUpdate, refreshKey, onOrdersChanged }) {
   const [data, setData] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [livePrice, setLivePrice] = useState(null);
 
   useEffect(() => {
@@ -121,9 +124,36 @@ export default function StockDetails({ ticker, liveUpdate, refreshKey }) {
       {orders.length > 0 && (
         <div className="mt-5">
           <h3 className="text-[13px] font-medium text-muted mb-2">Open orders</h3>
-          <ul className="space-y-1.5 text-sm">
+          <ul className="space-y-1 text-sm">
             {orders.map((o) => (
-              <li key={o.id}>{orderText(o)}</li>
+              <li key={o.id} className="flex items-center gap-2 flex-wrap">
+                <span className="flex-1 min-w-0">{orderText(o)}</span>
+                {o.kind !== "MARKET" && (
+                  <button
+                    type="button"
+                    onClick={() => setEditing(o)}
+                    aria-label={`Edit order: ${orderText(o)}`}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-full bg-panel-2 hover:brightness-110"
+                  >
+                    Edit
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    cancelOrder(o.id)
+                      .then(() => {
+                        showToast("success", "Order cancelled");
+                        onOrdersChanged?.();
+                      })
+                      .catch((err) => showToast("error", err.message))
+                  }
+                  aria-label={`Cancel order: ${orderText(o)}`}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-full bg-panel-2 text-muted hover:text-loss"
+                >
+                  Cancel
+                </button>
+              </li>
             ))}
           </ul>
         </div>
@@ -142,6 +172,16 @@ export default function StockDetails({ ticker, liveUpdate, refreshKey }) {
             ))}
           </ul>
         </div>
+      )}
+      {editing && (
+        <EditOrderModal
+          order={editing}
+          onClose={() => setEditing(null)}
+          onReplaced={() => {
+            setEditing(null);
+            onOrdersChanged?.();
+          }}
+        />
       )}
     </section>
   );

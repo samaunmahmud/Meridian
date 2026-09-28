@@ -176,6 +176,11 @@ export function placeOrder(symbol, type, quantity, kind = "MARKET", limitPrice =
   });
 }
 
+/** Replaces a pending order with new terms ({ quantity, limitPrice, stopPrice, trailPercent }); returns the new order. */
+export function replaceOrder(id, terms) {
+  return apiFetch(`/orders/${id}`, { method: "PUT", body: JSON.stringify(terms) });
+}
+
 export function cancelOrder(id) {
   return apiFetch(`/orders/${id}`, { method: "DELETE" });
 }

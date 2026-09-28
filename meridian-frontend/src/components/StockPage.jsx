@@ -13,7 +13,7 @@ export default function StockPage({ ticker, liveUpdate, refreshKey, onTrade, onO
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
       <div className="space-y-6 min-w-0">
         <StockHero ticker={ticker} liveUpdate={liveUpdate} onTrade={onTrade} tradeBesideChart />
-        <StockDetails ticker={ticker} liveUpdate={liveUpdate} refreshKey={refreshKey} />
+        <StockDetails ticker={ticker} liveUpdate={liveUpdate} refreshKey={refreshKey} onOrdersChanged={onOrderPlaced} />
       </div>
       <div className="hidden lg:block lg:sticky lg:top-6">
         <TradePanel prefill={prefill} refreshKey={refreshKey} onOrderPlaced={onOrderPlaced} />

@@ -6,6 +6,7 @@ import com.meridian.backend.dto.OrderResponse;
 import com.meridian.backend.dto.PerformanceResponse;
 import com.meridian.backend.dto.PortfolioResponse;
 import com.meridian.backend.dto.PortfolioSnapshotResponse;
+import com.meridian.backend.dto.ReplaceOrderRequest;
 import com.meridian.backend.dto.TransactionResponse;
 import com.meridian.backend.dto.WithdrawRequest;
 import com.meridian.backend.model.User;
@@ -72,6 +73,13 @@ public class PortfolioController {
     @GetMapping("/orders/open")
     public List<OrderResponse> getOpenOrders(@AuthenticationPrincipal User user) {
         return portfolioService.getOpenOrders(user);
+    }
+
+    // Replaces a pending order with one on the new terms; the response is the new order.
+    @PutMapping("/orders/{id}")
+    public OrderResponse replaceOrder(@PathVariable Long id, @RequestBody ReplaceOrderRequest request,
+                                      @AuthenticationPrincipal User user) {
+        return portfolioService.replaceOrder(id, request, user);
     }
 
     @DeleteMapping("/orders/{id}")

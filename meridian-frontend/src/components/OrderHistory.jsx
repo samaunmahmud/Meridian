@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getOrders, cancelOrder } from "../lib/api";
 import { showToast } from "../lib/toast";
 import Skeleton from "./Skeleton";
+import EditOrderModal from "./EditOrderModal";
 
 const STATUS_STYLES = {
   FILLED: "text-muted bg-panel-2",
@@ -10,8 +11,9 @@ const STATUS_STYLES = {
   REJECTED: "text-loss bg-loss-dim",
 };
 
-export default function OrderHistory({ refreshKey }) {
+export default function OrderHistory({ refreshKey, onChanged }) {
   const [orders, setOrders] = useState([]);
+  const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(true);
 
   function load() {
@@ -103,6 +105,15 @@ export default function OrderHistory({ refreshKey }) {
                   {new Date(o.executedAt ?? o.createdAt).toLocaleString([], { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
                 </td>
                 <td className="py-3 text-right">
+                  {o.status === "PENDING" && o.kind !== "MARKET" && (
+                    <button
+                      onClick={() => setEditing(o)}
+                      aria-label={`Edit pending ${o.type.toLowerCase()} order: ${o.symbol}`}
+                      className="font-sans text-xs text-dim hover:text-bone transition-colors px-2 py-1"
+                    >
+                      Edit
+                    </button>
+                  )}
                   {o.status === "PENDING" && (
                     <button
                       onClick={() => handleCancel(o.id)}
@@ -118,6 +129,17 @@ export default function OrderHistory({ refreshKey }) {
           </tbody>
         </table>
         </div>
+      )}
+      {editing && (
+        <EditOrderModal
+          order={editing}
+          onClose={() => setEditing(null)}
+          onReplaced={() => {
+            setEditing(null);
+            load();
+            onChanged?.();
+          }}
+        />
       )}
     </section>
   );

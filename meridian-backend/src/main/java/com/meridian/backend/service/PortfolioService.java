@@ -10,6 +10,7 @@ import com.meridian.backend.dto.OrderRequest;
 import com.meridian.backend.dto.OrderResponse;
 import com.meridian.backend.dto.PortfolioResponse;
 import com.meridian.backend.dto.PortfolioSnapshotResponse;
+import com.meridian.backend.dto.ReplaceOrderRequest;
 import com.meridian.backend.dto.TransactionResponse;
 import com.meridian.backend.exception.InsufficientFundsException;
 import com.meridian.backend.exception.InsufficientSharesException;
@@ -317,6 +318,45 @@ public class PortfolioService {
         order.setStatus(OrderStatus.CANCELLED);
         order.setCancelledAt(Instant.now());
         orderRepository.save(order);
+    }
+
+    // Changes a pending order's quantity and price by cancelling it and placing
+    // a new one with the same symbol, side, kind and wallet, all in one
+    // transaction: if the new order can't be placed (not enough cash or
+    // shares), everything rolls back and the original order is untouched.
+    // A queued market order has nothing to change but its quantity, so it is
+    // not editable: cancel it instead.
+    @Transactional
+    public OrderResponse replaceOrder(Long orderId, ReplaceOrderRequest request, User user) {
+        Portfolio portfolio = lockPortfolio(user);
+        Order old = orderRepository.findByIdAndPortfolioId(orderId, portfolio.getId())
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+        if (old.getStatus() != OrderStatus.PENDING) {
+            throw new InvalidOrderStateException("Only pending orders can be changed");
+        }
+        if (old.getKind() == OrderKind.MARKET) {
+            throw new InvalidOrderStateException("A queued market order can't be changed; cancel it and place a new one");
+        }
+        if (request.quantity() == null || request.quantity().signum() <= 0) {
+            throw new InvalidRequestException("Quantity must be greater than zero");
+        }
+
+        releaseReservation(old);
+        old.setStatus(OrderStatus.CANCELLED);
+        old.setCancelledAt(Instant.now());
+        orderRepository.save(old);
+
+        Ticker ticker = old.getTicker();
+        SupportedCurrency settlement = settlementOf(old);
+        return switch (old.getKind()) {
+            case LIMIT -> placePendingOrder(portfolio, ticker, old.getType(), OrderKind.LIMIT, request.quantity(),
+                    request.limitPrice(), null, null, settlement);
+            case STOP_LOSS -> placePendingOrder(portfolio, ticker, old.getType(), OrderKind.STOP_LOSS, request.quantity(),
+                    null, request.stopPrice(), null, settlement);
+            case TRAILING_STOP -> placeTrailingStop(portfolio, ticker, old.getType(), request.quantity(),
+                    request.trailPercent(), settlement);
+            case MARKET -> throw new IllegalStateException("unreachable");
+        };
     }
 
     private void releaseReservation(Order order) {
@@ -714,6 +754,7 @@ public class PortfolioService {
                 .toList();
     }
 
+    @Transactional
     public List<OrderResponse> getOpenOrders(User user) {
         Portfolio portfolio = getOrCreatePortfolio(user);
         return orderRepository.findByPortfolioIdAndStatusOrderByCreatedAtDesc(portfolio.getId(), OrderStatus.PENDING).stream()

@@ -4,7 +4,7 @@ import { axeViolations } from "../test/axe";
 import StockDetails from "./StockDetails";
 import { getAlerts, getChanges, getOrders, getPortfolio } from "../lib/api";
 
-vi.mock("../lib/api", () => ({ getChanges: vi.fn(), getPortfolio: vi.fn(), getOrders: vi.fn(), getAlerts: vi.fn() }));
+vi.mock("../lib/api", () => ({ getChanges: vi.fn(), getPortfolio: vi.fn(), getOrders: vi.fn(), getAlerts: vi.fn(), cancelOrder: vi.fn(), replaceOrder: vi.fn() }));
 
 const nvda = { symbol: "NVDA", name: "NVIDIA Corporation", exchange: "NASDAQ", assetType: "STOCK" };
 const btc = { symbol: "BTC", name: "Bitcoin", exchange: "CRYPTO", assetType: "CRYPTO" };
@@ -54,7 +54,9 @@ describe("StockDetails", () => {
     render(<StockDetails ticker={nvda} />);
 
     const orders = (await screen.findByRole("heading", { name: "Open orders" })).parentElement;
-    expect(within(orders).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["Sell 2 · Limit at $130.00"]);
+    expect(within(orders).getAllByRole("listitem").map((li) => li.firstChild.textContent)).toEqual(["Sell 2 · Limit at $130.00"]);
+    expect(within(orders).getByRole("button", { name: "Edit order: Sell 2 · Limit at $130.00" })).toBeInTheDocument();
+    expect(within(orders).getByRole("button", { name: "Cancel order: Sell 2 · Limit at $130.00" })).toBeInTheDocument();
     const alerts = screen.getByRole("heading", { name: "Price alerts" }).parentElement;
     expect(within(alerts).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
       "Tell me when it goes below $95.00",
