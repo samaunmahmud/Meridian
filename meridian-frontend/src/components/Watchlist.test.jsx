@@ -2,9 +2,9 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { axeViolations } from "../test/axe";
 import Watchlist from "./Watchlist";
-import { getChanges, getPrices, getTickers } from "../lib/api";
+import { getChanges, getPrices, getTickers, getWatchlist } from "../lib/api";
 
-vi.mock("../lib/api", () => ({ getTickers: vi.fn(), getPrices: vi.fn(), getChanges: vi.fn() }));
+vi.mock("../lib/api", () => ({ getTickers: vi.fn(), getPrices: vi.fn(), getChanges: vi.fn(), getWatchlist: vi.fn() }));
 
 const nvda = { symbol: "NVDA", name: "NVIDIA Corporation" };
 const btc = { symbol: "BTC", name: "Bitcoin" };
@@ -25,6 +25,7 @@ beforeEach(() => {
   getTickers.mockResolvedValue([nvda, btc]);
   getPrices.mockImplementation((symbol) => Promise.resolve(history[symbol]));
   getChanges.mockResolvedValue([{ symbol: "NVDA", referencePrice: 100, changePercent: 4 }]);
+  getWatchlist.mockResolvedValue([]);
 });
 
 describe("Watchlist", () => {
@@ -70,5 +71,23 @@ describe("Watchlist", () => {
     await screen.findByText("+4.00%");
 
     expect(await axeViolations(container)).toEqual([]);
+  });
+
+  it("shows how far a stock is from your target price instead of its name", async () => {
+    getWatchlist.mockResolvedValue([
+      { symbol: "NVDA", targetPrice: 100, note: null },
+      { symbol: "BTC", targetPrice: 62000, note: "dip" },
+    ]);
+    render(<Watchlist onSelect={vi.fn()} />);
+
+    expect(await screen.findByText("4.0% to target")).toBeInTheDocument();
+    expect(screen.getByText("Target reached")).toBeInTheDocument();
+    expect(screen.queryByText("NVIDIA Corporation")).not.toBeInTheDocument();
+  });
+
+  it("still shows the list when your watchlist can't be loaded", async () => {
+    getWatchlist.mockRejectedValue(new Error("down"));
+    render(<Watchlist onSelect={vi.fn()} />);
+    expect(await screen.findByText("NVIDIA Corporation")).toBeInTheDocument();
   });
 });

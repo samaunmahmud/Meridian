@@ -1,6 +1,7 @@
 package com.meridian.backend.model;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
@@ -25,6 +26,14 @@ public class WatchlistItem {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // Why you are watching it, in your own words (null: none).
+    @Column(length = 500)
+    private String note;
+
+    // The price you would like to buy at (null: none).
+    @Column(name = "target_price", precision = 12, scale = 4)
+    private BigDecimal targetPrice;
+
     public WatchlistItem() {
     }
 
@@ -48,5 +57,21 @@ public class WatchlistItem {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
+    }
+
+    public BigDecimal getTargetPrice() {
+        return targetPrice;
+    }
+
+    public void setTargetPrice(BigDecimal targetPrice) {
+        this.targetPrice = targetPrice;
     }
 }

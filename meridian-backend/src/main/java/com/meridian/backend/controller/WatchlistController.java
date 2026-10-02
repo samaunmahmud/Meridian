@@ -2,6 +2,7 @@ package com.meridian.backend.controller;
 
 import com.meridian.backend.dto.AddWatchlistRequest;
 import com.meridian.backend.dto.WatchlistItemResponse;
+import com.meridian.backend.dto.WatchlistNoteRequest;
 import com.meridian.backend.model.User;
 import com.meridian.backend.service.WatchlistService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,6 +28,13 @@ public class WatchlistController {
     @PostMapping
     public WatchlistItemResponse addToWatchlist(@RequestBody AddWatchlistRequest request, @AuthenticationPrincipal User user) {
         return watchlistService.addToWatchlist(request.symbol(), user);
+    }
+
+    // Your note and target price on a stock; adds it to the watchlist if needed.
+    @PutMapping("/{symbol}")
+    public WatchlistItemResponse saveNote(@PathVariable String symbol, @RequestBody WatchlistNoteRequest request,
+                                          @AuthenticationPrincipal User user) {
+        return watchlistService.saveNote(symbol, request, user);
     }
 
     @DeleteMapping("/{symbol}")

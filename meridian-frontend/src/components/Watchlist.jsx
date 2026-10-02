@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { getChanges, getTickers, getPrices } from "../lib/api";
+import { getChanges, getTickers, getPrices, getWatchlist } from "../lib/api";
+import { targetDistance } from "../lib/targetDistance";
 import Sparkline from "./Sparkline";
 import TickerAvatar from "./TickerAvatar";
 import Skeleton from "./Skeleton";
@@ -23,6 +24,7 @@ export default function Watchlist({ onSelect, liveUpdate }) {
   const [query, setQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [references, setReferences] = useState({}); // symbol -> price today's change is measured from
+  const [targets, setTargets] = useState({}); // symbol -> your target price
   const refreshTimer = useRef(null);
 
   function loadChanges() {
@@ -33,7 +35,13 @@ export default function Watchlist({ onSelect, liveUpdate }) {
 
   async function load() {
     setLoading(true);
-    const [tickers] = await Promise.all([getTickers(), loadChanges()]);
+    const [tickers] = await Promise.all([
+      getTickers(),
+      loadChanges(),
+      getWatchlist()
+        .then((list) => setTargets(Object.fromEntries(list.filter((i) => i.targetPrice).map((i) => [i.symbol, i.targetPrice]))))
+        .catch(() => {}),
+    ]);
     const withPrices = await Promise.all(
       tickers.map(async (t) => {
         const history = await getPrices(t.symbol);
@@ -114,6 +122,7 @@ export default function Watchlist({ onSelect, liveUpdate }) {
             {filtered.map((row, i) => {
               const pct = dayChange(row.latest?.price, references[row.symbol]);
               const isUp = (pct ?? 0) >= 0;
+              const distance = targetDistance(row.latest?.price, targets[row.symbol]);
               return (
                 <button
                   key={row.symbol}
@@ -124,7 +133,14 @@ export default function Watchlist({ onSelect, liveUpdate }) {
 
                   <div className="flex-1 min-w-0">
                     <div className="text-[15px] font-semibold truncate">{row.symbol}</div>
-                    <div className="text-[13px] text-muted truncate">{row.name}</div>
+                    {distance ? (
+                      <div className={`text-[13px] truncate ${distance.reached ? "text-gain font-medium" : "text-muted"}`}>
+                        {distance.short}
+                        <span className="sr-only"> ({distance.text})</span>
+                      </div>
+                    ) : (
+                      <div className="text-[13px] text-muted truncate">{row.name}</div>
+                    )}
                   </div>
 
                   <Sparkline values={row.sparkline} positive={isUp} width={52} height={22} />

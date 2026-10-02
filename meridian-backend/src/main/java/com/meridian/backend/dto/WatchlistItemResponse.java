@@ -10,6 +10,8 @@ public record WatchlistItemResponse(
         String exchange,
         AssetType assetType,
         BigDecimal currentPrice,
-        Instant addedAt
+        Instant addedAt,
+        String note,
+        BigDecimal targetPrice
 ) {
 }

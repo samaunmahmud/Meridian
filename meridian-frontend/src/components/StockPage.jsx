@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import CompanyNews from "./CompanyNews";
 import StockDetails from "./StockDetails";
 import StockDividends from "./StockDividends";
+import StockNotes from "./StockNotes";
 import StockHero from "./StockHero";
 import TradePanel from "./TradePanel";
 
@@ -16,6 +17,7 @@ export default function StockPage({ ticker, liveUpdate, refreshKey, onTrade, onO
       <div className="space-y-6 min-w-0">
         <StockHero ticker={ticker} liveUpdate={liveUpdate} onTrade={onTrade} tradeBesideChart />
         <StockDetails ticker={ticker} liveUpdate={liveUpdate} refreshKey={refreshKey} onOrdersChanged={onOrderPlaced} />
+        <StockNotes ticker={ticker} liveUpdate={liveUpdate} />
         <StockDividends ticker={ticker} refreshKey={refreshKey} />
         <CompanyNews ticker={ticker} />
       </div>

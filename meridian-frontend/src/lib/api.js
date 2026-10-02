@@ -178,6 +178,19 @@ export function setTargets(targets) {
   return apiFetch("/portfolio/targets", { method: "PUT", body: JSON.stringify({ targets }) });
 }
 
+/** Your watchlist entries: [{ symbol, name, currentPrice, addedAt, note, targetPrice }]. */
+export function getWatchlist() {
+  return apiFetch("/watchlist");
+}
+
+/** Saves your note and target price on a stock (null or blank clears them); adds it to your watchlist. */
+export function saveWatchlistNote(symbol, note, targetPrice) {
+  return apiFetch(`/watchlist/${encodeURIComponent(symbol)}`, {
+    method: "PUT",
+    body: JSON.stringify({ note, targetPrice }),
+  });
+}
+
 export function getPortfolio() {
   return apiFetch("/portfolio");
 }
