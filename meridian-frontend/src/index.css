@@ -42,14 +42,15 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --c-bg: #f2f2f7;
+  /* Neutral light grey page with white cards (no blue or lavender tint). */
+  --c-bg: #f4f4f4;
   --c-surface: #ffffff;
-  --c-surface-2: #ececf1;
-  --c-line: #e4e4ea;
+  --c-surface-2: #efefef;
+  --c-line: #e6e6e6;
   --c-text: #0b0b0f;
-  --c-muted: #5c5c66;
-  --c-dim: #5c5c66;
-  --c-control: #7c7c86;
+  --c-muted: #5e5e5e;
+  --c-dim: #5e5e5e;
+  --c-control: #7a7a7a;
   --c-accent: #1f4ff0;
   --c-accent-ink: #ffffff;
   --c-accent-soft: #e6ebff;
@@ -217,5 +218,5 @@ body {
   filter: blur(28px);
 }
 :root[data-theme="light"] .balance-glow {
-  opacity: 0.55;
+  display: none; /* light mode keeps the page a plain neutral grey */
 }

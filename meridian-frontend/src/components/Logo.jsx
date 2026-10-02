@@ -1,20 +1,26 @@
-// The Meridian mark: a globe with a single meridian line. Stroke-only so it
-// inherits colour (accent) in both themes.
+import { useId } from "react";
+
+// The Meridian mark: an "M" whose middle dips in a curve, like a meridian line on a globe, white on a
+// blue-to-violet rounded tile. The tile carries its own colours, so it reads the same in both themes.
 export function LogoMark({ size = 28, className = "" }) {
+  const gradient = useId();
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      className={className}
-      aria-hidden="true"
-    >
-      <circle cx="16" cy="16" r="14" />
-      <ellipse cx="16" cy="16" rx="6.2" ry="14" />
-      <path d="M2 16h28" opacity="0.55" />
+    <svg width={size} height={size} viewBox="0 0 64 64" className={className} aria-hidden="true">
+      <defs>
+        <linearGradient id={gradient} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#4466ff" />
+          <stop offset="1" stopColor="#8b5cf6" />
+        </linearGradient>
+      </defs>
+      <rect width="64" height="64" rx="18" fill={`url(#${gradient})`} />
+      <path
+        d="M18 45V22c0 0 6 0 14 13c8-13 14-13 14-13v23"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -22,12 +28,9 @@ export function LogoMark({ size = 28, className = "" }) {
 // Mark + wordmark, set in the bold display cut of the interface font.
 export default function Logo({ size = 24 }) {
   return (
-    <div className="flex items-center text-bone select-none" style={{ gap: size * 0.36 }}>
-      <LogoMark size={Math.round(size * 1.05)} className="text-accent" />
-      <span
-        className="font-display font-extrabold leading-none"
-        style={{ fontSize: size, letterSpacing: "-0.035em" }}
-      >
+    <div className="flex items-center text-bone select-none" style={{ gap: size * 0.4 }}>
+      <LogoMark size={Math.round(size * 1.2)} />
+      <span className="font-display font-extrabold leading-none" style={{ fontSize: size, letterSpacing: "-0.035em" }}>
         Meridian
       </span>
     </div>
