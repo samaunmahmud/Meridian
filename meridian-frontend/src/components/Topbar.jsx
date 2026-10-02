@@ -1,60 +1,67 @@
 import Icon from "./Icon";
-import Logo from "./Logo";
 import ThemeToggle from "./ThemeToggle";
 
-// The page header. A tab shows its title in large bold type; a stock's page shows a round
-// back button instead of the logo on phones and next to the title on wide screens.
-// Phones have no sidebar, so the logo and a way to Settings (which has log-out) live here too.
+// The page header, laid out like a banking app's: your round profile avatar (opens Settings) or a back
+// button on the left, a wide search pill in the middle, and the theme switch on the right. Pages that
+// open with their own large heading (Home's balance, a stock's name and price) keep the title for screen
+// readers only; the other tabs show it in large bold type below the bar.
 // Mac keyboards show ⌘ for the search shortcut, everything else Ctrl.
 const SHORTCUT = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform ?? "") ? "⌘K" : "Ctrl K";
 
-export default function Topbar({ title, onSettings, settingsActive, onSearch, onBack }) {
+export default function Topbar({ title, hideTitle = false, userEmail, onSettings, settingsActive, onSearch, onBack }) {
   return (
-    <header className="px-4 sm:px-6 lg:px-8 pt-4 pb-3 lg:pt-7 lg:pb-5 flex flex-wrap lg:flex-nowrap items-center justify-between gap-y-4">
-      <div className="lg:hidden order-1">
+    <header className="px-4 sm:px-6 lg:px-8 pt-4 pb-3 lg:pt-7 lg:pb-5 max-w-[1240px]">
+      <div className="flex items-center gap-3">
         {onBack ? (
           <BackButton onBack={onBack} />
         ) : (
-          <Logo size={22} />
+          <button
+            type="button"
+            onClick={onSettings}
+            aria-label="Settings and profile"
+            aria-current={settingsActive ? "page" : undefined}
+            className={`lg:hidden w-10 h-10 rounded-full shrink-0 flex items-center justify-center text-sm font-semibold transition-shadow ${
+              settingsActive ? "bg-bone text-ink" : "bg-accent text-accent-ink"
+            }`}
+          >
+            {(userEmail?.[0] ?? "?").toUpperCase()}
+          </button>
         )}
-      </div>
 
-      <div className="order-2 lg:order-3 flex items-center gap-2">
         <button
           type="button"
           onClick={onSearch}
           aria-label="Search"
           aria-keyshortcuts="Meta+K Control+K /"
-          className="h-10 w-10 sm:w-auto sm:pl-3.5 sm:pr-2 rounded-full bg-panel text-muted flex items-center justify-center gap-2 hover:text-bone transition-colors"
+          className="flex-1 lg:flex-none lg:w-80 h-10 pl-3.5 pr-2 rounded-full bg-panel text-muted flex items-center gap-2 hover:text-bone transition-colors lg:order-2 lg:ml-auto"
         >
           <Icon name="search" size={17} />
-          <span className="hidden sm:inline text-sm">Search</span>
-          <kbd className="hidden sm:inline font-sans text-[11px] px-1.5 py-0.5 rounded-md bg-panel-2 text-dim">{SHORTCUT}</kbd>
+          <span className="text-sm">Search</span>
+          <kbd className="hidden sm:inline ml-auto font-sans text-[11px] px-1.5 py-0.5 rounded-md bg-panel-2 text-dim">{SHORTCUT}</kbd>
         </button>
-        <ThemeToggle />
-        <button
-          type="button"
-          onClick={onSettings}
-          aria-label="Settings"
-          aria-current={settingsActive ? "page" : undefined}
-          className={`lg:hidden w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-            settingsActive ? "bg-bone text-ink" : "bg-panel text-muted hover:text-bone"
-          }`}
-        >
-          <Icon name="gear" size={18} />
-        </button>
-      </div>
 
-      <div className="order-3 lg:order-1 w-full lg:w-auto flex items-center gap-3 min-w-0">
-        {onBack && (
-          <div className="hidden lg:block">
-            <BackButton onBack={onBack} />
-          </div>
-        )}
-        <h1 className="font-display text-[30px] lg:text-[34px] leading-tight truncate" style={{ letterSpacing: "-0.03em" }}>
+        <div className="lg:order-3 shrink-0">
+          <ThemeToggle />
+        </div>
+
+        <h1
+          className={
+            hideTitle
+              ? "sr-only"
+              : "hidden lg:block lg:order-1 font-display text-[34px] leading-tight truncate min-w-0"
+          }
+          style={hideTitle ? undefined : { letterSpacing: "-0.03em" }}
+        >
           {title}
         </h1>
       </div>
+
+      {!hideTitle && (
+        // The same heading where phones have room for it; only one of the two is ever displayed.
+        <h1 className="lg:hidden font-display text-[30px] leading-tight truncate mt-4" style={{ letterSpacing: "-0.03em" }}>
+          {title}
+        </h1>
+      )}
     </header>
   );
 }
@@ -65,7 +72,7 @@ function BackButton({ onBack }) {
       type="button"
       onClick={onBack}
       aria-label="Back"
-      className="w-10 h-10 rounded-full bg-panel flex items-center justify-center hover:bg-panel-2 transition-colors"
+      className="w-10 h-10 rounded-full bg-panel shrink-0 flex items-center justify-center hover:bg-panel-2 transition-colors"
     >
       <Icon name="back" size={20} strokeWidth={2.2} />
     </button>

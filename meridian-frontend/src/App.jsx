@@ -13,6 +13,7 @@ import PortfolioAllocation from "./components/PortfolioAllocation";
 import PerformancePanel from "./components/PerformancePanel";
 import EquityChart from "./components/EquityChart";
 import BenchmarkChart from "./components/BenchmarkChart";
+import RecentActivity from "./components/RecentActivity";
 import RebalancePanel from "./components/RebalancePanel";
 import TradePanel from "./components/TradePanel";
 import OrderHistory from "./components/OrderHistory";
@@ -324,6 +325,8 @@ export default function App() {
       <div className="flex-1 min-w-0 pb-24 lg:pb-0">
         <Topbar
           title={stock ? stock.name : TITLES[activeTab]}
+          hideTitle={!stock && activeTab === "home"}
+          userEmail={session.email}
           onSettings={() => changeTab("settings")}
           onSearch={() => setSearching(true)}
           settingsActive={!stock && activeTab === "settings"}
@@ -361,6 +364,7 @@ export default function App() {
                     onExchange={openExchange}
                     onAddMoney={() => setSheet({ kind: "addMoney" })}
                   />
+                  <RecentActivity refreshKey={refreshKey} onSeeAll={() => changeTab("activity")} />
                   <InvestmentsList
                     refreshKey={refreshKey}
                     liveUpdate={liveUpdate}
@@ -402,7 +406,8 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      <MobileNav activeTab={activeTab} onTabChange={changeTab} />
+      {/* A stock's page swaps the tab bar for its Buy / Sell bar on phones. */}
+      {!stock && <MobileNav activeTab={activeTab} onTabChange={changeTab} />}
 
       {sheet?.kind === "trade" && (
         <Modal title="Trade" onClose={() => setSheet(null)}>

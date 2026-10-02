@@ -22,6 +22,24 @@ export default function StockPage({ ticker, liveUpdate, refreshKey, onTrade, onO
       <div className="hidden lg:block lg:sticky lg:top-6">
         <TradePanel prefill={prefill} refreshKey={refreshKey} onOrderPlaced={onOrderPlaced} />
       </div>
+
+      {/* Phones and tablets: Buy and Sell stay at the bottom of the screen, where the tab bar usually is. */}
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-ink/85 backdrop-blur-xl border-t border-line px-4 pt-3 pb-[max(env(safe-area-inset-bottom),12px)] grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => onTrade(ticker.symbol, "BUY")}
+          className="h-12 rounded-full bg-accent text-accent-ink text-[15px] font-semibold hover:brightness-110 active:scale-[0.98] transition-all"
+        >
+          Buy {ticker.symbol}
+        </button>
+        <button
+          type="button"
+          onClick={() => onTrade(ticker.symbol, "SELL")}
+          className="h-12 rounded-full bg-panel-2 text-bone text-[15px] font-semibold hover:brightness-110 active:scale-[0.98] transition-all"
+        >
+          Sell {ticker.symbol}
+        </button>
+      </div>
     </div>
   );
 }

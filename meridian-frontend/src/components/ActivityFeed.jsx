@@ -5,7 +5,7 @@ import Icon from "./Icon";
 import Skeleton from "./Skeleton";
 
 // How each transaction type looks: icon + tint of its badge.
-const KINDS = {
+export const KINDS = {
   DEPOSIT: { icon: "plus", tone: "bg-gain-dim text-gain" },
   WITHDRAWAL: { icon: "up", tone: "bg-loss-dim text-loss" },
   BUY: { icon: "up", tone: "bg-loss-dim text-loss" },

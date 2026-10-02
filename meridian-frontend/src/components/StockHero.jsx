@@ -26,8 +26,8 @@ const CHART_TYPES = [
   { key: "candles", label: "Candles" },
 ];
 
-// `tradeBesideChart`: a trade form is shown next to this on wide screens, so the Buy/Sell
-// buttons are only needed on narrower ones.
+// `tradeBesideChart`: the page has its own trade form (wide screens) and Buy / Sell bar (narrower
+// ones), so this leaves its Buy / Sell buttons out.
 export default function StockHero({ ticker, liveUpdate, onTrade, tradeBesideChart = false }) {
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -107,7 +107,7 @@ export default function StockHero({ ticker, liveUpdate, onTrade, tradeBesideChar
     : [];
 
   return (
-    <section aria-label={`${ticker.name} price`} className="bg-panel rounded-[28px] p-5 sm:p-7 fade-in">
+    <section aria-label={`${ticker.name} price`} className="sm:bg-panel sm:rounded-[28px] sm:p-7 fade-in">
       <div className="flex flex-wrap justify-between items-start gap-4 mb-5">
         <div className="flex items-center gap-3.5">
           <TickerAvatar symbol={ticker.symbol} size={48} />
@@ -177,7 +177,7 @@ export default function StockHero({ ticker, liveUpdate, onTrade, tradeBesideChar
             ))}
           </dl>
 
-          <div className={`grid grid-cols-2 gap-3 mt-5 ${tradeBesideChart ? "lg:hidden" : ""}`}>
+          <div className={`grid grid-cols-2 gap-3 mt-5 ${tradeBesideChart ? "hidden" : ""}`}>
             <button
               onClick={() => onTrade(ticker.symbol, "BUY")}
               className="h-12 rounded-full bg-accent text-accent-ink text-[15px] font-semibold flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all"

@@ -202,3 +202,20 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .fade-in, .toast-in, .skeleton, .sheet-in { animation: none; }
 }
+
+/* Home's balance sits on a soft glow of the accent colours, like a banking app's account wallpaper.
+   Decoration only (aria-hidden), behind the content (the section isolates its stacking). */
+.balance-glow {
+  position: absolute;
+  z-index: -1;
+  inset: -40px -16px 0;
+  pointer-events: none;
+  background:
+    radial-gradient(40% 55% at 30% 35%, color-mix(in srgb, var(--c-accent) 38%, transparent), transparent 70%),
+    radial-gradient(35% 50% at 72% 30%, color-mix(in srgb, var(--c-s3) 32%, transparent), transparent 70%),
+    radial-gradient(45% 45% at 55% 75%, color-mix(in srgb, var(--c-s4) 18%, transparent), transparent 70%);
+  filter: blur(28px);
+}
+:root[data-theme="light"] .balance-glow {
+  opacity: 0.55;
+}
