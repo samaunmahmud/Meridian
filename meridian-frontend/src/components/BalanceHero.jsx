@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getPortfolio } from "../lib/api";
 import { formatMoney } from "../lib/formatMoney";
 import { useAnimatedNumber } from "../lib/useAnimatedNumber";
+import Amount from "./Amount";
 import Icon from "./Icon";
 import Skeleton from "./Skeleton";
 
@@ -43,9 +44,7 @@ export default function BalanceHero({ refreshKey, onBuy, onSell, onExchange, onA
         <div className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted px-3 py-1 rounded-full bg-panel/70 backdrop-blur">
           Investing · USD
         </div>
-        <div className="font-display text-[48px] sm:text-[64px] leading-[1.05] mt-3" style={{ letterSpacing: "-0.04em" }}>
-          {formatMoney(animatedTotal)}
-        </div>
+        <Amount value={animatedTotal} className="block font-display text-[48px] sm:text-[64px] leading-[1.05] mt-3" />
         <div className={`text-sm font-semibold mt-1.5 ${isUp ? "text-gain" : "text-loss"}`}>
           {isUp ? "+" : "−"}
           {formatMoney(Math.abs(sinceStart))} ({isUp ? "+" : "−"}

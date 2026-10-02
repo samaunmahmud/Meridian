@@ -47,8 +47,9 @@ public class PortfolioController {
 
     @GetMapping("/portfolio/history")
     public List<PortfolioSnapshotResponse> getPortfolioHistory(@AuthenticationPrincipal User user,
-                                                               @RequestParam(required = false) Integer points) {
-        return portfolioService.getPortfolioHistory(user, points);
+                                                               @RequestParam(required = false) Integer points,
+                                                               @RequestParam(required = false) String range) {
+        return portfolioService.getPortfolioHistory(user, points, range);
     }
 
     @GetMapping("/portfolio/performance")

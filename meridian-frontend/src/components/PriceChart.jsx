@@ -1,4 +1,4 @@
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, YAxis } from "recharts";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, YAxis } from "recharts";
 import { formatNumber } from "../lib/formatMoney";
 import { summarizeSeries } from "../lib/chartSummary";
 
@@ -28,11 +28,10 @@ export default function PriceChart({ points, positive, name = "Price", height = 
       <AreaChart data={points} margin={{ top: 10, right: 2, left: 2, bottom: 0 }}>
         <defs>
           <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" style={{ stopColor: color, stopOpacity: 0.28 }} />
+            <stop offset="0%" style={{ stopColor: color, stopOpacity: 0.22 }} />
             <stop offset="100%" style={{ stopColor: color, stopOpacity: 0 }} />
           </linearGradient>
         </defs>
-        <CartesianGrid stroke="var(--c-line)" vertical={false} opacity={0.7} />
         <YAxis domain={["dataMin", "dataMax"]} hide />
         <Tooltip content={<ChartTooltip />} cursor={{ stroke: "var(--c-dim)", strokeDasharray: "3 3" }} />
         <Area

@@ -10,7 +10,7 @@ const holdings = [
 // Both views are always in the page; CSS shows the cards on phones (< 640px)
 // and the table from there up.
 describe("HoldingsList", () => {
-  it("renders one card per position for phones", () => {
+  it("renders one row per position for phones", () => {
     const { container } = render(<HoldingsList holdings={holdings} />);
     const cards = within(container.querySelector("ul")).getAllByRole("listitem");
 

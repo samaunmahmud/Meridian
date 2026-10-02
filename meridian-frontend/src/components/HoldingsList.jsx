@@ -31,31 +31,27 @@ function Asset({ holding }) {
   );
 }
 
-// Phones: one card per position, so nothing needs sideways scrolling.
+// Phones: one row per position, as a banking app lists them: what it is and how much you hold on the
+// left, its value and how it has done on the right.
 function HoldingCards({ holdings }) {
   return (
-    <ul className="sm:hidden space-y-3">
+    <ul className="sm:hidden divide-y divide-line">
       {holdings.map((h) => (
-        <li key={h.symbol} className="rounded-2xl border border-line bg-panel-2/40 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <Asset holding={h} />
-            <div className="text-right font-mono text-sm shrink-0">
-              <div className="font-medium">{formatNumber(h.marketValue)}</div>
-              <GainLoss holding={h} />
+        <li key={h.symbol} className="flex items-center gap-3 py-3">
+          <TickerAvatar symbol={h.symbol} size={40} />
+          <div className="flex-1 min-w-0">
+            <div className="text-[15px] font-semibold truncate">{h.name}</div>
+            <div className="text-[13px] text-muted truncate">
+              <span>{h.quantity}</span> <span>{h.symbol}</span> · avg <span>{formatNumber(h.avgCost)}</span>
             </div>
           </div>
-          <dl className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-line/70 text-xs">
-            {[
-              ["Qty", h.quantity, ""],
-              ["Avg cost", formatNumber(h.avgCost), "text-muted"],
-              ["Price", formatNumber(h.currentPrice), ""],
-            ].map(([label, value, tone]) => (
-              <div key={label} className="min-w-0">
-                <dt className="text-dim">{label}</dt>
-                <dd className={`font-mono mt-0.5 truncate ${tone}`}>{value}</dd>
-              </div>
-            ))}
-          </dl>
+          <div className="text-right font-mono text-sm shrink-0">
+            <div className="font-semibold">{formatNumber(h.marketValue)}</div>
+            <div className="text-[11px] text-dim">
+              at <span>{formatNumber(h.currentPrice)}</span>
+            </div>
+            <GainLoss holding={h} className="text-[13px]" />
+          </div>
         </li>
       ))}
     </ul>

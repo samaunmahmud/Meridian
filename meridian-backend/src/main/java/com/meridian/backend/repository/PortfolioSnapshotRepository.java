@@ -12,6 +12,9 @@ import java.util.List;
 public interface PortfolioSnapshotRepository extends JpaRepository<PortfolioSnapshot, Long> {
     List<PortfolioSnapshot> findByPortfolioIdOrderByRecordedAtAsc(Long portfolioId);
 
+    /** Snapshots since the given moment, oldest first. */
+    List<PortfolioSnapshot> findByPortfolioIdAndRecordedAtGreaterThanEqualOrderByRecordedAtAsc(Long portfolioId, Instant since);
+
     /** One portfolio's snapshots up to {@code upTo}, after (afterAt, afterId), oldest first: one page for the retention job. */
     @Query("select s.id as id, s.recordedAt as recordedAt from PortfolioSnapshot s where s.portfolio.id = :group and s.recordedAt <= :upTo "
             + "and (s.recordedAt > :afterAt or (s.recordedAt = :afterAt and s.id > :afterId)) order by s.recordedAt, s.id")

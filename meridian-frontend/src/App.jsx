@@ -11,7 +11,6 @@ import TopMovers from "./components/TopMovers";
 import PortfolioSummary from "./components/PortfolioSummary";
 import PortfolioAllocation from "./components/PortfolioAllocation";
 import PerformancePanel from "./components/PerformancePanel";
-import EquityChart from "./components/EquityChart";
 import BenchmarkChart from "./components/BenchmarkChart";
 import RecentActivity from "./components/RecentActivity";
 import RebalancePanel from "./components/RebalancePanel";
@@ -325,7 +324,7 @@ export default function App() {
       <div className="flex-1 min-w-0 pb-24 lg:pb-0">
         <Topbar
           title={stock ? stock.name : TITLES[activeTab]}
-          hideTitle={!stock && activeTab === "home"}
+          hideTitle={!!stock || activeTab === "home"}
           userEmail={session.email}
           onSettings={() => changeTab("settings")}
           onSearch={() => setSearching(true)}
@@ -380,16 +379,17 @@ export default function App() {
             {!stock && activeTab === "portfolio" && (
               <main id="main-content" tabIndex={-1} data-ring-parent className={`${PAGE_PADDING} grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6`}>
                 <div className="space-y-6 min-w-0">
-                  <PortfolioSummary refreshKey={refreshKey}>
-                    <EquityChart refreshKey={refreshKey} />
-                  </PortfolioSummary>
+                  <PortfolioSummary refreshKey={refreshKey} />
                   <BenchmarkChart refreshKey={refreshKey} />
                   <RebalancePanel refreshKey={refreshKey} onTrade={handleTrade} />
                   <PerformancePanel refreshKey={refreshKey} onSelect={openStock} />
                   <OrderHistory refreshKey={refreshKey} onChanged={handleOrderPlaced} />
                 </div>
                 <div className="space-y-6 min-w-0">
-                  <TradePanel onOrderPlaced={handleOrderPlaced} refreshKey={refreshKey} />
+                  {/* Phones trade from Home's buttons and each stock's Buy / Sell bar. */}
+                  <div className="hidden lg:block">
+                    <TradePanel onOrderPlaced={handleOrderPlaced} refreshKey={refreshKey} />
+                  </div>
                   <PortfolioAllocation refreshKey={refreshKey} />
                   <RecurringOrdersPanel refreshKey={refreshKey} />
                 </div>

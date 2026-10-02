@@ -195,8 +195,9 @@ export function getPortfolio() {
   return apiFetch("/portfolio");
 }
 
-export function getPortfolioHistory() {
-  return apiFetch("/portfolio/history");
+/** Portfolio value over time, oldest first; `range` is "1D" | "1W" | "1M" | "3M" | "1Y" | "ALL" (default all). */
+export function getPortfolioHistory(range) {
+  return apiFetch(`/portfolio/history${range ? `?range=${encodeURIComponent(range)}` : ""}`);
 }
 
 /**

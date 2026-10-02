@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { getPrices } from "../lib/api";
 import { formatNumber } from "../lib/formatMoney";
 import CandlestickChart from "./CandlestickChart";
+import Amount from "./Amount";
 import Icon from "./Icon";
 import MarketBadge from "./MarketBadge";
 import PriceChart from "./PriceChart";
@@ -14,10 +15,12 @@ import { formatAge, isDelayed } from "../lib/priceAge";
 // Time windows, answered by the server (which thins a long history to at most CHART_POINTS points).
 // History only goes back to when the stock was first tracked, so a young stock shows the same on all.
 const RANGES = [
-  { key: "1D", label: "1D" },
-  { key: "1W", label: "1W" },
-  { key: "1M", label: "1M" },
-  { key: "ALL", label: "All" },
+  { key: "1D", label: "1D", words: "today" },
+  { key: "1W", label: "1W", words: "past week" },
+  { key: "1M", label: "1M", words: "past month" },
+  { key: "3M", label: "3M", words: "past 3 months" },
+  { key: "1Y", label: "1Y", words: "past year" },
+  { key: "ALL", label: "All", words: "all time" },
 ];
 const CHART_POINTS = 500;
 
@@ -99,79 +102,72 @@ export default function StockHero({ ticker, liveUpdate, onTrade, tradeBesideChar
 
   const windowStats = latest
     ? [
-        { label: "Window high", value: `$${formatNumber(Math.max(...visible.map((p) => p.price)))}` },
-        { label: "Window low", value: `$${formatNumber(Math.min(...visible.map((p) => p.price)))}` },
-        { label: "Window start", value: `$${formatNumber(first.price)}` },
+        { label: "High", value: `$${formatNumber(Math.max(...visible.map((p) => p.price)))}` },
+        { label: "Low", value: `$${formatNumber(Math.min(...visible.map((p) => p.price)))}` },
+        { label: "Start", value: `$${formatNumber(first.price)}` },
         { label: "Price updates", value: String(visible.length) },
       ]
     : [];
 
+  const rangeWords = RANGES.find((r) => r.key === range)?.words;
+
   return (
     <section aria-label={`${ticker.name} price`} className="sm:bg-panel sm:rounded-[28px] sm:p-7 fade-in">
-      <div className="flex flex-wrap justify-between items-start gap-4 mb-5">
-        <div className="flex items-center gap-3.5">
-          <TickerAvatar symbol={ticker.symbol} size={48} />
-          <div>
-            <div className="text-lg font-semibold leading-tight">{ticker.name}</div>
-            <div className="text-[13px] text-muted">
+      <div className="flex items-center gap-3">
+        <TickerAvatar symbol={ticker.symbol} size={44} />
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold leading-tight truncate">{ticker.name}</h2>
+          <div className="flex items-center gap-2 text-[13px] text-muted">
+            <span>
               {ticker.symbol} &middot; {ticker.exchange}
-            </div>
-            <div className="mt-1">
-              <MarketBadge assetType={ticker.assetType} />
-            </div>
+            </span>
+            <MarketBadge assetType={ticker.assetType} />
           </div>
         </div>
-
-        {latest && (
-          <div className="sm:text-right">
-            <div className="font-display text-[40px] leading-none" style={{ letterSpacing: "-0.035em" }}>
-              ${formatNumber(animatedPrice)}
-            </div>
-            <div
-              className={`inline-flex items-center gap-1 text-xs font-mono font-medium mt-2 px-2.5 py-1 rounded-full ${
-                isUp ? "text-gain bg-gain-dim" : "text-loss bg-loss-dim"
-              }`}
-            >
-              <Icon name={isUp ? "up" : "down"} size={12} strokeWidth={2.2} />
-              {isUp ? "+" : ""}
-              {formatNumber(delta)} ({isUp ? "+" : ""}
-              {deltaPct}%)
-            </div>
-          </div>
-        )}
       </div>
 
       {latest ? (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-            <div className="flex flex-wrap gap-2">
-              <Segmented options={RANGES} value={range} onChange={setRange} label="Price window" />
-              <Segmented options={CHART_TYPES} value={chartType} onChange={setChartType} label="Chart type" />
+          <div className="mt-5">
+            <Amount value={animatedPrice} className="block font-display text-[44px] sm:text-[52px] leading-none" />
+            <div className={`flex items-center gap-1 text-sm font-semibold mt-2 ${isUp ? "text-gain" : "text-loss"}`}>
+              <Icon name={isUp ? "up" : "down"} size={14} strokeWidth={2.4} />
+              {isUp ? "+" : "−"}${formatNumber(Math.abs(delta))} ({isUp ? "+" : "−"}
+              {Math.abs(Number(deltaPct)).toFixed(2)}%)
+              <span className="text-muted font-medium ml-1">{rangeWords}</span>
             </div>
-            {isDelayed(latest.recordedAt, now) ? (
-              // The words carry the meaning (the amber dot is decoration).
-              <div role="status" className="flex items-center gap-2 text-xs text-bone">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--c-s2)" }} aria-hidden="true" />
-                Prices delayed — last update {formatAge(latest.recordedAt, now)}
-              </div>
+          </div>
+
+          <div className="mt-5 -mx-1">
+            {chartType === "line" ? (
+              <PriceChart points={visible} positive={isUp} name={ticker.symbol} />
             ) : (
-              <div className="flex items-center gap-2 text-xs text-muted">
-                <span className="w-2 h-2 rounded-full bg-gain shrink-0" aria-hidden="true" />
-                Updated {new Date(latest.recordedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-              </div>
+              <CandlestickChart points={visible} name={ticker.symbol} />
             )}
           </div>
 
-          {chartType === "line" ? (
-            <PriceChart points={visible} positive={isUp} name={ticker.symbol} />
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mt-3">
+            <Segmented options={RANGES} value={range} onChange={setRange} label="Price window" />
+            <Segmented options={CHART_TYPES} value={chartType} onChange={setChartType} label="Chart type" />
+          </div>
+          {isDelayed(latest.recordedAt, now) ? (
+            // The words carry the meaning (the amber dot is decoration).
+            <div role="status" className="flex items-center gap-2 text-xs text-bone mt-3">
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--c-s2)" }} aria-hidden="true" />
+              Prices delayed — last update {formatAge(latest.recordedAt, now)}
+            </div>
           ) : (
-            <CandlestickChart points={visible} name={ticker.symbol} />
+            <div className="flex items-center gap-2 text-xs text-muted mt-3">
+              <span className="w-2 h-2 rounded-full bg-gain shrink-0" aria-hidden="true" />
+              Updated {new Date(latest.recordedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+            </div>
           )}
 
-          <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-4 bg-panel-2 rounded-[20px] px-5 py-4 mt-5">
+          <h3 className="text-[15px] font-semibold mt-6 mb-1">Key stats</h3>
+          <dl className="grid grid-cols-2 gap-x-6">
             {windowStats.map((s) => (
-              <div key={s.label}>
-                <dt className="text-xs font-medium text-muted mb-1">{s.label}</dt>
+              <div key={s.label} className="flex items-center justify-between py-2.5 border-b border-line">
+                <dt className="text-sm text-muted">{s.label}</dt>
                 <dd className="font-mono font-medium text-sm">{s.value}</dd>
               </div>
             ))}

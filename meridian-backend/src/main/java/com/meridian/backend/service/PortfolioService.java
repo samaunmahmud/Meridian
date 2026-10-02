@@ -799,12 +799,25 @@ public class PortfolioService {
 
     /** Oldest first, at most {@code points} snapshots (default 500) spread evenly over the whole history. */
     public List<PortfolioSnapshotResponse> getPortfolioHistory(User user, Integer points) {
+        return getPortfolioHistory(user, points, null);
+    }
+
+    /**
+     * Oldest first, at most {@code points} snapshots (default 500) spread evenly over {@code range}
+     * ("1D", "1W", "1M", "3M", "1Y" or "ALL"; null is all of it).
+     */
+    public List<PortfolioSnapshotResponse> getPortfolioHistory(User user, Integer points, String range) {
         int max = points == null ? DEFAULT_HISTORY_POINTS : points;
         if (max < 2 || max > 5000) {
             throw new InvalidRequestException("points must be between 2 and 5000");
         }
+        java.time.Duration window = MarketDataService.windowFor(range);
         Portfolio portfolio = getOrCreatePortfolio(user);
-        return Downsample.evenly(portfolioSnapshotRepository.findByPortfolioIdOrderByRecordedAtAsc(portfolio.getId()), max).stream()
+        List<PortfolioSnapshot> snapshots = window == null
+                ? portfolioSnapshotRepository.findByPortfolioIdOrderByRecordedAtAsc(portfolio.getId())
+                : portfolioSnapshotRepository.findByPortfolioIdAndRecordedAtGreaterThanEqualOrderByRecordedAtAsc(
+                        portfolio.getId(), Instant.now().minus(window));
+        return Downsample.evenly(snapshots, max).stream()
                 .map(s -> new PortfolioSnapshotResponse(s.getTotalValue(), s.getRecordedAt()))
                 .toList();
     }
