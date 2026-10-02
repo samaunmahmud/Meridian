@@ -13,6 +13,7 @@ import PortfolioAllocation from "./components/PortfolioAllocation";
 import PerformancePanel from "./components/PerformancePanel";
 import EquityChart from "./components/EquityChart";
 import BenchmarkChart from "./components/BenchmarkChart";
+import RebalancePanel from "./components/RebalancePanel";
 import TradePanel from "./components/TradePanel";
 import OrderHistory from "./components/OrderHistory";
 import AlertsPanel from "./components/AlertsPanel";
@@ -252,8 +253,8 @@ export default function App() {
     setActiveTab(tab);
   }
 
-  function handleTrade(symbol, type) {
-    setSheet({ kind: "trade", prefill: { symbol, type, nonce: Date.now() } });
+  function handleTrade(symbol, type, quantity) {
+    setSheet({ kind: "trade", prefill: { symbol, type, quantity, nonce: Date.now() } });
   }
 
   function openExchange() {
@@ -379,6 +380,7 @@ export default function App() {
                     <EquityChart refreshKey={refreshKey} />
                   </PortfolioSummary>
                   <BenchmarkChart refreshKey={refreshKey} />
+                  <RebalancePanel refreshKey={refreshKey} onTrade={handleTrade} />
                   <PerformancePanel refreshKey={refreshKey} onSelect={openStock} />
                   <OrderHistory refreshKey={refreshKey} onChanged={handleOrderPlaced} />
                 </div>

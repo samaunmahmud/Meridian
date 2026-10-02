@@ -165,6 +165,7 @@ class AccountSettingsTest {
         Long tickerId = jdbc.queryForObject("select id from tickers where symbol = ?", Long.class, dividendSymbol);
         jdbc.update("insert into dividends (ticker_id, ex_date, pay_date, amount) values (?, current_date, current_date, 0.5)", tickerId);
         Long dividendId = jdbc.queryForObject("select id from dividends where ticker_id = ?", Long.class, tickerId);
+        jdbc.update("insert into allocation_targets (portfolio_id, ticker_id, target_percent) values (?, ?, 25)", portfolioId, tickerId);
         jdbc.update("insert into dividend_payments (portfolio_id, dividend_id, shares, amount, paid_at) values (?, ?, 2, 1, current_timestamp)",
                 portfolioId, dividendId);
 
@@ -177,7 +178,7 @@ class AccountSettingsTest {
 
         assertThat(users.findByEmail(email)).isEmpty();
         assertThat(portfolios.findById(portfolioId)).isEmpty();
-        for (String table : new String[]{"wallets", "transactions", "orders", "holdings", "dividend_payments"}) {
+        for (String table : new String[]{"wallets", "transactions", "orders", "holdings", "dividend_payments", "allocation_targets"}) {
             assertThat(jdbc.queryForObject("select count(*) from " + table + " where portfolio_id = ?", Integer.class, portfolioId))
                     .as(table).isZero();
         }

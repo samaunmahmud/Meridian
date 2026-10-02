@@ -8,13 +8,16 @@ import com.meridian.backend.dto.OrderResponse;
 import com.meridian.backend.dto.PerformanceResponse;
 import com.meridian.backend.dto.PortfolioResponse;
 import com.meridian.backend.dto.PortfolioSnapshotResponse;
+import com.meridian.backend.dto.RebalanceResponse;
 import com.meridian.backend.dto.ReplaceOrderRequest;
+import com.meridian.backend.dto.TargetsRequest;
 import com.meridian.backend.dto.TransactionResponse;
 import com.meridian.backend.dto.WithdrawRequest;
 import com.meridian.backend.model.User;
 import com.meridian.backend.service.BenchmarkService;
 import com.meridian.backend.service.PerformanceService;
 import com.meridian.backend.service.PortfolioService;
+import com.meridian.backend.service.RebalanceService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,12 +30,14 @@ public class PortfolioController {
     private final PortfolioService portfolioService;
     private final PerformanceService performanceService;
     private final BenchmarkService benchmarkService;
+    private final RebalanceService rebalanceService;
 
     public PortfolioController(PortfolioService portfolioService, PerformanceService performanceService,
-                               BenchmarkService benchmarkService) {
+                               BenchmarkService benchmarkService, RebalanceService rebalanceService) {
         this.portfolioService = portfolioService;
         this.performanceService = performanceService;
         this.benchmarkService = benchmarkService;
+        this.rebalanceService = rebalanceService;
     }
 
     @GetMapping("/portfolio")
@@ -56,6 +61,17 @@ public class PortfolioController {
                                           @RequestParam(required = false) String range,
                                           @RequestParam(required = false) Integer points) {
         return benchmarkService.compare(user, symbol, range, points);
+    }
+
+    @GetMapping("/portfolio/rebalance")
+    public RebalanceResponse getRebalancePlan(@AuthenticationPrincipal User user) {
+        return rebalanceService.getPlan(user);
+    }
+
+    // Replaces every target at once; returns the plan for the new targets.
+    @PutMapping("/portfolio/targets")
+    public RebalanceResponse setTargets(@RequestBody TargetsRequest request, @AuthenticationPrincipal User user) {
+        return rebalanceService.setTargets(user, request);
     }
 
     @PostMapping("/portfolio/deposit")

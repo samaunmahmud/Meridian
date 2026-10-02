@@ -29,7 +29,7 @@ public class AccountSettingsService {
 
     // Children before parents, so no foreign key is ever left pointing at a deleted row.
     private static final String[] PORTFOLIO_TABLES = {
-            "dividend_payments", "holdings", "orders", "transactions", "portfolio_snapshots", "recurring_orders", "wallets"
+            "allocation_targets", "dividend_payments", "holdings", "orders", "transactions", "portfolio_snapshots", "recurring_orders", "wallets"
     };
     private static final String[] USER_TABLES = {"auth_tokens", "alerts", "watchlist_items"};
 

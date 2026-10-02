@@ -58,6 +58,10 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
     if (!prefill) return;
     if (prefill.symbol) setSymbol(prefill.symbol);
     if (prefill.type) setType(prefill.type);
+    if (prefill.quantity) {
+      setKind("MARKET");
+      setQuantity(String(prefill.quantity));
+    }
   }, [prefill]);
 
   // Stop-loss and trailing stops are sell-only on the backend — switching to BUY while one is

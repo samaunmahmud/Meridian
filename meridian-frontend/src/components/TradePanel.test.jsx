@@ -133,6 +133,14 @@ describe("TradePanel: opened for a particular stock", () => {
   });
 });
 
+describe("TradePanel: opened from a suggested trade", () => {
+  it("fills in the side and the quantity as a market order", async () => {
+    await renderPanel({ prefill: { symbol: "NVDA", type: "SELL", quantity: 10.015, nonce: 2 } });
+    expect(await screen.findByRole("button", { name: "Sell NVDA" })).toBeInTheDocument();
+    expect(numbers()[0]).toHaveValue(10.015);
+  });
+});
+
 describe("TradePanel: trailing stop", () => {
   it("is sell-only, explains where the stop starts, and sends the trail", async () => {
     placeOrder.mockResolvedValue({

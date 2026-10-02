@@ -49,6 +49,7 @@
 - Portfolio with holdings, equity chart and an activity feed
 - Performance: realized and unrealized profit and loss, fees paid, win rate, best and worst trade, and a per-stock breakdown
 - You vs the market: your time-weighted return next to any tracked ticker (SPY by default) over 1W / 1M / 3M / All; deposits, withdrawals and currency moves don't count as gains
+- Target allocation: set what share of the portfolio each stock should be; Meridian shows the drift and the trades that bring it back (sized to leave room for commission, small drifts left alone), each opening the trade form filled in
 - Dividends: whoever holds a stock when its ex-dividend date begins is paid in USD cash on the payment date, with a live notice; each stock page shows the next and recent dividends, the yield and what you've received
 - Company news on every stock page, newest first, with the source, age and (on Alpha Vantage) a bullish / bearish rating
 - Search from anywhere (<kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> or <kbd>/</kbd>): jump to any stock, page or action

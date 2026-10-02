@@ -164,6 +164,20 @@ export function getDividends(symbol) {
   return apiFetch(`/dividends/${encodeURIComponent(symbol)}`);
 }
 
+/**
+ * The portfolio next to its target allocation: { hasTargets, totalValue, toleranceBand, cash: { value,
+ * currentPercent, targetPercent }, rows: [{ symbol, name, price, shares, value, currentPercent, targetPercent,
+ * trade: { type, quantity, estimatedValue } | null }] }.
+ */
+export function getRebalancePlan() {
+  return apiFetch("/portfolio/rebalance");
+}
+
+/** Replaces every target ([{ symbol, percent }]; the rest is cash) and returns the new plan. */
+export function setTargets(targets) {
+  return apiFetch("/portfolio/targets", { method: "PUT", body: JSON.stringify({ targets }) });
+}
+
 export function getPortfolio() {
   return apiFetch("/portfolio");
 }
