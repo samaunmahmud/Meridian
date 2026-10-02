@@ -8,13 +8,25 @@ import { showToast } from "../lib/toast";
 vi.mock("../lib/api", () => ({ resendVerification: vi.fn() }));
 vi.mock("../lib/toast", () => ({ showToast: vi.fn() }));
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  sessionStorage.clear();
+});
 
 describe("VerifyEmailBanner", () => {
   it("names the address the link was sent to", () => {
     render(<VerifyEmailBanner email="me@example.com" />);
-    expect(screen.getByText(/Please confirm your email address/)).toBeInTheDocument();
-    expect(screen.getByText("me@example.com")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Please confirm your email address — we sent a link to me@example.com.");
+  });
+
+  it("can be hidden until the next visit", async () => {
+    const { unmount } = render(<VerifyEmailBanner email="me@example.com" />);
+    await userEvent.click(screen.getByRole("button", { name: "Hide this notice" }));
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    unmount();
+
+    render(<VerifyEmailBanner email="me@example.com" />);
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
   it("resends the link and confirms with a toast", async () => {
