@@ -1,5 +1,6 @@
 package com.meridian.backend.controller;
 
+import com.meridian.backend.dto.BenchmarkResponse;
 import com.meridian.backend.dto.DepositRequest;
 import com.meridian.backend.dto.OrderRequest;
 import com.meridian.backend.dto.OrderNoteRequest;
@@ -11,6 +12,7 @@ import com.meridian.backend.dto.ReplaceOrderRequest;
 import com.meridian.backend.dto.TransactionResponse;
 import com.meridian.backend.dto.WithdrawRequest;
 import com.meridian.backend.model.User;
+import com.meridian.backend.service.BenchmarkService;
 import com.meridian.backend.service.PerformanceService;
 import com.meridian.backend.service.PortfolioService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,10 +26,13 @@ public class PortfolioController {
 
     private final PortfolioService portfolioService;
     private final PerformanceService performanceService;
+    private final BenchmarkService benchmarkService;
 
-    public PortfolioController(PortfolioService portfolioService, PerformanceService performanceService) {
+    public PortfolioController(PortfolioService portfolioService, PerformanceService performanceService,
+                               BenchmarkService benchmarkService) {
         this.portfolioService = portfolioService;
         this.performanceService = performanceService;
+        this.benchmarkService = benchmarkService;
     }
 
     @GetMapping("/portfolio")
@@ -44,6 +49,13 @@ public class PortfolioController {
     @GetMapping("/portfolio/performance")
     public PerformanceResponse getPerformance(@AuthenticationPrincipal User user) {
         return performanceService.getPerformance(user);
+    }
+
+    @GetMapping("/portfolio/benchmark")
+    public BenchmarkResponse getBenchmark(@AuthenticationPrincipal User user, @RequestParam String symbol,
+                                          @RequestParam(required = false) String range,
+                                          @RequestParam(required = false) Integer points) {
+        return benchmarkService.compare(user, symbol, range, points);
     }
 
     @PostMapping("/portfolio/deposit")

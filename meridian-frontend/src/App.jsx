@@ -12,6 +12,7 @@ import PortfolioSummary from "./components/PortfolioSummary";
 import PortfolioAllocation from "./components/PortfolioAllocation";
 import PerformancePanel from "./components/PerformancePanel";
 import EquityChart from "./components/EquityChart";
+import BenchmarkChart from "./components/BenchmarkChart";
 import TradePanel from "./components/TradePanel";
 import OrderHistory from "./components/OrderHistory";
 import AlertsPanel from "./components/AlertsPanel";
@@ -368,6 +369,7 @@ export default function App() {
                   <PortfolioSummary refreshKey={refreshKey}>
                     <EquityChart refreshKey={refreshKey} />
                   </PortfolioSummary>
+                  <BenchmarkChart refreshKey={refreshKey} />
                   <PerformancePanel refreshKey={refreshKey} onSelect={openStock} />
                   <OrderHistory refreshKey={refreshKey} onChanged={handleOrderPlaced} />
                 </div>

@@ -186,7 +186,7 @@ public class MarketDataService {
                 .toList();
     }
 
-    private static Duration windowFor(String range) {
+    static Duration windowFor(String range) {
         if (range == null || range.isBlank() || range.equalsIgnoreCase("ALL")) return null;
         return switch (range.toUpperCase()) {
             case "1D" -> Duration.ofDays(1);

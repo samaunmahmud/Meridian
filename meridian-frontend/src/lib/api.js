@@ -163,6 +163,17 @@ export function getPerformance() {
   return apiFetch("/portfolio/performance");
 }
 
+/**
+ * The portfolio's time-weighted return next to `symbol`'s move over `range` ("1D" | "1W" | "1M" | "3M" | "1Y" | "ALL"):
+ * { symbol, name, portfolioReturn, benchmarkReturn, points: [{ at, portfolio, benchmark }] }, all in % since the
+ * window's first point. `benchmark` is null before the ticker had a price; the totals are null with too little history.
+ */
+export function getBenchmark(symbol, range) {
+  const query = new URLSearchParams({ symbol });
+  if (range) query.set("range", range);
+  return apiFetch(`/portfolio/benchmark?${query}`);
+}
+
 export function getOrders() {
   return apiFetch("/orders");
 }

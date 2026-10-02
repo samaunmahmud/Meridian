@@ -5,6 +5,7 @@ import CandlestickChart from "./CandlestickChart";
 import Icon from "./Icon";
 import MarketBadge from "./MarketBadge";
 import PriceChart from "./PriceChart";
+import Segmented from "./Segmented";
 import TickerAvatar from "./TickerAvatar";
 import Skeleton from "./Skeleton";
 import { useAnimatedNumber } from "../lib/useAnimatedNumber";
@@ -24,26 +25,6 @@ const CHART_TYPES = [
   { key: "line", label: "Line" },
   { key: "candles", label: "Candles" },
 ];
-
-function Segmented({ options, value, onChange, label }) {
-  return (
-    <div role="group" aria-label={label} className="flex gap-1 text-[13px]">
-      {options.map((o) => (
-        <button
-          key={o.key}
-          type="button"
-          aria-pressed={value === o.key}
-          onClick={() => onChange(o.key)}
-          className={`h-8 px-3.5 rounded-full font-semibold transition-colors ${
-            value === o.key ? "bg-bone text-ink" : "text-muted hover:text-bone hover:bg-panel-2"
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 // `tradeBesideChart`: a trade form is shown next to this on wide screens, so the Buy/Sell
 // buttons are only needed on narrower ones.
