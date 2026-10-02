@@ -147,6 +147,15 @@ export function getPrices(symbol, { range, points, limit } = {}) {
   return apiFetch(`/prices/${encodeURIComponent(symbol)}${qs ? `?${qs}` : ""}`);
 }
 
+/**
+ * Recent news about a tracked ticker, newest first (at most 10): [{ headline, summary, source, url, imageUrl,
+ * publishedAt, sentiment }]. `summary`, `source`, `imageUrl`, `publishedAt` and `sentiment` ("Bullish" | "Bearish" |
+ * "Neutral") may be null.
+ */
+export function getNews(symbol) {
+  return apiFetch(`/news/${encodeURIComponent(symbol)}`);
+}
+
 export function getPortfolio() {
   return apiFetch("/portfolio");
 }

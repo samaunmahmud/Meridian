@@ -1,6 +1,7 @@
 package com.meridian.backend.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.meridian.backend.dto.NewsArticleResponse;
 import com.meridian.backend.dto.TickerSearchResult;
 import com.meridian.backend.exception.MarketDataUnavailableException;
 import com.meridian.backend.exception.MarketDataUnreachableException;
@@ -20,6 +21,8 @@ import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -39,6 +42,8 @@ public class FinnhubProvider implements MarketDataProvider {
     // One /forex/rates reply has every currency, and a refresh asks for them one after another: reuse the
     // reply for this long instead of spending a request per currency. Far shorter than the FX refresh interval.
     static final Duration FOREX_REUSE = Duration.ofSeconds(60);
+    // How far back company news is asked for.
+    static final int NEWS_DAYS = 7;
 
     private final RestClient restClient;
     private final RequestBudget budget;
@@ -137,5 +142,27 @@ public class FinnhubProvider implements MarketDataProvider {
             results.add(new TickerSearchResult(symbol, item.path("description").asText(symbol), item.path("type").asText("")));
         }
         return results;
+    }
+
+    // /company-news for a stock (dates are required); crypto has no per-coin feed, so it gets the crypto category.
+    @Override
+    public List<NewsArticleResponse> fetchNews(String symbol, boolean crypto) {
+        LocalDate today = LocalDate.now(clock.withZone(ZoneOffset.UTC));
+        JsonNode body = crypto
+                ? get(u -> u.path("/news").queryParam("category", "crypto").build())
+                : get(u -> u.path("/company-news").queryParam("symbol", symbol)
+                        .queryParam("from", today.minusDays(NEWS_DAYS).toString()).queryParam("to", today.toString()).build());
+        List<NewsArticleResponse> articles = new ArrayList<>();
+        if (body == null) return articles;
+        for (JsonNode item : body) {
+            String url = NewsLinks.web(item.path("url").asText(null));
+            String headline = NewsLinks.text(item.path("headline").asText(null));
+            if (url == null || headline == null) continue;
+            long seconds = item.path("datetime").asLong(0);
+            articles.add(new NewsArticleResponse(headline, NewsLinks.text(item.path("summary").asText(null)),
+                    NewsLinks.text(item.path("source").asText(null)), url, NewsLinks.secure(item.path("image").asText(null)),
+                    seconds > 0 ? Instant.ofEpochSecond(seconds) : null, null));
+        }
+        return articles;
     }
 }

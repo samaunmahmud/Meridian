@@ -1,10 +1,12 @@
 package com.meridian.backend.controller;
 
 import com.meridian.backend.dto.AddTickerRequest;
+import com.meridian.backend.dto.NewsArticleResponse;
 import com.meridian.backend.dto.PricePointResponse;
 import com.meridian.backend.dto.TickerResponse;
 import com.meridian.backend.dto.TickerSearchResult;
 import com.meridian.backend.service.MarketDataService;
+import com.meridian.backend.service.NewsService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,9 +16,11 @@ import java.util.List;
 public class MarketDataController {
 
     private final MarketDataService marketDataService;
+    private final NewsService newsService;
 
-    public MarketDataController(MarketDataService marketDataService) {
+    public MarketDataController(MarketDataService marketDataService, NewsService newsService) {
         this.marketDataService = marketDataService;
+        this.newsService = newsService;
     }
 
     @GetMapping("/tickers")
@@ -40,5 +44,10 @@ public class MarketDataController {
                                               @RequestParam(required = false) Integer points,
                                               @RequestParam(required = false) Integer limit) {
         return marketDataService.getPriceHistory(symbol, range, points, limit);
+    }
+
+    @GetMapping("/news/{symbol}")
+    public List<NewsArticleResponse> getNews(@PathVariable String symbol) {
+        return newsService.getNews(symbol);
     }
 }

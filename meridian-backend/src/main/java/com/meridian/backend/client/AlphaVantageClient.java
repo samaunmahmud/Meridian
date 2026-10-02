@@ -73,4 +73,18 @@ public class AlphaVantageClient {
                 .retrieve()
                 .body(SymbolSearchResponse.class);
     }
+
+    // Newest articles that mention the ticker ("CRYPTO:BTC" for crypto), with a sentiment rating per ticker.
+    public NewsSentimentResponse fetchNews(String tickers, int limit) {
+        return restClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/query")
+                        .queryParam("function", "NEWS_SENTIMENT")
+                        .queryParam("tickers", tickers)
+                        .queryParam("sort", "LATEST")
+                        .queryParam("limit", limit)
+                        .queryParam("apikey", apiKey)
+                        .build())
+                .retrieve()
+                .body(NewsSentimentResponse.class);
+    }
 }

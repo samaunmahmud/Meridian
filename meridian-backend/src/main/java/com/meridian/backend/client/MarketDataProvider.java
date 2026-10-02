@@ -1,5 +1,6 @@
 package com.meridian.backend.client;
 
+import com.meridian.backend.dto.NewsArticleResponse;
 import com.meridian.backend.dto.TickerSearchResult;
 import com.meridian.backend.model.SupportedCurrency;
 
@@ -23,4 +24,7 @@ public interface MarketDataProvider {
     BigDecimal fetchUsdRate(SupportedCurrency currency);
 
     List<TickerSearchResult> searchSymbols(String query);
+
+    /** Recent articles about a company (or, for crypto, the asset), in any order; empty when there are none. */
+    List<NewsArticleResponse> fetchNews(String symbol, boolean crypto);
 }

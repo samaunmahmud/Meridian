@@ -36,6 +36,10 @@ public class MarketDataProperties {
     private long maxPriceAgeMinutes = 0;
     private long maxFxRateAgeMinutes = 0;
 
+    // How long a ticker's news is reused before asking again. 0 or less = provider default
+    // (Alpha Vantage 6 h, since news shares the 25-a-day allowance with prices; Finnhub 30 min).
+    private long newsCacheMinutes = 0;
+
     // A ticker is refreshed once per rotation through all tracked tickers, so the normal
     // age of a price is up to (poll spacing x number of tickers). Allow three rotations
     // (two missed rounds) and never less than 15 minutes.
@@ -49,6 +53,14 @@ public class MarketDataProperties {
     public Duration getMaxFxRateAge() {
         if (maxFxRateAgeMinutes > 0) return Duration.ofMinutes(maxFxRateAgeMinutes);
         return Duration.ofMillis(Math.max(30 * 60_000L, 3 * getFxPollIntervalMs()));
+    }
+
+    public Duration getNewsCacheTtl() {
+        return Duration.ofMinutes(newsCacheMinutes > 0 ? newsCacheMinutes : (isFinnhub() ? 30 : 6 * 60));
+    }
+
+    public void setNewsCacheMinutes(long newsCacheMinutes) {
+        this.newsCacheMinutes = newsCacheMinutes;
     }
 
     public void setMaxPriceAgeMinutes(long maxPriceAgeMinutes) {

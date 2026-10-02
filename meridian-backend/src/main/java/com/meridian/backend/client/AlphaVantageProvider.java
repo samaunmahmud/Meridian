@@ -1,5 +1,7 @@
 package com.meridian.backend.client;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.meridian.backend.dto.NewsArticleResponse;
 import com.meridian.backend.dto.TickerSearchResult;
 import com.meridian.backend.exception.MarketDataUnavailableException;
 import com.meridian.backend.exception.MarketDataUnreachableException;
@@ -12,6 +14,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
@@ -24,6 +32,8 @@ import java.util.function.Supplier;
 public class AlphaVantageProvider implements MarketDataProvider {
 
     private static final Logger log = LoggerFactory.getLogger(AlphaVantageProvider.class);
+    private static final int NEWS_LIMIT = 20;
+    private static final DateTimeFormatter NEWS_TIME = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
 
     private final AlphaVantageClient client;
     private final RequestBudget budget;
@@ -82,6 +92,47 @@ public class AlphaVantageProvider implements MarketDataProvider {
         return response.getBestMatches().stream()
                 .map(m -> new TickerSearchResult(m.getSymbol(), m.getName(), m.getRegion()))
                 .toList();
+    }
+
+    @Override
+    public List<NewsArticleResponse> fetchNews(String symbol, boolean crypto) {
+        String ticker = crypto ? "CRYPTO:" + symbol : symbol;
+        NewsSentimentResponse response = call(() -> client.fetchNews(ticker, NEWS_LIMIT));
+        List<NewsArticleResponse> articles = new ArrayList<>();
+        if (response == null || response.getFeed() == null) return articles;
+        for (JsonNode item : response.getFeed()) {
+            String url = NewsLinks.web(item.path("url").asText(null));
+            String headline = NewsLinks.text(item.path("title").asText(null));
+            if (url == null || headline == null) continue;
+            articles.add(new NewsArticleResponse(headline, NewsLinks.text(item.path("summary").asText(null)),
+                    NewsLinks.text(item.path("source").asText(null)), url,
+                    NewsLinks.secure(item.path("banner_image").asText(null)),
+                    publishedAt(item.path("time_published").asText(null)), sentimentFor(item, ticker)));
+        }
+        return articles;
+    }
+
+    // "20260930T143000". The time zone is not documented; it is read as UTC, which can only make an article
+    // look older than it is, never dated in the future.
+    private static Instant publishedAt(String raw) {
+        if (raw == null) return null;
+        try {
+            return LocalDateTime.parse(raw, NEWS_TIME).toInstant(ZoneOffset.UTC);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    // The rating of this ticker in the article ("Somewhat-Bullish" counts as bullish).
+    private static String sentimentFor(JsonNode item, String ticker) {
+        for (JsonNode rating : item.path("ticker_sentiment")) {
+            if (!ticker.equalsIgnoreCase(rating.path("ticker").asText(""))) continue;
+            String label = rating.path("ticker_sentiment_label").asText("");
+            if (label.contains("Bullish")) return "Bullish";
+            if (label.contains("Bearish")) return "Bearish";
+            if (label.contains("Neutral")) return "Neutral";
+        }
+        return null;
     }
 
     private BigDecimal parse(String raw, String what) {

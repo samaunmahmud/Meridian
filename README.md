@@ -48,6 +48,8 @@
 - USD, EUR and GBP wallets. Any order type can be paid from any wallet; a pending limit buy reserves its money (and commission) in that wallet
 - Portfolio with holdings, equity chart and an activity feed
 - Performance: realized and unrealized profit and loss, fees paid, win rate, best and worst trade, and a per-stock breakdown
+- You vs the market: your time-weighted return next to any tracked ticker (SPY by default) over 1W / 1M / 3M / All; deposits, withdrawals and currency moves don't count as gains
+- Company news on every stock page, newest first, with the source, age and (on Alpha Vantage) a bullish / bearish rating
 - Search from anywhere (<kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> or <kbd>/</kbd>): jump to any stock, page or action
 - Settings: change password (signs out other devices), download orders and activity as CSV, delete the account and all its data
 - Sign-up and login with database-backed rate limits, password reset, email verification
@@ -168,6 +170,7 @@ Set these in `.env` (Docker) or `meridian-backend/.env` (development).
 | `ALPHA_VANTAGE_API_KEY` / `FINNHUB_API_KEY` | empty | Key for the chosen provider |
 | `MARKETDATA_DAILY_REQUEST_BUDGET` | `0` | Provider calls per UTC day; `0` means the free-plan default (Alpha Vantage 25, Finnhub 50,000) |
 | `MARKETDATA_FX_POLL_INTERVAL_MS` | `0` | FX refresh interval; `0` means the provider default |
+| `MARKETDATA_NEWS_CACHE_MINUTES` | `0` | How long a stock's news is reused before asking the provider again; `0` means the provider default (Alpha Vantage 6 h, since news shares the daily allowance with prices; Finnhub 30 min) |
 | `MARKET_HOURS_ENFORCED` | `true` | Stocks trade only in the exchange session; `false` = any hour |
 | `HISTORY_FULL_RESOLUTION_DAYS`, `HISTORY_DAILY_AFTER_DAYS` | `7`, `90` | Keep every price / portfolio value for this many days, then one per hour, then (after the second number of days) one per day |
 | `HISTORY_RETENTION_CRON` | `0 30 3 * * *` | When the nightly clean-up runs |
