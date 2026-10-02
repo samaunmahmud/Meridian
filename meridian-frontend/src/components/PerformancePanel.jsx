@@ -98,6 +98,12 @@ export default function PerformancePanel({ refreshKey, onSelect }) {
               <span className="text-sm text-muted">Fees paid</span>
               <span className="font-mono text-sm">{formatMoney(data.feesPaid)}</span>
             </div>
+            {data.dividendsReceived > 0 && (
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="text-sm text-muted">Dividends received</span>
+                <span className="font-mono text-sm text-gain">+{formatMoney(data.dividendsReceived)}</span>
+              </div>
+            )}
           </div>
 
           {data.bySymbol.length > 0 && (

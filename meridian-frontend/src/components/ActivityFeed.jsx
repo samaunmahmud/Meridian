@@ -12,6 +12,7 @@ const KINDS = {
   SELL: { icon: "down", tone: "bg-gain-dim text-gain" },
   FEE: { icon: "percent", tone: "bg-panel-2 text-muted" },
   CONVERSION: { icon: "swap", tone: "bg-accent-dim text-accent" },
+  DIVIDEND: { icon: "percent", tone: "bg-gain-dim text-gain" },
 };
 
 const FILTERS = [
@@ -19,6 +20,7 @@ const FILTERS = [
   { key: "TRADES", label: "Trades", types: ["BUY", "SELL"] },
   { key: "DEPOSITS", label: "Deposits", types: ["DEPOSIT"] },
   { key: "WITHDRAWALS", label: "Withdrawals", types: ["WITHDRAWAL"] },
+  { key: "DIVIDENDS", label: "Dividends", types: ["DIVIDEND"] },
   { key: "CONVERSIONS", label: "Conversions", types: ["CONVERSION"] },
   { key: "FEES", label: "Fees", types: ["FEE"] },
 ];
@@ -60,6 +62,7 @@ function MonthSummary({ transactions }) {
   const rows = [
     { label: "Deposits", value: `+${formatMoney(sum(["DEPOSIT"]))}`, tone: "text-gain" },
     { label: "Withdrawals", value: `−${formatMoney(sum(["WITHDRAWAL"], Math.abs))}`, tone: "" },
+    { label: "Dividends", value: `+${formatMoney(sum(["DIVIDEND"]))}`, tone: "text-gain" },
     { label: "Trading volume", value: formatMoney(sum(["BUY", "SELL"], Math.abs)), tone: "" },
     { label: "Fees paid", value: formatMoney(sum(["FEE"], Math.abs)), tone: "text-loss" },
   ];

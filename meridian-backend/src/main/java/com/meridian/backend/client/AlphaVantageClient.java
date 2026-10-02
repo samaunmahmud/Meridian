@@ -87,4 +87,16 @@ public class AlphaVantageClient {
                 .retrieve()
                 .body(NewsSentimentResponse.class);
     }
+
+    // Every cash dividend on record for the symbol, including announced ones not yet paid.
+    public DividendsResponse fetchDividends(String symbol) {
+        return restClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/query")
+                        .queryParam("function", "DIVIDENDS")
+                        .queryParam("symbol", symbol)
+                        .queryParam("apikey", apiKey)
+                        .build())
+                .retrieve()
+                .body(DividendsResponse.class);
+    }
 }

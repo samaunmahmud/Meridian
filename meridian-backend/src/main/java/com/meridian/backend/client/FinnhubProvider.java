@@ -144,6 +144,44 @@ public class FinnhubProvider implements MarketDataProvider {
         return results;
     }
 
+    // /stock/dividend for the last year and what is announced. Finnhub sells this on paid plans only: a free key
+    // gets 403, which means "no dividends from this provider" rather than an outage.
+    @Override
+    public List<DividendEvent> fetchDividends(String symbol) {
+        LocalDate today = LocalDate.now(clock.withZone(ZoneOffset.UTC));
+        JsonNode body;
+        try {
+            body = get(u -> u.path("/stock/dividend").queryParam("symbol", symbol)
+                    .queryParam("from", today.minusYears(1).toString()).queryParam("to", today.plusYears(1).toString()).build());
+        } catch (MarketDataUnreachableException e) {
+            if (e.getCause() instanceof HttpClientErrorException.Forbidden) {
+                log.info("Finnhub dividends need a paid plan; none for {}", symbol);
+                return List.of();
+            }
+            throw e;
+        }
+        List<DividendEvent> dividends = new ArrayList<>();
+        if (body == null) return dividends;
+        for (JsonNode item : body) {
+            String currency = item.path("currency").asText("USD");
+            double amount = item.path("amount").asDouble(0);
+            LocalDate exDate = date(item.path("date").asText(null));
+            if (exDate == null || amount <= 0 || !"USD".equalsIgnoreCase(currency)) continue;
+            LocalDate payDate = date(item.path("payDate").asText(null));
+            dividends.add(new DividendEvent(exDate, payDate == null ? exDate : payDate, BigDecimal.valueOf(amount)));
+        }
+        return dividends;
+    }
+
+    private static LocalDate date(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return LocalDate.parse(raw);
+        } catch (java.time.format.DateTimeParseException e) {
+            return null;
+        }
+    }
+
     // /company-news for a stock (dates are required); crypto has no per-coin feed, so it gets the crypto category.
     @Override
     public List<NewsArticleResponse> fetchNews(String symbol, boolean crypto) {

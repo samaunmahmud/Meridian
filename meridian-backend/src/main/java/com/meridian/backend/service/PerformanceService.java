@@ -8,6 +8,7 @@ import com.meridian.backend.dto.PortfolioResponse;
 import com.meridian.backend.model.Order;
 import com.meridian.backend.model.OrderStatus;
 import com.meridian.backend.model.User;
+import com.meridian.backend.repository.DividendPaymentRepository;
 import com.meridian.backend.repository.OrderRepository;
 import com.meridian.backend.repository.PortfolioRepository;
 import org.springframework.stereotype.Service;
@@ -26,12 +27,14 @@ public class PerformanceService {
     private final PortfolioService portfolioService;
     private final PortfolioRepository portfolioRepository;
     private final OrderRepository orderRepository;
+    private final DividendPaymentRepository dividendPaymentRepository;
 
     public PerformanceService(PortfolioService portfolioService, PortfolioRepository portfolioRepository,
-                              OrderRepository orderRepository) {
+                              OrderRepository orderRepository, DividendPaymentRepository dividendPaymentRepository) {
         this.portfolioService = portfolioService;
         this.portfolioRepository = portfolioRepository;
         this.orderRepository = orderRepository;
+        this.dividendPaymentRepository = dividendPaymentRepository;
     }
 
     // Symbol accumulator; name is filled from the ticker.
@@ -94,7 +97,8 @@ public class PerformanceService {
                 .toList();
 
         return new PerformanceResponse(scale(realized), scale(unrealized), scale(realized.add(unrealized)), scale(fees),
-                filled.size(), closed, wins, winRate, best, worst, symbols);
+                filled.size(), closed, wins, winRate, best, worst, symbols,
+                scale(dividendPaymentRepository.totalForPortfolio(portfolioId)));
     }
 
     private static BigDecimal scale(BigDecimal value) {

@@ -156,6 +156,14 @@ export function getNews(symbol) {
   return apiFetch(`/news/${encodeURIComponent(symbol)}`);
 }
 
+/**
+ * A stock's cash dividends in USD: { symbol, dividends: [{ exDate, payDate, amount }] (newest ex-date first,
+ * announced ones included), trailingYearPerShare, received (what this account has been paid by it) }.
+ */
+export function getDividends(symbol) {
+  return apiFetch(`/dividends/${encodeURIComponent(symbol)}`);
+}
+
 export function getPortfolio() {
   return apiFetch("/portfolio");
 }

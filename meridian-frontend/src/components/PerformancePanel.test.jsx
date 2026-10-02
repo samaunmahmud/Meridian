@@ -27,6 +27,19 @@ const DATA = {
 beforeEach(() => vi.clearAllMocks());
 
 describe("PerformancePanel", () => {
+  it("shows dividends received only once there are some", async () => {
+    getPerformance.mockResolvedValueOnce({ ...DATA, dividendsReceived: 12.5 });
+    const { unmount } = render(<PerformancePanel refreshKey={0} />);
+    expect(await screen.findByText("+$12.50")).toBeInTheDocument();
+    expect(screen.getByText("Dividends received")).toBeInTheDocument();
+    unmount();
+
+    getPerformance.mockResolvedValueOnce({ ...DATA, dividendsReceived: 0 });
+    render(<PerformancePanel refreshKey={0} />);
+    await screen.findByText("66.7%");
+    expect(screen.queryByText("Dividends received")).not.toBeInTheDocument();
+  });
+
   it("shows realized, unrealized and total P&L with signs, and the win rate", async () => {
     getPerformance.mockResolvedValue(DATA);
     const { container } = render(<PerformancePanel refreshKey={0} />);

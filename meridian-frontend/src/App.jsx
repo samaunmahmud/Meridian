@@ -201,6 +201,15 @@ export default function App() {
     setRefreshKey((k) => k + 1);
   }, [liveUpdate]);
 
+  useEffect(() => {
+    if (!liveUpdate || liveUpdate.kind !== "DIVIDEND_PAID") return;
+    showToast(
+      "success",
+      `Dividend paid: $${Number(liveUpdate.amount).toFixed(2)} from ${liveUpdate.symbol} (${Number(liveUpdate.shares)} shares × $${Number(liveUpdate.perShare)})`
+    );
+    setRefreshKey((k) => k + 1);
+  }, [liveUpdate]);
+
   // The cookie is HttpOnly, so only the server can delete it. If that call
   // fails, stay signed in and say so rather than pretending to log out.
   function handleLogout() {

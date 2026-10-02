@@ -4,7 +4,10 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
-/** How the account's trading has gone, in USD. `winRate` is null until something has been sold. */
+/**
+ * How the account's trading has gone, in USD. `winRate` is null until something has been sold.
+ * `dividendsReceived` is cash paid by dividends, which is not part of the profit and loss figures.
+ */
 public record PerformanceResponse(
         BigDecimal realizedPnL,
         BigDecimal unrealizedPnL,
@@ -16,7 +19,8 @@ public record PerformanceResponse(
         BigDecimal winRate,
         Trade bestTrade,
         Trade worstTrade,
-        List<SymbolPerformance> bySymbol
+        List<SymbolPerformance> bySymbol,
+        BigDecimal dividendsReceived
 ) {
     public record Trade(Long orderId, String symbol, BigDecimal quantity, BigDecimal realizedPnL, Instant executedAt) {
     }

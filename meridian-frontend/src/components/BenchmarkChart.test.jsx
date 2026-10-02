@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import BenchmarkChart from "./BenchmarkChart";
 import { getBenchmark, getTickers } from "../lib/api";
 import { axeViolations } from "../test/axe";
@@ -31,9 +31,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
   getTickers.mockResolvedValue(TICKERS);
-  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
 });
-afterEach(() => vi.unstubAllGlobals());
+// For the whole file, not per test: a chart can finish rendering just after a test ends.
+beforeAll(() => vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} }));
+afterAll(() => vi.unstubAllGlobals());
 
 describe("BenchmarkChart", () => {
   it("compares against an index fund when one is tracked, with both returns and a text summary", async () => {

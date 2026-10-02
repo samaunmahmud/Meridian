@@ -40,6 +40,10 @@ public class MarketDataProperties {
     // (Alpha Vantage 6 h, since news shares the 25-a-day allowance with prices; Finnhub 30 min).
     private long newsCacheMinutes = 0;
 
+    // How often a held stock's dividends are looked up. 0 or less = provider default (Alpha Vantage
+    // weekly, as dividends are announced weeks ahead and requests are scarce; Finnhub daily).
+    private long dividendRefreshHours = 0;
+
     // A ticker is refreshed once per rotation through all tracked tickers, so the normal
     // age of a price is up to (poll spacing x number of tickers). Allow three rotations
     // (two missed rounds) and never less than 15 minutes.
@@ -57,6 +61,14 @@ public class MarketDataProperties {
 
     public Duration getNewsCacheTtl() {
         return Duration.ofMinutes(newsCacheMinutes > 0 ? newsCacheMinutes : (isFinnhub() ? 30 : 6 * 60));
+    }
+
+    public Duration getDividendRefreshInterval() {
+        return Duration.ofHours(dividendRefreshHours > 0 ? dividendRefreshHours : (isFinnhub() ? 24 : 7 * 24));
+    }
+
+    public void setDividendRefreshHours(long dividendRefreshHours) {
+        this.dividendRefreshHours = dividendRefreshHours;
     }
 
     public void setNewsCacheMinutes(long newsCacheMinutes) {

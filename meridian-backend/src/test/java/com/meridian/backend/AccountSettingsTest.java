@@ -160,6 +160,13 @@ class AccountSettingsTest {
         mvc.perform(send(MockMvcRequestBuilders.post("/api/wallets/deposit"), Map.of("currency", "EUR", "amount", 50))
                 .cookie(session)).andReturn();
         mvc.perform(send(MockMvcRequestBuilders.post("/api/watchlist"), Map.of("symbol", "AAPL")).cookie(session)).andReturn();
+        String dividendSymbol = "D" + Math.abs(email.hashCode() % 1_000_000);
+        jdbc.update("insert into tickers (symbol, name, exchange, asset_type) values (?, 'Dividend payer', 'TEST', 'STOCK')", dividendSymbol);
+        Long tickerId = jdbc.queryForObject("select id from tickers where symbol = ?", Long.class, dividendSymbol);
+        jdbc.update("insert into dividends (ticker_id, ex_date, pay_date, amount) values (?, current_date, current_date, 0.5)", tickerId);
+        Long dividendId = jdbc.queryForObject("select id from dividends where ticker_id = ?", Long.class, tickerId);
+        jdbc.update("insert into dividend_payments (portfolio_id, dividend_id, shares, amount, paid_at) values (?, ?, 2, 1, current_timestamp)",
+                portfolioId, dividendId);
 
         assertThat(deleteAccount(session, "wrong-password").getResponse().getStatus()).isEqualTo(400);
         assertThat(users.findByEmail(email)).isPresent();
@@ -170,7 +177,7 @@ class AccountSettingsTest {
 
         assertThat(users.findByEmail(email)).isEmpty();
         assertThat(portfolios.findById(portfolioId)).isEmpty();
-        for (String table : new String[]{"wallets", "transactions", "orders", "holdings"}) {
+        for (String table : new String[]{"wallets", "transactions", "orders", "holdings", "dividend_payments"}) {
             assertThat(jdbc.queryForObject("select count(*) from " + table + " where portfolio_id = ?", Integer.class, portfolioId))
                     .as(table).isZero();
         }

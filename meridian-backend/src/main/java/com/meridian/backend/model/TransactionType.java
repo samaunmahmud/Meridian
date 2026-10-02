@@ -6,5 +6,6 @@ public enum TransactionType {
     BUY,
     SELL,
     FEE,
-    CONVERSION
+    CONVERSION,
+    DIVIDEND
 }

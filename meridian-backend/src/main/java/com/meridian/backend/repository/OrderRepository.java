@@ -2,11 +2,13 @@ package com.meridian.backend.repository;
 
 import com.meridian.backend.model.Order;
 import com.meridian.backend.model.OrderStatus;
+import com.meridian.backend.model.OrderType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,6 +18,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByPortfolioIdAndStatusOrderByCreatedAtDesc(Long portfolioId, OrderStatus status);
 
     List<Order> findByTickerIdAndStatus(Long tickerId, OrderStatus status);
+
+    /** Orders on a ticker that reached `status` at or after `since` (filled orders: executed since then). */
+    List<Order> findByTickerIdAndStatusAndExecutedAtGreaterThanEqual(Long tickerId, OrderStatus status, Instant since);
+
+    /** A portfolio's first order of this type and status on a ticker, by execution time. */
+    Optional<Order> findFirstByPortfolioIdAndTickerIdAndStatusAndTypeOrderByExecutedAtAsc(
+            Long portfolioId, Long tickerId, OrderStatus status, OrderType type);
 
     Optional<Order> findByIdAndPortfolioId(Long id, Long portfolioId);
 

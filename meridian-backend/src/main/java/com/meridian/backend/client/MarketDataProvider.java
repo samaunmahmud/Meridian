@@ -27,4 +27,7 @@ public interface MarketDataProvider {
 
     /** Recent articles about a company (or, for crypto, the asset), in any order; empty when there are none. */
     List<NewsArticleResponse> fetchNews(String symbol, boolean crypto);
+
+    /** A stock's cash dividends in USD, past and announced, in any order; empty when it pays none. */
+    List<DividendEvent> fetchDividends(String symbol);
 }

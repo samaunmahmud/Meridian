@@ -15,6 +15,7 @@ import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -110,6 +111,30 @@ public class AlphaVantageProvider implements MarketDataProvider {
                     publishedAt(item.path("time_published").asText(null)), sentimentFor(item, ticker)));
         }
         return articles;
+    }
+
+    @Override
+    public List<DividendEvent> fetchDividends(String symbol) {
+        DividendsResponse response = call(() -> client.fetchDividends(symbol));
+        List<DividendEvent> dividends = new ArrayList<>();
+        if (response == null || response.getData() == null) return dividends;
+        for (JsonNode item : response.getData()) {
+            LocalDate exDate = date(item.path("ex_dividend_date").asText(null));
+            BigDecimal amount = parse(item.path("amount").asText(null), symbol + " dividend");
+            if (exDate == null || amount == null || amount.signum() <= 0) continue;
+            LocalDate payDate = date(item.path("payment_date").asText(null));
+            dividends.add(new DividendEvent(exDate, payDate == null ? exDate : payDate, amount));
+        }
+        return dividends;
+    }
+
+    private static LocalDate date(String raw) {
+        if (raw == null) return null;
+        try {
+            return LocalDate.parse(raw);
+        } catch (DateTimeParseException e) {
+            return null; // "None"
+        }
     }
 
     // "20260930T143000". The time zone is not documented; it is read as UTC, which can only make an article

@@ -2,6 +2,8 @@ package com.meridian.backend.model;
 
 import jakarta.persistence.*;
 
+import java.time.Instant;
+
 @Entity
 @Table(name = "tickers")
 public class Ticker {
@@ -22,6 +24,10 @@ public class Ticker {
     @Enumerated(EnumType.STRING)
     @Column(name = "asset_type", nullable = false)
     private AssetType assetType;
+
+    // When the market data provider was last asked for this ticker's dividends (null: never).
+    @Column(name = "dividends_checked_at")
+    private Instant dividendsCheckedAt;
 
     public Ticker() {
     }
@@ -71,5 +77,13 @@ public class Ticker {
 
     public void setAssetType(AssetType assetType) {
         this.assetType = assetType;
+    }
+
+    public Instant getDividendsCheckedAt() {
+        return dividendsCheckedAt;
+    }
+
+    public void setDividendsCheckedAt(Instant dividendsCheckedAt) {
+        this.dividendsCheckedAt = dividendsCheckedAt;
     }
 }
