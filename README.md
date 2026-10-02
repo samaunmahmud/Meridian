@@ -51,7 +51,7 @@
 - You vs the market: your time-weighted return next to any tracked ticker (SPY by default) over 1W / 1M / 3M / All; deposits, withdrawals and currency moves don't count as gains
 - Target allocation: set what share of the portfolio each stock should be; Meridian shows the drift and the trades that bring it back (sized to leave room for commission, small drifts left alone), each opening the trade form filled in
 - Dividends: whoever holds a stock when its ex-dividend date begins is paid in USD cash on the payment date, with a live notice; each stock page shows the next and recent dividends, the yield and what you've received
-- Your notes on any stock: why you're watching it and the price you'd buy at; the watchlist shows how far each stock is from your target
+- Your notes on any stock: why you're watching it and the price you'd buy at; the watchlist shows how far each stock is from your target, and a price alert can tell you when it gets there
 - Company news on every stock page, newest first, with the source, age and (on Alpha Vantage) a bullish / bearish rating
 - Search from anywhere (<kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> or <kbd>/</kbd>): jump to any stock, page or action
 - Settings: change password (signs out other devices), download orders and activity as CSV, delete the account and all its data
