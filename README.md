@@ -81,7 +81,7 @@ Sign up and you get a virtual account. From there:
 | **WebSocket fan-out** | a price update reaches **1,000 connected clients in about 20 ms** |
 | **Database outage** | `/api/health` answers 503 within 5 s; everything works again **2–4 s after MySQL returns**, with nobody signed out |
 | **History clean-up** | 300,000 one-minute prices (208 days) shrank to **about 12,000 rows in 12 s**, with no visible change to any chart |
-| **Tests** | **306 backend (JUnit) + 197 frontend (Vitest)**, including real-MySQL concurrency tests and accessibility checks, run by CI on every push |
+| **Tests** | **307 backend (JUnit) + 200 frontend (Vitest)**, including real-MySQL concurrency tests and accessibility checks, run by CI on every push |
 
 The load numbers come from one 8-core Mac running the load generator, the backend and MySQL together, so treat them as a floor, not production sizing. The scripts and method are in [`scripts/load-test`](scripts/load-test/README.md).
 

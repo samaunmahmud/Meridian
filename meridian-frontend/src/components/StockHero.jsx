@@ -10,6 +10,7 @@ import Segmented from "./Segmented";
 import TickerAvatar from "./TickerAvatar";
 import Skeleton from "./Skeleton";
 import { useAnimatedNumber } from "../lib/useAnimatedNumber";
+import { useMarketStatus } from "../lib/useMarketStatus";
 import { formatAge, isDelayed } from "../lib/priceAge";
 
 // Time windows, answered by the server (which thins a long history to at most CHART_POINTS points).
@@ -36,6 +37,9 @@ export default function StockHero({ ticker, liveUpdate, onTrade, tradeBesideChar
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState("1D");
   const [chartType, setChartType] = useState("line");
+  const market = useMarketStatus();
+  // Unknown counts as open, so a feed that is really behind still says so.
+  const marketOpen = ticker?.assetType === "CRYPTO" || market?.stocks?.open !== false;
 
   // Only a NEW stock shows the loading skeleton; changing the range updates the chart in place, so the
   // range buttons stay where they are. A stale answer (a slower earlier request) is ignored.
@@ -150,16 +154,22 @@ export default function StockHero({ ticker, liveUpdate, onTrade, tradeBesideChar
             <Segmented options={RANGES} value={range} onChange={setRange} label="Price window" />
             <Segmented options={CHART_TYPES} value={chartType} onChange={setChartType} label="Chart type" />
           </div>
-          {isDelayed(latest.recordedAt, now) ? (
+          {isDelayed(latest.recordedAt, now, marketOpen) ? (
             // The words carry the meaning (the amber dot is decoration).
             <div role="status" className="flex items-center gap-2 text-xs text-bone mt-3">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "var(--c-s2)" }} aria-hidden="true" />
               Prices delayed — last update {formatAge(latest.recordedAt, now)}
             </div>
-          ) : (
+          ) : marketOpen ? (
             <div className="flex items-center gap-2 text-xs text-muted mt-3">
               <span className="w-2 h-2 rounded-full bg-gain shrink-0" aria-hidden="true" />
               Updated {new Date(latest.recordedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-xs text-muted mt-3">
+              <span className="w-2 h-2 rounded-full bg-muted shrink-0" aria-hidden="true" />
+              Last price{" "}
+              {new Date(latest.recordedAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}
             </div>
           )}
 

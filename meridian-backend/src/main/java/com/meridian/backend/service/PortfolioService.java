@@ -740,7 +740,7 @@ public class PortfolioService {
 
         return new PortfolioResponse(
                 portfolio.getCashBalance(), portfolio.getReservedCash(), portfolio.getAvailableCash(),
-                holdingsValue, totalValue, holdingResponses
+                holdingsValue, totalValue, holdingResponses, null
         );
     }
 

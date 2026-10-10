@@ -38,6 +38,8 @@ import java.util.List;
 public class BenchmarkService {
 
     public static final int DEFAULT_POINTS = 300;
+    // Every account opens with this much (AuthService), and no transaction records it.
+    private static final BigDecimal STARTING_CASH = new BigDecimal("10000.00");
 
     private final TickerRepository tickerRepository;
     private final PortfolioRepository portfolioRepository;
@@ -111,6 +113,17 @@ public class BenchmarkService {
         Point last = all.get(all.size() - 1);
         return new BenchmarkResponse(ticker.getSymbol(), ticker.getName(), last.portfolio(), last.benchmark(),
                 Downsample.evenly(all, maxPoints));
+    }
+
+    /**
+     * The money that has gone into the USD total (cash plus holdings): the starting cash plus every flow below.
+     * The portfolio's value minus this is what it has really gained, so adding money never shows as profit.
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal amountPutIn(User user) {
+        Long portfolioId = portfolioRepository.findByUserId(user.getId()).map(p -> p.getId()).orElse(null);
+        if (portfolioId == null) return STARTING_CASH;
+        return flowsInUsd(portfolioId).stream().map(Flow::amount).reduce(STARTING_CASH, BigDecimal::add);
     }
 
     // What moved money into or out of the USD total that snapshots record (USD cash plus holdings): USD deposits,

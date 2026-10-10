@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import StockHero from "./StockHero";
-import { getPrices } from "../lib/api";
+import { getMarketStatus, getPrices } from "../lib/api";
 
 vi.mock("../lib/api", () => ({
   getMarketStatus: vi.fn(() => Promise.resolve({ stocks: { open: true, nextClose: null }, crypto: { open: true } })), getPrices: vi.fn() }));
@@ -35,6 +35,15 @@ describe("StockHero: how old is this price?", () => {
     const notice = await screen.findByRole("status");
     expect(notice).toHaveTextContent("Prices delayed — last update 3 h ago");
     expect(screen.queryByText(/^Updated /)).not.toBeInTheDocument();
+  });
+
+  it("shows the closing price, not a delay, while the market is closed", async () => {
+    getMarketStatus.mockResolvedValueOnce({ stocks: { open: false, nextOpen: new Date(Date.now() + 86400000).toISOString() } });
+    getPrices.mockResolvedValue(pricesRecorded(18 * 60, 18 * 60 + 20)); // last traded yesterday evening
+    render(<StockHero ticker={ticker} liveUpdate={null} onTrade={vi.fn()} />);
+
+    expect(await screen.findByText(/^Last price /)).toBeInTheDocument();
+    expect(screen.queryByText(/Prices delayed/)).not.toBeInTheDocument();
   });
 
   it("asks the server for the chosen time window, thinned, and keeps the range buttons in place", async () => {

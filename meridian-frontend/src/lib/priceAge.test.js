@@ -16,6 +16,11 @@ describe("price age", () => {
     expect(isDelayed(ago(6 * 60 * MIN), now)).toBe(true);
   });
 
+  it("is not delayed while the market is closed, until it is older than a long weekend", () => {
+    expect(isDelayed(ago(2 * 24 * 60 * MIN), now, false)).toBe(false);
+    expect(isDelayed(ago(5 * 24 * 60 * MIN), now, false)).toBe(true);
+  });
+
   it("says how old in words a person can read", () => {
     expect(formatAge(ago(10 * 1000), now)).toBe("just now");
     expect(formatAge(ago(25 * MIN), now)).toBe("25 min ago");

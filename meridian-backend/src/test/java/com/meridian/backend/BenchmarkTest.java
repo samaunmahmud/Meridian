@@ -99,6 +99,19 @@ class BenchmarkTest extends IntegrationTestBase {
     }
 
     @Test
+    void theAmountPutInCountsDepositsWithdrawalsAndConversionsButNotTrading() {
+        User user = newUser("10000.00"); // what every account opens with
+        setFxRate(SupportedCurrency.EUR, "1.10");
+        assertThat(benchmarkService.amountPutIn(user)).isEqualByComparingTo("10000.00");
+
+        portfolioService.deposit(new BigDecimal("5000.00"), user);
+        portfolioService.withdraw(new BigDecimal("1000.00"), user);
+        walletService.convert(new ConvertRequest(SupportedCurrency.USD, SupportedCurrency.EUR, new BigDecimal("400.00")), user);
+
+        assertThat(benchmarkService.amountPutIn(user)).isEqualByComparingTo("13600.00");
+    }
+
+    @Test
     void tooLittleHistoryGivesNoPoints() {
         User user = newUser("1000.00");
         Ticker spy = newTicker("10.00");

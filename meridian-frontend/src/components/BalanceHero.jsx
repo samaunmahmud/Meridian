@@ -6,8 +6,6 @@ import Amount from "./Amount";
 import Icon from "./Icon";
 import Skeleton from "./Skeleton";
 
-const STARTING_CASH = 10000;
-
 // A round icon button with its label underneath, as in a banking app's action row.
 function Action({ icon, label, onClick }) {
   return (
@@ -33,8 +31,10 @@ export default function BalanceHero({ refreshKey, onBuy, onSell, onExchange, onA
 
   if (!portfolio) return <Skeleton className="h-[260px] w-full rounded-[28px]" />;
 
-  const sinceStart = portfolio.totalValue - STARTING_CASH;
-  const sinceStartPct = (sinceStart / STARTING_CASH) * 100;
+  // Gain on the money put in (the starting cash plus deposits, less withdrawals), so adding money is not profit.
+  const putIn = Number(portfolio.amountPutIn) || 10000;
+  const sinceStart = portfolio.totalValue - putIn;
+  const sinceStartPct = (sinceStart / putIn) * 100;
   const isUp = sinceStart >= 0;
 
   return (

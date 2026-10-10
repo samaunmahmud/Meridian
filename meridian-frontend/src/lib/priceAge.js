@@ -2,9 +2,13 @@
 // than this is shown as "delayed" so nobody mistakes an old number for the current price.
 // (The server decides what is too old to TRADE on; this is only what the page says.)
 export const DELAYED_AFTER_MS = 15 * 60 * 1000;
+// While the market is closed no new prices come, so the last one is the closing price, not a delayed
+// one, until it is older than the longest closure (a long weekend: Friday's close to Tuesday's open).
+export const CLOSED_DELAYED_AFTER_MS = 4 * 24 * 60 * 60 * 1000;
 
-export function isDelayed(recordedAt, now = Date.now()) {
-  return now - new Date(recordedAt).getTime() > DELAYED_AFTER_MS;
+export function isDelayed(recordedAt, now = Date.now(), marketOpen = true) {
+  const limit = marketOpen ? DELAYED_AFTER_MS : CLOSED_DELAYED_AFTER_MS;
+  return now - new Date(recordedAt).getTime() > limit;
 }
 
 export function formatAge(recordedAt, now = Date.now()) {

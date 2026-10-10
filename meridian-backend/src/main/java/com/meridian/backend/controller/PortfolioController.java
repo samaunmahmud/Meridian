@@ -42,7 +42,8 @@ public class PortfolioController {
 
     @GetMapping("/portfolio")
     public PortfolioResponse getPortfolio(@AuthenticationPrincipal User user) {
-        return portfolioService.getPortfolioValuation(user);
+        PortfolioResponse valuation = portfolioService.getPortfolioValuation(user);
+        return valuation.withAmountPutIn(benchmarkService.amountPutIn(user));
     }
 
     @GetMapping("/portfolio/history")

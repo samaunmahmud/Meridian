@@ -33,6 +33,14 @@ describe("BalanceHero", () => {
     expect(screen.getByText(/\+\$250\.00 \(\+2\.50%\)/)).toBeInTheDocument();
   });
 
+  it("does not count money added as a gain", async () => {
+    getPortfolio.mockResolvedValue({ totalValue: 15300, holdingsValue: 1300, cashBalance: 14000, holdings: [], amountPutIn: 15000 });
+    render(<BalanceHero />);
+
+    expect(await screen.findByText("$15,300.00")).toBeInTheDocument();
+    expect(screen.getByText(/\+\$300\.00 \(\+2\.00%\)/)).toBeInTheDocument();
+  });
+
   it("each round action button does its job", async () => {
     const handlers = { onBuy: vi.fn(), onSell: vi.fn(), onExchange: vi.fn(), onAddMoney: vi.fn() };
     render(<BalanceHero {...handlers} />);
