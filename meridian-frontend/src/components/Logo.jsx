@@ -1,6 +1,6 @@
 import { useId } from "react";
 
-// The Meridian mark: an "M" whose middle dips in a curve, like a meridian line on a globe, white on a
+// The Meridian mark: an M whose last stroke climbs like a rising chart and ends in an arrow, white on a
 // blue-to-violet rounded tile. The tile carries its own colours, so it reads the same in both themes.
 export function LogoMark({ size = 28, className = "" }) {
   const gradient = useId();
@@ -8,19 +8,15 @@ export function LogoMark({ size = 28, className = "" }) {
     <svg width={size} height={size} viewBox="0 0 64 64" className={className} aria-hidden="true">
       <defs>
         <linearGradient id={gradient} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#4466ff" />
-          <stop offset="1" stopColor="#8b5cf6" />
+          <stop offset="0" stopColor="#3d5afe" />
+          <stop offset="1" stopColor="#7c3aed" />
         </linearGradient>
       </defs>
-      <rect width="64" height="64" rx="18" fill={`url(#${gradient})`} />
-      <path
-        d="M18 45V22c0 0 6 0 14 13c8-13 14-13 14-13v23"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <rect width="64" height="64" rx="16" fill={`url(#${gradient})`} />
+      <g fill="none" stroke="#fff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 46V20l15 16 17-17" />
+        <path d="M38 19h10v10" />
+      </g>
     </svg>
   );
 }
