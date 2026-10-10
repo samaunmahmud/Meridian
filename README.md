@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/screenshots/hero.png" alt="Meridian on desktop and phone: the Home screen with a $11,137.26 balance, holdings and a watchlist with sparklines, and NVIDIA's stock page on a phone" width="100%" />
+  <img src="docs/screenshots/hero.png" alt="Meridian on desktop and phone: the Home screen with a $10,997.07 balance up 9.97% all time, recent activity and a watchlist with sparklines, and Apple's stock page on a phone" width="100%" />
 </p>
 
 <h1 align="center">Meridian: practise investing without risking a penny</h1>
@@ -106,22 +106,28 @@ The load numbers come from one 8-core Mac running the load generator, the backen
 | 🌗 **Light and dark, phone and desktop** | A banking-app style interface that follows your device, installable on a phone's home screen. |
 
 <details>
-<summary><b>More screens:</b> Home in both themes, a stock's page, the portfolio and the phone layout</summary>
+<summary><b>More screens:</b> Home in both themes, a stock's page with your notes and its news, you vs the market, target allocation and the phone layout</summary>
 
 <br>
 
+![You vs the market: the portfolio's time-weighted return (+9.29%) against SPY (+7.17%) over a month, and the target allocation card listing the trades that bring each holding back to its target (dark theme)](docs/screenshots/insights-dark.png)
+
 | Home | A stock's page |
 | :---: | :---: |
-| ![Home, dark theme](docs/screenshots/home-dark.png) | ![Stock page with chart and trade form](docs/screenshots/stock-dark.png) |
+| ![Home, dark theme: balance, recent activity including a dividend, and the watchlist](docs/screenshots/home-dark.png) | ![NVIDIA's page: price chart, key stats and the trade form](docs/screenshots/stock-dark.png) |
 | **Home, light theme** | **Portfolio** |
-| ![Home, light theme](docs/screenshots/home-light.png) | ![Portfolio with holdings, orders and allocation](docs/screenshots/portfolio-light.png) |
+| ![Home, light theme](docs/screenshots/home-light.png) | ![Portfolio: total value over the past month, holdings with profit and loss, and the trade form](docs/screenshots/portfolio-light.png) |
+
+![A stock's full page: your position and open trailing stop, your note and target price with a one-click alert, and company news rated bullish, neutral or bearish (light theme)](docs/screenshots/stock-notes-news-light.png)
 
 <p align="center">
-  <img src="docs/screenshots/phone-home-dark.png" width="240" alt="Home on a phone, dark theme" />
+  <img src="docs/screenshots/phone-home-dark.png" width="200" alt="Home on a phone, dark theme" />
   &nbsp;
-  <img src="docs/screenshots/phone-stock-light.png" width="240" alt="A stock's page on a phone" />
+  <img src="docs/screenshots/phone-stock-light.png" width="200" alt="Apple's stock page on a phone, with Buy and Sell at the bottom" />
   &nbsp;
-  <img src="docs/screenshots/phone-buy-light.png" width="240" alt="Buying from the trade sheet on a phone" />
+  <img src="docs/screenshots/phone-buy-light.png" width="200" alt="Buying from the trade sheet on a phone" />
+  &nbsp;
+  <img src="docs/screenshots/phone-portfolio-dark.png" width="200" alt="The portfolio on a phone, dark theme" />
 </p>
 
 </details>
