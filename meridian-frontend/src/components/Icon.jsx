@@ -93,6 +93,13 @@ const PATHS = {
   ),
   check: <path d="M20 6 9 17l-5-5" />,
   x: <path d="M18 6 6 18M6 6l12 12" />,
+  pencil: <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4ZM13.5 6.5l4 4" />,
+  note: (
+    <>
+      <path d="M5 4h14v11l-5 5H5V4Z" />
+      <path d="M14 20v-5h5M9 9h6M9 13h3" />
+    </>
+  ),
   info: (
     <>
       <circle cx="12" cy="12" r="10" />

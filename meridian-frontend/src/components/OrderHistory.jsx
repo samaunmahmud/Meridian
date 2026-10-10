@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getOrders, cancelOrder } from "../lib/api";
 import { showToast } from "../lib/toast";
 import Skeleton from "./Skeleton";
+import Icon from "./Icon";
 import EditOrderModal from "./EditOrderModal";
 import OrderNoteModal from "./OrderNoteModal";
 
@@ -11,6 +12,22 @@ const STATUS_STYLES = {
   CANCELLED: "text-dim bg-panel-2",
   REJECTED: "text-loss bg-loss-dim",
 };
+
+const ACTION = "inline-flex items-center justify-center w-7 h-7 rounded-full hover:bg-panel-2 transition-colors align-middle";
+
+// A pending order has no fill price yet: show the price it waits for instead.
+function PendingPrice({ order }) {
+  if (order.status !== "PENDING") return "—";
+  if (order.kind === "MARKET") return <span className="font-sans text-xs text-dim">at open</span>;
+  const price = order.kind === "LIMIT" ? order.limitPrice : order.stopPrice;
+  if (price == null) return "—";
+  const label = order.kind === "LIMIT" ? "Limit" : order.kind === "TRAILING_STOP" ? "Trailing stop" : "Stop";
+  return (
+    <span className="text-dim" title={`${label} price`}>
+      @ {price.toFixed(2)}
+    </span>
+  );
+}
 
 export default function OrderHistory({ refreshKey, onChanged }) {
   const [orders, setOrders] = useState([]);
@@ -56,7 +73,7 @@ export default function OrderHistory({ refreshKey, onChanged }) {
       ) : (
         /* relative: the sr-only header text is absolutely positioned and must be clipped by this box */
         <div role="region" aria-label="Order history table" tabIndex={0} className="relative overflow-x-auto">
-        <table className="w-full text-sm min-w-[680px] [&_th]:px-1.5 [&_td]:px-1.5 [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap [&_th:first-child]:pl-0 [&_td:first-child]:pl-0 [&_th:last-child]:pr-0 [&_td:last-child]:pr-0">
+        <table className="w-full text-sm min-w-[540px] [&_th]:px-1.5 [&_td]:px-1.5 [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap [&_th:first-child]:pl-0 [&_td:first-child]:pl-0 [&_th:last-child]:pr-0 [&_td:last-child]:pr-0">
           <thead>
             <tr className="text-left text-dim border-b border-line">
               <th scope="col" className="font-normal pb-3">Type</th>
@@ -65,7 +82,7 @@ export default function OrderHistory({ refreshKey, onChanged }) {
               <th scope="col" className="font-normal pb-3 text-right">Qty</th>
               <th scope="col" className="font-normal pb-3 text-right">Price</th>
               <th scope="col" className="font-normal pb-3 text-right">Fee</th>
-              <th scope="col" className="font-normal pb-3 text-right">Realized P/L</th>
+              <th scope="col" className="font-normal pb-3 text-right">P/L</th>
               <th scope="col" className="font-normal pb-3 text-right">When</th>
               <th scope="col" className="font-normal pb-3">
                 <span className="sr-only">Actions</span>
@@ -87,7 +104,7 @@ export default function OrderHistory({ refreshKey, onChanged }) {
                 <td className="py-3 font-sans">
                   {o.symbol}
                   {o.note && (
-                    <div className="text-xs text-muted max-w-[180px] truncate whitespace-nowrap" title={o.note}>
+                    <div className="text-xs text-muted max-w-[140px] truncate whitespace-nowrap" title={o.note}>
                       {o.note}
                     </div>
                   )}
@@ -98,45 +115,49 @@ export default function OrderHistory({ refreshKey, onChanged }) {
                     className={`font-sans text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_STYLES[o.status] ?? "text-dim"}`}
                   >
                     {o.status}
-                    {o.status === "PENDING" && o.kind !== "MARKET" ? ` (${o.kind === "LIMIT" ? o.limitPrice?.toFixed(2) : o.stopPrice?.toFixed(2)})` : ""}
-                    {o.status === "PENDING" && o.kind === "MARKET" ? " (at open)" : ""}
                   </span>
                 </td>
                 <td className="py-3 text-right">{o.quantity}</td>
-                <td className="py-3 text-right">{o.price != null ? o.price.toFixed(2) : "—"}</td>
+                <td className="py-3 text-right">{o.price != null ? o.price.toFixed(2) : <PendingPrice order={o} />}</td>
                 <td className="py-3 text-right text-muted">{o.feeAmount != null ? o.feeAmount.toFixed(2) : "—"}</td>
                 <td className="py-3 text-right">
                   {o.realizedPnL != null
                     ? `${o.realizedPnL >= 0 ? "+" : ""}${o.realizedPnL.toFixed(2)}`
                     : "—"}
                 </td>
-                <td className="py-3 text-right text-xs text-dim">
-                  {new Date(o.executedAt ?? o.createdAt).toLocaleString([], { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
+                <td
+                  className="py-3 text-right text-xs text-dim"
+                  title={new Date(o.executedAt ?? o.createdAt).toLocaleString([], { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
+                >
+                  {new Date(o.executedAt ?? o.createdAt).toLocaleDateString([], { day: "numeric", month: "short" })}
                 </td>
-                <td className="py-3 text-right">
+                <td className="py-3 text-right whitespace-nowrap">
                   <button
                     onClick={() => setNoting(o)}
                     aria-label={`${o.note ? "Edit note on" : "Add a note to"} ${o.type.toLowerCase()} order: ${o.symbol}`}
-                    className="font-sans text-xs text-dim hover:text-bone transition-colors px-2 py-1"
+                    title={o.note ? "Edit note" : "Add a note"}
+                    className={`${ACTION} ${o.note ? "text-muted" : "text-dim"} hover:text-bone`}
                   >
-                    {o.note ? "Note" : "+ Note"}
+                    <Icon name="note" size={16} />
                   </button>
                   {o.status === "PENDING" && o.kind !== "MARKET" && (
                     <button
                       onClick={() => setEditing(o)}
                       aria-label={`Edit pending ${o.type.toLowerCase()} order: ${o.symbol}`}
-                      className="font-sans text-xs text-dim hover:text-bone transition-colors px-2 py-1"
+                      title="Edit order"
+                      className={`${ACTION} text-dim hover:text-bone`}
                     >
-                      Edit
+                      <Icon name="pencil" size={16} />
                     </button>
                   )}
                   {o.status === "PENDING" && (
                     <button
                       onClick={() => handleCancel(o.id)}
                       aria-label={`Cancel pending ${o.type.toLowerCase()} order: ${o.symbol}`}
-                      className="font-sans text-xs text-dim hover:text-loss transition-colors px-2 py-1"
+                      title="Cancel order"
+                      className={`${ACTION} text-dim hover:text-loss`}
                     >
-                      Cancel
+                      <Icon name="x" size={16} />
                     </button>
                   )}
                 </td>

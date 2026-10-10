@@ -59,12 +59,15 @@ function MonthSummary({ transactions }) {
   });
   const sum = (types, fn = (x) => x) => monthly.filter((t) => types.includes(t.type)).reduce((a, t) => a + fn(t.amount), 0);
 
+  // A month with none of something shows a plain $0.00, not a green "+$0.00" or a "−$0.00".
+  const row = (label, amount, sign = "", tone = "") =>
+    amount === 0 ? { label, value: formatMoney(0), tone: "" } : { label, value: `${sign}${formatMoney(amount)}`, tone };
   const rows = [
-    { label: "Deposits", value: `+${formatMoney(sum(["DEPOSIT"]))}`, tone: "text-gain" },
-    { label: "Withdrawals", value: `−${formatMoney(sum(["WITHDRAWAL"], Math.abs))}`, tone: "" },
-    { label: "Dividends", value: `+${formatMoney(sum(["DIVIDEND"]))}`, tone: "text-gain" },
-    { label: "Trading volume", value: formatMoney(sum(["BUY", "SELL"], Math.abs)), tone: "" },
-    { label: "Fees paid", value: formatMoney(sum(["FEE"], Math.abs)), tone: "text-loss" },
+    row("Deposits", sum(["DEPOSIT"]), "+", "text-gain"),
+    row("Withdrawals", sum(["WITHDRAWAL"], Math.abs), "−"),
+    row("Dividends", sum(["DIVIDEND"]), "+", "text-gain"),
+    row("Trading volume", sum(["BUY", "SELL"], Math.abs)),
+    row("Fees paid", sum(["FEE"], Math.abs), "", "text-loss"),
   ];
 
   return (

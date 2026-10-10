@@ -25,6 +25,16 @@ const RANGES = [
 ];
 const CHART_POINTS = 500;
 
+const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
+
+// "Friday" within the past week, "3 Oct" before that.
+function dayName(at, now) {
+  const date = new Date(at);
+  return now - date.getTime() < 6 * 24 * 60 * 60 * 1000
+    ? date.toLocaleDateString([], { weekday: "long" })
+    : date.toLocaleDateString([], { day: "numeric", month: "short" });
+}
+
 const CHART_TYPES = [
   { key: "line", label: "Line" },
   { key: "candles", label: "Candles" },
@@ -113,7 +123,11 @@ export default function StockHero({ ticker, liveUpdate, onTrade, tradeBesideChar
       ]
     : [];
 
-  const rangeWords = RANGES.find((r) => r.key === range)?.words;
+  // 1D is the day up to the latest price: on a weekend that is Friday's session, not "today".
+  const rangeWords =
+    range === "1D" && latest && !sameDay(latest.recordedAt, now)
+      ? `on ${dayName(latest.recordedAt, now)}`
+      : RANGES.find((r) => r.key === range)?.words;
 
   return (
     <section aria-label={`${ticker.name} price`} className="sm:bg-panel sm:rounded-[28px] sm:p-7 fade-in">
@@ -121,8 +135,8 @@ export default function StockHero({ ticker, liveUpdate, onTrade, tradeBesideChar
         <TickerAvatar symbol={ticker.symbol} size={44} />
         <div className="min-w-0">
           <h2 className="text-lg font-semibold leading-tight truncate">{ticker.name}</h2>
-          <div className="flex items-center gap-2 text-[13px] text-muted">
-            <span>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-muted">
+            <span className="whitespace-nowrap">
               {ticker.symbol} &middot; {ticker.exchange}
             </span>
             <MarketBadge assetType={ticker.assetType} />

@@ -20,6 +20,9 @@ public interface PriceHistoryRepository extends JpaRepository<PriceHistory, Long
     /** Every price since the given moment, newest first. */
     List<PriceHistory> findByTickerIdAndRecordedAtGreaterThanEqualOrderByRecordedAtDesc(Long tickerId, Instant since);
 
+    /** Every price after the given moment (not at it), newest first. */
+    List<PriceHistory> findByTickerIdAndRecordedAtGreaterThanOrderByRecordedAtDesc(Long tickerId, Instant after);
+
     Optional<PriceHistory> findFirstByTickerIdOrderByRecordedAtDesc(Long tickerId);
 
     /** The last price recorded at or before {@code at}: what a price was at that moment. */

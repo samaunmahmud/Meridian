@@ -192,7 +192,8 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
               disabled={disabled}
               aria-pressed={kind === k.key}
               onClick={() => setKind(k.key)}
-              className={`flex-1 h-8 px-2 rounded-full font-semibold transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+              title={disabled ? "Sell orders only" : undefined}
+              className={`flex-1 min-w-0 h-8 px-1 whitespace-nowrap rounded-full font-semibold transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
                 kind === k.key ? "bg-bone text-ink" : "bg-panel-2 text-muted hover:text-bone"
               }`}
             >

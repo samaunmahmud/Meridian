@@ -93,7 +93,8 @@ export default function PerformancePanel({ refreshKey, onSelect }) {
 
           <div className="mt-4 divide-y divide-line">
             <TradeLine label="Best trade" trade={data.bestTrade} />
-            <TradeLine label="Worst trade" trade={data.worstTrade} />
+            {/* With a single sell, the best trade is also the worst: show it once */}
+            {data.closedTrades > 1 && <TradeLine label="Worst trade" trade={data.worstTrade} />}
             <div className="flex items-center justify-between gap-3 py-2">
               <span className="text-sm text-muted">Fees paid</span>
               <span className="font-mono text-sm">{formatMoney(data.feesPaid)}</span>

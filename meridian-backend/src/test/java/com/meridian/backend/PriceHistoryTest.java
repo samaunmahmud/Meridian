@@ -25,10 +25,15 @@ class PriceHistoryTest extends IntegrationTestBase {
 
     /** One price per hour for `hours` hours ending now; the price is the age in hours, so 0 is the newest. */
     private Ticker tickerWithHourlyHistory(int hours) {
+        return tickerWithHourlyHistory(hours, Duration.ZERO);
+    }
+
+    /** The same, but the newest price is `quietFor` old (a market that has been closed that long). */
+    private Ticker tickerWithHourlyHistory(int hours, Duration quietFor) {
         Ticker ticker = newTicker("1.00");
         priceHistoryRepository.deleteAll(priceHistoryRepository.findByTickerIdOrderByRecordedAtDesc(ticker.getId()));
         List<PriceHistory> rows = new ArrayList<>();
-        Instant now = Instant.now();
+        Instant now = Instant.now().minus(quietFor);
         for (int h = 0; h < hours; h++) {
             rows.add(new PriceHistory(ticker, new BigDecimal(h), now.minus(Duration.ofHours(h)).minusSeconds(30)));
         }
@@ -49,6 +54,17 @@ class PriceHistoryTest extends IntegrationTestBase {
         assertThat(history(ticker, "ALL", null, null)).hasSize(24 * 10);
         assertThat(history(ticker, null, null, null)).hasSize(24 * 10);
         assertThat(history(ticker, "1d", null, null)).as("case does not matter").hasSize(24);
+    }
+
+    @Test
+    void oneDayIsTheDayUpToTheLatestPriceSoAWeekendStillShowsTheLastSession() {
+        Ticker ticker = tickerWithHourlyHistory(24 * 5, Duration.ofDays(2).plusHours(3)); // closed since Friday
+
+        List<PricePointResponse> day = history(ticker, "1D", null, null);
+
+        assertThat(day).hasSize(24);
+        assertThat(day.get(0).price()).isEqualByComparingTo("0");
+        assertThat(history(ticker, "1W", null, null)).as("longer ranges still end now").hasSize(24 * 7 - (24 * 2 + 3));
     }
 
     @Test

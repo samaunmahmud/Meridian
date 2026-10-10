@@ -3,13 +3,14 @@ import { getTickers, getAlerts, createAlert, deleteAlert } from "../lib/api";
 import { showToast } from "../lib/toast";
 import TickerAvatar from "./TickerAvatar";
 import Skeleton from "./Skeleton";
+import { formatNumber } from "../lib/formatMoney";
 
 // "AAPL above $200.00", or for a percentage alert "AAPL down 5% from $210.00 ($199.50)".
 function describe(a) {
   if (a.movePercent != null) {
-    return `${a.symbol} ${a.direction === "ABOVE" ? "up" : "down"} ${Number(a.movePercent)}% from $${a.referencePrice.toFixed(2)} ($${a.targetPrice.toFixed(2)})`;
+    return `${a.symbol} ${a.direction === "ABOVE" ? "up" : "down"} ${Number(a.movePercent)}% from $${formatNumber(a.referencePrice)} ($${formatNumber(a.targetPrice)})`;
   }
-  return `${a.symbol} ${a.direction === "ABOVE" ? "above" : "below"} $${a.targetPrice.toFixed(2)}`;
+  return `${a.symbol} ${a.direction === "ABOVE" ? "above" : "below"} $${formatNumber(a.targetPrice)}`;
 }
 
 export default function AlertsPanel() {
@@ -96,20 +97,20 @@ export default function AlertsPanel() {
                         <>
                           {a.symbol} {a.direction === "ABOVE" ? "up" : "down"} <span className="font-mono">{Number(a.movePercent)}%</span>
                           <span className="text-muted font-normal">
-                            {" "}from <span className="font-mono">${a.referencePrice.toFixed(2)}</span> ·{" "}
-                            <span className="font-mono">${a.targetPrice.toFixed(2)}</span>
+                            {" "}from <span className="font-mono">${formatNumber(a.referencePrice)}</span> to{" "}
+                            <span className="font-mono">${formatNumber(a.targetPrice)}</span>
                           </span>
                         </>
                       ) : (
                         <>
                           {a.symbol} {a.direction === "ABOVE" ? "above" : "below"}{" "}
-                          <span className="font-mono">${a.targetPrice.toFixed(2)}</span>
+                          <span className="font-mono">${formatNumber(a.targetPrice)}</span>
                         </>
                       )}
                     </div>
                     <div className="text-xs text-dim">
                       {a.triggered
-                        ? `Triggered ${new Date(a.triggeredAt).toLocaleString()}`
+                        ? `Triggered ${new Date(a.triggeredAt).toLocaleString([], { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}`
                         : "Waiting..."}
                     </div>
                   </div>

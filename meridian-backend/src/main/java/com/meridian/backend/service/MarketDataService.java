@@ -176,20 +176,32 @@ public class MarketDataService {
             throw new InvalidRequestException("points must be between 2 and " + MAX_POINTS_LIMIT);
         }
         Duration window = windowFor(range);
-        List<PriceHistory> rows = window == null
-                ? priceHistoryRepository.findByTickerIdOrderByRecordedAtDesc(ticker.getId())
-                : priceHistoryRepository.findByTickerIdAndRecordedAtGreaterThanEqualOrderByRecordedAtDesc(
-                        ticker.getId(), clock.instant().minus(window));
+        List<PriceHistory> rows;
+        if (window == null) {
+            rows = priceHistoryRepository.findByTickerIdOrderByRecordedAtDesc(ticker.getId());
+        } else if (window.equals(ONE_DAY)) {
+            // The day up to the latest price, not up to now: on a weekend (or before the open) the last
+            // 24 hours hold no stock prices at all, and the chart should show the last session instead.
+            rows = priceHistoryRepository.findFirstByTickerIdOrderByRecordedAtDesc(ticker.getId())
+                    .map(newest -> priceHistoryRepository.findByTickerIdAndRecordedAtGreaterThanOrderByRecordedAtDesc(
+                            ticker.getId(), newest.getRecordedAt().minus(ONE_DAY)))
+                    .orElse(List.of());
+        } else {
+            rows = priceHistoryRepository.findByTickerIdAndRecordedAtGreaterThanEqualOrderByRecordedAtDesc(
+                    ticker.getId(), clock.instant().minus(window));
+        }
 
         return Downsample.evenly(rows, maxPoints).stream()
                 .map(p -> new PricePointResponse(p.getPrice(), p.getRecordedAt()))
                 .toList();
     }
 
+    private static final Duration ONE_DAY = Duration.ofDays(1);
+
     static Duration windowFor(String range) {
         if (range == null || range.isBlank() || range.equalsIgnoreCase("ALL")) return null;
         return switch (range.toUpperCase()) {
-            case "1D" -> Duration.ofDays(1);
+            case "1D" -> ONE_DAY;
             case "1W" -> Duration.ofDays(7);
             case "1M" -> Duration.ofDays(30);
             case "3M" -> Duration.ofDays(91);

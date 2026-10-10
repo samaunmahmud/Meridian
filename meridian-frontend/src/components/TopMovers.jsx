@@ -74,10 +74,10 @@ export default function TopMovers({ onSelect, liveUpdate }) {
   return (
     <section aria-labelledby="top-movers-heading" className="bg-panel rounded-[28px] p-4 sm:p-5 fade-in">
       <div className="flex items-baseline justify-between gap-3 mb-3 px-2">
-        <h2 id="top-movers-heading" className="text-lg font-bold">
+        <h2 id="top-movers-heading" className="text-lg font-bold whitespace-nowrap">
           Top movers
         </h2>
-        <span className="text-xs text-muted">Stocks since the last close · crypto 24h</span>
+        <span className="text-xs text-muted text-right">Stocks since the last close · crypto 24h</span>
       </div>
 
       {!movers && !failed && (

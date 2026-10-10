@@ -46,6 +46,16 @@ describe("StockHero: how old is this price?", () => {
     expect(screen.queryByText(/Prices delayed/)).not.toBeInTheDocument();
   });
 
+  it("names the day of the last session instead of saying today, when the 1D prices are from an earlier day", async () => {
+    getMarketStatus.mockResolvedValueOnce({ stocks: { open: false, nextOpen: new Date(Date.now() + 86400000).toISOString() } });
+    getPrices.mockResolvedValue(pricesRecorded(2 * 24 * 60, 2 * 24 * 60 + 60)); // a weekend: Friday's prices
+    render(<StockHero ticker={ticker} liveUpdate={null} onTrade={vi.fn()} />);
+
+    const day = new Date(minutesAgo(2 * 24 * 60)).toLocaleDateString([], { weekday: "long" });
+    expect(await screen.findByText(`on ${day}`)).toBeInTheDocument();
+    expect(screen.queryByText("today")).not.toBeInTheDocument();
+  });
+
   it("asks the server for the chosen time window, thinned, and keeps the range buttons in place", async () => {
     getPrices.mockResolvedValue(pricesRecorded(1, 21, 41));
     render(<StockHero ticker={ticker} liveUpdate={null} onTrade={vi.fn()} />);

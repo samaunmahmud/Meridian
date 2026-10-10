@@ -52,6 +52,19 @@ describe("PerformancePanel", () => {
     expect(await axeViolations(container)).toEqual([]);
   });
 
+  it("shows a single sell once, not as both the best and the worst trade", async () => {
+    const only = DATA.bestTrade;
+    getPerformance.mockResolvedValueOnce({ ...DATA, closedTrades: 1, winningTrades: 1, winRate: 100, worstTrade: only });
+    const { unmount } = render(<PerformancePanel refreshKey={0} />);
+    expect(await screen.findByText("Best trade")).toBeInTheDocument();
+    expect(screen.queryByText("Worst trade")).not.toBeInTheDocument();
+    unmount();
+
+    getPerformance.mockResolvedValueOnce(DATA);
+    render(<PerformancePanel refreshKey={0} />);
+    expect(await screen.findByText("Worst trade")).toBeInTheDocument();
+  });
+
   it("opens a stock from the breakdown", async () => {
     getPerformance.mockResolvedValue(DATA);
     const onSelect = vi.fn();
@@ -69,7 +82,7 @@ describe("PerformancePanel", () => {
     render(<PerformancePanel refreshKey={0} />);
 
     expect(await screen.findByText("Sell to see it")).toBeInTheDocument();
-    expect(screen.getAllByText("No sells yet")).toHaveLength(2);
+    expect(screen.getAllByText("No sells yet")).toHaveLength(1);
     expect(screen.queryByText("By stock")).not.toBeInTheDocument();
   });
 });
