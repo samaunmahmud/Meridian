@@ -49,11 +49,12 @@ class PriceHistoryTest extends IntegrationTestBase {
     void aRangeReturnsOnlyThePricesInsideIt() {
         Ticker ticker = tickerWithHourlyHistory(24 * 10); // ten days
 
-        assertThat(history(ticker, "1D", null, null)).hasSize(24);
+        // A day is the 24 hours up to the latest price, plus the price they are measured from
+        assertThat(history(ticker, "1D", null, null)).hasSize(24 + 1);
         assertThat(history(ticker, "1W", null, null)).hasSize(24 * 7);
         assertThat(history(ticker, "ALL", null, null)).hasSize(24 * 10);
         assertThat(history(ticker, null, null, null)).hasSize(24 * 10);
-        assertThat(history(ticker, "1d", null, null)).as("case does not matter").hasSize(24);
+        assertThat(history(ticker, "1d", null, null)).as("case does not matter").hasSize(24 + 1);
     }
 
     @Test
@@ -62,8 +63,9 @@ class PriceHistoryTest extends IntegrationTestBase {
 
         List<PricePointResponse> day = history(ticker, "1D", null, null);
 
-        assertThat(day).hasSize(24);
+        assertThat(day).hasSize(24 + 1);
         assertThat(day.get(0).price()).isEqualByComparingTo("0");
+        assertThat(day.get(24).price()).as("starts at the price 24 h before the latest").isEqualByComparingTo("24");
         assertThat(history(ticker, "1W", null, null)).as("longer ranges still end now").hasSize(24 * 7 - (24 * 2 + 3));
     }
 

@@ -78,7 +78,12 @@ public class MoversService {
                 .map(reference -> toResponse(ticker, latest.get(), reference));
     }
 
-    private Instant referenceMoment(AssetType type, Instant latestAt) {
+    /**
+     * When a day's change is measured from, for a price at {@code latestAt}: the previous session's close
+     * for a stock, 24 hours earlier for crypto (or when trading hours are not enforced). The 1D chart starts
+     * at the same moment, so its change matches this one.
+     */
+    public Instant referenceMoment(AssetType type, Instant latestAt) {
         Instant previousClose = type == AssetType.STOCK ? marketCalendar.previousStockClose(latestAt) : null;
         return previousClose != null ? previousClose : latestAt.minus(CRYPTO_WINDOW);
     }

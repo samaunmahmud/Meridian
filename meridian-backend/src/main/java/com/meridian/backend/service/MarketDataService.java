@@ -24,8 +24,10 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class MarketDataService {
@@ -40,6 +42,7 @@ public class MarketDataService {
     private final AlertService alertService;
     private final PortfolioService portfolioService;
     private final Clock clock;
+    private final MoversService moversService;
 
     // Price history: how much the chart endpoint returns at most when the caller does not say.
     static final int DEFAULT_MAX_POINTS = 2000;
@@ -52,7 +55,8 @@ public class MarketDataService {
                               ObjectMapper objectMapper,
                               AlertService alertService,
                               PortfolioService portfolioService,
-                              Clock clock) {
+                              Clock clock,
+                              MoversService moversService) {
         this.tickerRepository = tickerRepository;
         this.priceHistoryRepository = priceHistoryRepository;
         this.marketDataProvider = marketDataProvider;
@@ -61,6 +65,7 @@ public class MarketDataService {
         this.alertService = alertService;
         this.portfolioService = portfolioService;
         this.clock = clock;
+        this.moversService = moversService;
     }
 
     public void pollAndStore(String symbol, String name, String exchange) {
@@ -180,12 +185,7 @@ public class MarketDataService {
         if (window == null) {
             rows = priceHistoryRepository.findByTickerIdOrderByRecordedAtDesc(ticker.getId());
         } else if (window.equals(ONE_DAY)) {
-            // The day up to the latest price, not up to now: on a weekend (or before the open) the last
-            // 24 hours hold no stock prices at all, and the chart should show the last session instead.
-            rows = priceHistoryRepository.findFirstByTickerIdOrderByRecordedAtDesc(ticker.getId())
-                    .map(newest -> priceHistoryRepository.findByTickerIdAndRecordedAtGreaterThanOrderByRecordedAtDesc(
-                            ticker.getId(), newest.getRecordedAt().minus(ONE_DAY)))
-                    .orElse(List.of());
+            rows = oneDay(ticker);
         } else {
             rows = priceHistoryRepository.findByTickerIdAndRecordedAtGreaterThanEqualOrderByRecordedAtDesc(
                     ticker.getId(), clock.instant().minus(window));
@@ -197,6 +197,22 @@ public class MarketDataService {
     }
 
     private static final Duration ONE_DAY = Duration.ofDays(1);
+
+    /**
+     * The day up to the latest price, not up to now: on a weekend (or before the open) the last 24 hours
+     * hold no stock prices, and the chart should show the last session instead. It starts with the price
+     * the day's change is measured from (the previous close), so the chart's change is the day's change.
+     */
+    private List<PriceHistory> oneDay(Ticker ticker) {
+        Optional<PriceHistory> newest = priceHistoryRepository.findFirstByTickerIdOrderByRecordedAtDesc(ticker.getId());
+        if (newest.isEmpty()) return List.of();
+        Instant from = moversService.referenceMoment(ticker.getAssetType(), newest.get().getRecordedAt());
+        List<PriceHistory> rows = new ArrayList<>(
+                priceHistoryRepository.findByTickerIdAndRecordedAtGreaterThanOrderByRecordedAtDesc(ticker.getId(), from));
+        priceHistoryRepository.findFirstByTickerIdAndRecordedAtLessThanEqualOrderByRecordedAtDesc(ticker.getId(), from)
+                .ifPresent(rows::add);
+        return rows;
+    }
 
     static Duration windowFor(String range) {
         if (range == null || range.isBlank() || range.equalsIgnoreCase("ALL")) return null;
