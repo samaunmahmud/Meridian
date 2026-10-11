@@ -67,10 +67,14 @@ export default function PortfolioSummary({ refreshKey }) {
   }
   if (!portfolio) return null;
 
+  // The move over the window minus the money put in or taken out during it, so a deposit isn't a gain.
   const enough = history && history.length >= 2;
   const first = enough ? history[0].totalValue : null;
-  const change = enough ? portfolio.totalValue - first : null;
-  const changePct = enough && first ? (change / first) * 100 : null;
+  const flows = enough && history[0].amountPutIn != null && portfolio.amountPutIn != null
+    ? portfolio.amountPutIn - history[0].amountPutIn
+    : 0;
+  const change = enough ? portfolio.totalValue - first - flows : null;
+  const changePct = enough && first + flows > 0 ? (change / (first + flows)) * 100 : null;
   const isUp = (change ?? 0) >= 0;
   const color = isUp ? "var(--c-gain)" : "var(--c-loss)";
   const words = RANGES.find((r) => r.key === range).words;
@@ -88,8 +92,9 @@ export default function PortfolioSummary({ refreshKey }) {
             ) : (
               <>
                 {isUp ? "+" : "−"}
-                {formatMoney(Math.abs(change))} ({isUp ? "+" : "−"}
-                {Math.abs(changePct).toFixed(2)}%) <span className="text-muted font-medium">{words}</span>
+                {formatMoney(Math.abs(change))}
+                {changePct != null && ` (${isUp ? "+" : "−"}${Math.abs(changePct).toFixed(2)}%)`}{" "}
+                <span className="text-muted font-medium">{words}</span>
               </>
             )}
           </div>

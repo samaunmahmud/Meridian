@@ -2,6 +2,7 @@ package com.meridian.backend.service;
 
 import com.meridian.backend.dto.BenchmarkResponse;
 import com.meridian.backend.dto.BenchmarkResponse.Point;
+import com.meridian.backend.dto.PortfolioSnapshotResponse;
 import com.meridian.backend.exception.InvalidRequestException;
 import com.meridian.backend.exception.TickerNotFoundException;
 import com.meridian.backend.model.Order;
@@ -31,6 +32,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /** How the portfolio has done next to one ticker (an index fund, a stock, bitcoin) over the same window. */
@@ -112,7 +114,7 @@ public class BenchmarkService {
 
         Point last = all.get(all.size() - 1);
         return new BenchmarkResponse(ticker.getSymbol(), ticker.getName(), last.portfolio(), last.benchmark(),
-                Downsample.evenly(all, maxPoints));
+                Downsample.evenlyOverTime(all, maxPoints, Point::at));
     }
 
     /**
@@ -124,6 +126,22 @@ public class BenchmarkService {
         Long portfolioId = portfolioRepository.findByUserId(user.getId()).map(p -> p.getId()).orElse(null);
         if (portfolioId == null) return STARTING_CASH;
         return flowsInUsd(portfolioId).stream().map(Flow::amount).reduce(STARTING_CASH, BigDecimal::add);
+    }
+
+    /** The history with each point's amountPutIn filled in: the starting cash plus every flow up to that moment. */
+    @Transactional(readOnly = true)
+    public List<PortfolioSnapshotResponse> withAmountPutIn(User user, List<PortfolioSnapshotResponse> history) {
+        Long portfolioId = portfolioRepository.findByUserId(user.getId()).map(p -> p.getId()).orElse(null);
+        List<Flow> flows = portfolioId == null ? List.of() : new ArrayList<>(flowsInUsd(portfolioId));
+        flows.sort(Comparator.comparing(Flow::at));
+        List<PortfolioSnapshotResponse> out = new ArrayList<>(history.size());
+        BigDecimal putIn = STARTING_CASH;
+        int f = 0;
+        for (PortfolioSnapshotResponse s : history) { // oldest first
+            while (f < flows.size() && !flows.get(f).at().isAfter(s.recordedAt())) putIn = putIn.add(flows.get(f++).amount());
+            out.add(new PortfolioSnapshotResponse(s.totalValue(), s.recordedAt(), putIn));
+        }
+        return out;
     }
 
     // What moved money into or out of the USD total that snapshots record (USD cash plus holdings): USD deposits,

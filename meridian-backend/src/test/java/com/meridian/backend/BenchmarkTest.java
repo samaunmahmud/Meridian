@@ -1,5 +1,6 @@
 package com.meridian.backend;
 
+import com.meridian.backend.dto.PortfolioSnapshotResponse;
 import com.meridian.backend.dto.BenchmarkResponse;
 import com.meridian.backend.dto.ConvertRequest;
 import com.meridian.backend.exception.InvalidRequestException;
@@ -18,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -109,6 +111,22 @@ class BenchmarkTest extends IntegrationTestBase {
         walletService.convert(new ConvertRequest(SupportedCurrency.USD, SupportedCurrency.EUR, new BigDecimal("400.00")), user);
 
         assertThat(benchmarkService.amountPutIn(user)).isEqualByComparingTo("13600.00");
+    }
+
+    @Test
+    void eachHistoryPointCarriesWhatHadBeenPutInByThen() {
+        User user = newUser("10000.00");
+        Instant before = Instant.now().minusSeconds(60);
+        portfolioService.deposit(new BigDecimal("5000.00"), user);
+        Instant after = Instant.now().plusSeconds(60);
+
+        List<PortfolioSnapshotResponse> history = benchmarkService.withAmountPutIn(user, List.of(
+                new PortfolioSnapshotResponse(new BigDecimal("10000.00"), before),
+                new PortfolioSnapshotResponse(new BigDecimal("15100.00"), after)));
+
+        assertThat(history).extracting(PortfolioSnapshotResponse::amountPutIn)
+                .usingElementComparator(BigDecimal::compareTo)
+                .containsExactly(new BigDecimal("10000.00"), new BigDecimal("15000.00"));
     }
 
     @Test

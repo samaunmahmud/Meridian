@@ -50,7 +50,7 @@ public class PortfolioController {
     public List<PortfolioSnapshotResponse> getPortfolioHistory(@AuthenticationPrincipal User user,
                                                                @RequestParam(required = false) Integer points,
                                                                @RequestParam(required = false) String range) {
-        return portfolioService.getPortfolioHistory(user, points, range);
+        return benchmarkService.withAmountPutIn(user, portfolioService.getPortfolioHistory(user, points, range));
     }
 
     @GetMapping("/portfolio/performance")

@@ -817,7 +817,7 @@ public class PortfolioService {
                 ? portfolioSnapshotRepository.findByPortfolioIdOrderByRecordedAtAsc(portfolio.getId())
                 : portfolioSnapshotRepository.findByPortfolioIdAndRecordedAtGreaterThanEqualOrderByRecordedAtAsc(
                         portfolio.getId(), Instant.now().minus(window));
-        return Downsample.evenly(snapshots, max).stream()
+        return Downsample.evenlyOverTime(snapshots, max, PortfolioSnapshot::getRecordedAt).stream()
                 .map(s -> new PortfolioSnapshotResponse(s.getTotalValue(), s.getRecordedAt()))
                 .toList();
     }

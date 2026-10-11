@@ -191,7 +191,7 @@ public class MarketDataService {
                     ticker.getId(), clock.instant().minus(window));
         }
 
-        return Downsample.evenly(rows, maxPoints).stream()
+        return Downsample.evenlyOverTime(rows, maxPoints, PriceHistory::getRecordedAt).stream()
                 .map(p -> new PricePointResponse(p.getPrice(), p.getRecordedAt()))
                 .toList();
     }
