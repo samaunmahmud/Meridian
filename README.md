@@ -17,10 +17,10 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Java_21-ED8B00?style=flat-square&logo=openjdk&logoColor=white" alt="Java 21" />
-  <img src="https://img.shields.io/badge/Spring_Boot_3.3-6DB33F?style=flat-square&logo=springboot&logoColor=white" alt="Spring Boot 3.3" />
+  <img src="https://img.shields.io/badge/Spring_Boot-3.3-6DB33F?style=flat-square&logo=springboot&logoColor=white" alt="Spring Boot 3.3" />
   <img src="https://img.shields.io/badge/React_19-20232A?style=flat-square&logo=react&logoColor=61DAFB" alt="React 19" />
   <img src="https://img.shields.io/badge/Tailwind_4-0F172A?style=flat-square&logo=tailwindcss&logoColor=38BDF8" alt="Tailwind CSS 4" />
-  <img src="https://img.shields.io/badge/MySQL_8.4-00758F?style=flat-square&logo=mysql&logoColor=white" alt="MySQL 8.4" />
+  <img src="https://img.shields.io/badge/MySQL-8.4-00758F?style=flat-square&logo=mysql&logoColor=white" alt="MySQL 8.4" />
   <img src="https://img.shields.io/badge/Flyway-CC0200?style=flat-square&logo=flyway&logoColor=white" alt="Flyway" />
   <img src="https://img.shields.io/badge/WebSocket-010101?style=flat-square" alt="WebSocket" />
   <img src="https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker" />
