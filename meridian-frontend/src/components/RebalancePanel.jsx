@@ -1,3 +1,4 @@
+import { PillSelect } from "./PickerRow";
 import { useEffect, useId, useState } from "react";
 import { getRebalancePlan, getTickers, setTargets } from "../lib/api";
 import { formatMoney } from "../lib/formatMoney";
@@ -138,18 +139,18 @@ function Editor({ plan, onSaved, onCancel }) {
       {addable.length > 0 && (
         <div className="flex items-center gap-2 mt-3">
           <label htmlFor={`${uid}-add`} className="sr-only">Stock to add</label>
-          <select
+          <PillSelect
             id={`${uid}-add`}
             value={adding || addable[0].symbol}
             onChange={(e) => setAdding(e.target.value)}
-            className="h-9 rounded-full bg-panel-2 border border-control px-3 text-sm font-semibold"
+            className="h-9 text-sm"
           >
             {addable.map((t) => (
               <option key={t.symbol} value={t.symbol}>
                 {t.symbol}
               </option>
             ))}
-          </select>
+          </PillSelect>
           <button type="button" onClick={add} className="h-9 px-4 rounded-full text-sm font-semibold bg-panel-2 hover:brightness-110">
             Add stock
           </button>

@@ -1,3 +1,4 @@
+import PickerRow, { StockChoice, WalletChoice } from "./PickerRow";
 import { useEffect, useId, useState } from "react";
 import { getTickers, getRecurringOrders, createRecurringOrder, deleteRecurringOrder, getWallets } from "../lib/api";
 import { currencySymbol, formatMoney } from "../lib/formatMoney";
@@ -60,6 +61,8 @@ export default function RecurringOrdersPanel({ refreshKey }) {
     }
   }
 
+  const selectedWallet = wallets.find((w) => w.currency === currency);
+
   return (
     <section className="bg-panel rounded-[28px] p-6">
       <h2 className="text-lg font-bold mb-4">Recurring buys</h2>
@@ -87,19 +90,16 @@ export default function RecurringOrdersPanel({ refreshKey }) {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <select
-            aria-label="Symbol"
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value)}
-            className="bg-panel-2 border border-control rounded-2xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
-          >
-            {tickers.map((t) => (
-              <option key={t.symbol} value={t.symbol}>
-                {t.symbol}
-              </option>
-            ))}
-          </select>
+        <PickerRow
+          id={`${uid}-symbol`}
+          label="Symbol"
+          value={symbol}
+          onChange={setSymbol}
+          options={tickers.map((t) => ({ value: t.symbol, text: t.symbol }))}
+        >
+          <StockChoice ticker={tickers.find((t) => t.symbol === symbol)} symbol={symbol} />
+        </PickerRow>
+        <div>
           <input
             aria-label={`Amount in ${currency}`}
             type="number"
@@ -108,24 +108,23 @@ export default function RecurringOrdersPanel({ refreshKey }) {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder={`Amount (${currencySymbol(currency).trim()})`}
-            className="bg-panel-2 border border-control rounded-2xl px-3 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
+            className="no-spin w-full bg-panel-2 border border-control rounded-2xl px-4 py-3 text-[15px] font-mono outline-none focus:border-accent transition-colors"
           />
         </div>
 
         <div>
-          <label htmlFor={`${uid}-currency`} className="text-xs text-dim block mb-1.5">Pay with</label>
-          <select
+          <PickerRow
             id={`${uid}-currency`}
+            label="Pay with"
             value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            className="w-full bg-panel-2 border border-control rounded-2xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
+            onChange={setCurrency}
+            options={(wallets.length ? wallets : [{ currency: "USD", balance: 0 }]).map((w) => ({
+              value: w.currency,
+              text: `${w.currency} — ${formatMoney(w.available ?? w.balance, w.currency)} available`,
+            }))}
           >
-            {(wallets.length ? wallets : [{ currency: "USD", balance: 0 }]).map((w) => (
-              <option key={w.currency} value={w.currency}>
-                {w.currency} — {formatMoney(w.available ?? w.balance, w.currency)} available
-              </option>
-            ))}
-          </select>
+            <WalletChoice currency={currency} caption="Pay with" amount={selectedWallet && formatMoney(selectedWallet.available ?? selectedWallet.balance, currency)} />
+          </PickerRow>
           {currency !== "USD" && (
             <div className="text-xs text-dim mt-1.5">
               Buys {currencySymbol(currency).trim()}

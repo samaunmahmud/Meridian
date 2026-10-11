@@ -4,8 +4,7 @@ import { useMarketStatus } from "../lib/useMarketStatus";
 import { getTickers, getPrices, placeOrder, getWallets, getFxRates } from "../lib/api";
 import { formatMoney } from "../lib/formatMoney";
 import { showToast } from "../lib/toast";
-import Icon from "./Icon";
-import TickerAvatar from "./TickerAvatar";
+import PickerRow, { StockChoice, WalletChoice } from "./PickerRow";
 
 const KINDS = [
   { key: "MARKET", label: "Market" },
@@ -24,25 +23,6 @@ const MINIMUM_FEE = 1;
 const FX_SPREAD = 0.005; // same markup the backend applies to every conversion
 
 const KIND_PRICE_WORDS = { LIMIT: "Limit price", STOP_LOSS: "Stop price", TRAILING_STOP: "Stop starts at" };
-const CURRENCY_SIGNS = { USD: "$", EUR: "€", GBP: "£" };
-
-// A tappable row, like Revolut's account and stock pickers. The native select lies invisibly on top of it, so
-// it keeps its label, keyboard use and the phone's own picker while the row shows what is chosen.
-function PickerRow({ id, label, value, onChange, options, children }) {
-  return (
-    <div className="relative flex items-center gap-3.5 bg-panel-2 rounded-2xl px-4 py-3 focus-within:ring-2 focus-within:ring-accent hover:brightness-110 transition">
-      {children}
-      <Icon name="chev" size={18} className="text-muted shrink-0" />
-      <label htmlFor={id} className="sr-only">{label}</label>
-      <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.text}</option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
 function SummaryRow({ term, value, strong = false }) {
   return (
     <div className="flex justify-between py-2">
@@ -245,12 +225,7 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
           onChange={setSymbol}
           options={tickers.map((t) => ({ value: t.symbol, text: `${t.symbol} — ${t.name}` }))}
         >
-          {symbol ? <TickerAvatar symbol={symbol} size={40} /> : <div className="w-10 h-10 rounded-full bg-panel shrink-0" />}
-          <div className="flex-1 min-w-0">
-            <div className="text-[15px] font-semibold">{symbol || "Choose a stock"}</div>
-            <div className="text-[13px] text-muted truncate">{selectedTicker?.name ?? ""}</div>
-          </div>
-          {lastPrice != null && <div className="font-mono text-[15px] font-semibold">{formatMoney(lastPrice)}</div>}
+          <StockChoice ticker={selectedTicker} symbol={symbol} price={lastPrice != null && <div className="font-mono text-[15px] font-semibold">{formatMoney(lastPrice)}</div>} />
         </PickerRow>
 
         <div className="text-center py-3">
@@ -281,19 +256,11 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
             text: `${w.currency} — ${formatMoney(w.available ?? w.balance, w.currency)}${type === "BUY" ? " available" : ""}`,
           }))}
         >
-          <div className="w-10 h-10 rounded-full bg-panel flex items-center justify-center text-sm font-semibold shrink-0" aria-hidden="true">
-            {CURRENCY_SIGNS[currency] ?? currency.slice(0, 1)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[13px] text-muted">{type === "BUY" ? "Pay with" : "Receive in"}</div>
-            <div className="text-[15px] font-semibold">{currency} wallet</div>
-          </div>
-          {selectedWallet && (
-            <div className="text-right">
-              <div className="font-mono text-[15px] font-semibold">{formatMoney(selectedWallet.available ?? selectedWallet.balance, currency)}</div>
-              <div className="text-[13px] text-muted">available</div>
-            </div>
-          )}
+          <WalletChoice
+            currency={currency}
+            caption={type === "BUY" ? "Pay with" : "Receive in"}
+            amount={selectedWallet && formatMoney(selectedWallet.available ?? selectedWallet.balance, currency)}
+          />
         </PickerRow>
 
         {kind === "LIMIT" && (

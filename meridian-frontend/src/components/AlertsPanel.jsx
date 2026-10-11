@@ -1,3 +1,4 @@
+import PickerRow, { StockChoice } from "./PickerRow";
 import { useEffect, useId, useState } from "react";
 import { getTickers, getAlerts, createAlert, deleteAlert } from "../lib/api";
 import { showToast } from "../lib/toast";
@@ -134,21 +135,15 @@ export default function AlertsPanel() {
           You'll be told here the moment it fires, and by email once your address is confirmed.
         </p>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label htmlFor={`${uid}-symbol`} className="text-xs text-dim block mb-1.5">Symbol</label>
-            <select
-              id={`${uid}-symbol`}
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value)}
-              className="w-full bg-panel-2 border border-control rounded-2xl px-3.5 py-2.5 text-sm outline-none focus:border-accent transition-colors"
-            >
-              {tickers.map((t) => (
-                <option key={t.symbol} value={t.symbol}>
-                  {t.symbol} — {t.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <PickerRow
+            id={`${uid}-symbol`}
+            label="Symbol"
+            value={symbol}
+            onChange={setSymbol}
+            options={tickers.map((t) => ({ value: t.symbol, text: `${t.symbol} — ${t.name}` }))}
+          >
+            <StockChoice ticker={tickers.find((t) => t.symbol === symbol)} symbol={symbol} />
+          </PickerRow>
 
           <div role="group" aria-label="Alert type" className="grid grid-cols-2 gap-1.5 text-[13px]">
             {[

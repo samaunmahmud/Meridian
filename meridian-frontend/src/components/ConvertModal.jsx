@@ -1,8 +1,9 @@
 import { useEffect, useId, useState } from "react";
 import { convertCurrency, getFxRates } from "../lib/api";
-import { formatMoney, currencySymbol } from "../lib/formatMoney";
+import { formatMoney } from "../lib/formatMoney";
 import { showToast } from "../lib/toast";
 import Modal from "./Modal";
+import PickerRow, { WalletChoice } from "./PickerRow";
 
 const CURRENCIES = ["USD", "EUR", "GBP"];
 
@@ -38,6 +39,8 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
   const rate = rateFor(fromCurrency, toCurrency);
   const estimated = rate && amount ? Number(amount) * rate * 0.995 : null;
   const from = wallets?.find((w) => w.currency === fromCurrency);
+  const to = wallets?.find((w) => w.currency === toCurrency);
+  const toBalance = to ? to.balance : null;
   const balance = from?.available ?? from?.balance ?? 0; // money held by open orders cannot be converted
 
   async function handleSubmit(e) {
@@ -62,38 +65,22 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
   return (
     <Modal title="Convert currency" onClose={onClose}>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor={`${uid}-from`} className="text-xs text-dim block mb-1.5">From</label>
-              <select
-                id={`${uid}-from`}
-                value={fromCurrency}
-                onChange={(e) => setFromCurrency(e.target.value)}
-                className="w-full bg-panel-2 border border-control rounded-2xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
-              >
-                {CURRENCIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor={`${uid}-to`} className="text-xs text-dim block mb-1.5">To</label>
-              <select
-                id={`${uid}-to`}
-                value={toCurrency}
-                onChange={(e) => setToCurrency(e.target.value)}
-                className="w-full bg-panel-2 border border-control rounded-2xl px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
-              >
-                {CURRENCIES.filter((c) => c !== fromCurrency).map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+          <PickerRow id={`${uid}-from`} label="From" value={fromCurrency} onChange={setFromCurrency} options={CURRENCIES.map((c) => ({ value: c, text: c }))}>
+            <WalletChoice currency={fromCurrency} caption="From" amount={formatMoney(balance, fromCurrency)} />
+          </PickerRow>
+          <PickerRow
+            id={`${uid}-to`}
+            label="To"
+            value={toCurrency}
+            onChange={setToCurrency}
+            options={CURRENCIES.filter((c) => c !== fromCurrency).map((c) => ({ value: c, text: c }))}
+          >
+            <WalletChoice currency={toCurrency} caption="To" amount={toBalance != null ? formatMoney(toBalance, toCurrency) : null} amountCaption="balance" />
+          </PickerRow>
 
           <div>
             <label htmlFor={`${uid}-amount`} className="text-xs text-dim block mb-1.5">
-              Amount <span className="text-dim">({currencySymbol(fromCurrency)}{balance.toFixed(2)} available)</span>
+              Amount <span className="text-dim">({formatMoney(balance, fromCurrency)} available)</span>
             </label>
             <input
               id={`${uid}-amount`}
@@ -104,7 +91,7 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
-              className="w-full bg-panel-2 border border-control rounded-2xl px-3.5 py-2.5 text-sm font-mono outline-none focus:border-accent transition-colors"
+              className="no-spin w-full bg-panel-2 border border-control rounded-2xl px-4 py-3 text-[15px] font-mono outline-none focus:border-accent transition-colors"
             />
           </div>
 

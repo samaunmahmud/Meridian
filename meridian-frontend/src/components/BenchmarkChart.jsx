@@ -1,3 +1,4 @@
+import { PillSelect } from "./PickerRow";
 import { useEffect, useState } from "react";
 import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip, ReferenceLine } from "recharts";
 import { getBenchmark, getTickers } from "../lib/api";
@@ -135,17 +136,13 @@ export default function BenchmarkChart({ refreshKey }) {
         {tickers && symbol && (
           <label className="flex items-center gap-2 text-[13px] text-muted">
             Compare with
-            <select
-              value={symbol}
-              onChange={(e) => choose(e.target.value)}
-              className="h-8 rounded-full bg-panel-2 border border-control px-3 text-bone font-semibold"
-            >
+            <PillSelect value={symbol} onChange={(e) => choose(e.target.value)}>
               {tickers.map((t) => (
                 <option key={t.symbol} value={t.symbol}>
                   {t.symbol}
                 </option>
               ))}
-            </select>
+            </PillSelect>
           </label>
         )}
       </div>
