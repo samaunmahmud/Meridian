@@ -88,7 +88,7 @@ export default function AddTickerModal({ onClose, onAdded }) {
                 onClick={() => handleAdd(r)}
                 disabled={addingSymbol === r.symbol}
                 aria-label={`Add ${r.symbol} to the watchlist`}
-                className="text-xs bg-accent hover:brightness-110 transition-colors text-accent-ink px-3.5 py-1.5 rounded-full font-semibold disabled:opacity-50 shrink-0"
+                className="text-xs bg-primary hover:brightness-110 transition-colors text-on-primary px-3.5 py-1.5 rounded-full font-semibold disabled:opacity-50 shrink-0"
               >
                 {addingSymbol === r.symbol ? "Adding..." : "Add"}
               </button>

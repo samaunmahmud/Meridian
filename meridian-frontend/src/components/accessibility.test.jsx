@@ -162,14 +162,10 @@ describe("form panels", () => {
     expect(screen.getByRole("button", { name: "Deposit EUR" })).toHaveFocus();
   });
 
-  it("OrderHistory: a captioned-by-name, keyboard-scrollable table with a named Actions column", async () => {
+  it("OrderHistory: orders listed per day under a heading, each list named, actions named", async () => {
     const { container } = render(<OrderHistory refreshKey={0} />);
-    const region = await screen.findByRole("region", { name: "Order history table" });
-    expect(region).toHaveAttribute("tabindex", "0");
-    // Must be `relative`, or the absolutely-positioned sr-only header escapes the scroll box
-    // and makes the whole page scroll sideways on a phone (found with a 320px browser check).
-    expect(region).toHaveClass("relative", "overflow-x-auto");
-    expect(within(region).getByRole("columnheader", { name: "Actions" })).toBeInTheDocument();
+    expect((await screen.findAllByRole("heading", { level: 3 })).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("list", { name: /^Orders, / }).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Cancel pending buy order: NVDA" })).toBeInTheDocument();
     expect(await axeViolations(container)).toEqual([]);
   });

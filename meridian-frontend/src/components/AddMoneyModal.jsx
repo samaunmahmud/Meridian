@@ -91,7 +91,7 @@ export default function AddMoneyModal({ onClose, onAdded }) {
         <button
           type="submit"
           disabled={submitting || !Number(amount)}
-          className="w-full h-12 rounded-full bg-accent text-accent-ink text-[15px] font-semibold disabled:opacity-50 hover:brightness-110 active:scale-[0.98] transition-all"
+          className="w-full h-12 rounded-full bg-primary text-on-primary text-[15px] font-semibold disabled:opacity-50 hover:brightness-110 active:scale-[0.98] transition-all"
         >
           {submitting ? "Adding…" : "Add money"}
         </button>

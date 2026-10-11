@@ -96,7 +96,7 @@ function WalletCard({ wallet, onChanged }) {
             type="submit"
             disabled={submitting}
             aria-label={`Confirm ${mode}`}
-            className="px-3 py-2 rounded-full bg-accent hover:brightness-110 text-accent-ink text-xs font-medium disabled:opacity-50 transition-colors shrink-0"
+            className="px-3 py-2 rounded-full bg-primary hover:brightness-110 text-on-primary text-xs font-medium disabled:opacity-50 transition-colors shrink-0"
           >
             {submitting ? "..." : "Confirm"}
           </button>
@@ -151,7 +151,7 @@ export default function AccountsPanel() {
         <p className="text-sm text-muted">Your balances by currency.</p>
         <button
           onClick={() => setShowConvert(true)}
-          className="h-10 px-4 rounded-full bg-accent hover:brightness-110 transition-all text-accent-ink text-sm font-semibold active:scale-[0.98] flex items-center gap-2"
+          className="h-10 px-4 rounded-full bg-primary hover:brightness-110 transition-all text-on-primary text-sm font-semibold active:scale-[0.98] flex items-center gap-2"
         >
           <Icon name="swap" size={15} strokeWidth={2.2} />
           Convert currency

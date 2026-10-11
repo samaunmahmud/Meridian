@@ -35,7 +35,7 @@ const TEXT = ["text", "muted", "dim", "accent", "gain", "loss"];
 
 describe.each(Object.entries(THEMES))("%s theme colours", (_name, t) => {
   it("reads every token it checks", () => {
-    for (const k of [...SURFACES, ...TEXT, "accent-ink", "on-loss", "control"]) expect(t[k], `--c-${k}`).toBeDefined();
+    for (const k of [...SURFACES, ...TEXT, "accent-ink", "on-loss", "control", "primary", "on-primary"]) expect(t[k], `--c-${k}`).toBeDefined();
   });
 
   for (const fg of TEXT) {
@@ -48,7 +48,12 @@ describe.each(Object.entries(THEMES))("%s theme colours", (_name, t) => {
 
   it("button text is at least 4.5:1 on its button", () => {
     expect(ratio(t["accent-ink"], t.accent)).toBeGreaterThanOrEqual(4.5);
+    expect(ratio(t["on-primary"], t.primary)).toBeGreaterThanOrEqual(4.5);
     expect(ratio(t["on-loss"], t.loss)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("solid buttons stand out from the cards they sit on", () => {
+    expect(ratio(t.primary, t.surface)).toBeGreaterThanOrEqual(3);
   });
 
   it("form control borders are at least 3:1 against the surface and the field fill", () => {

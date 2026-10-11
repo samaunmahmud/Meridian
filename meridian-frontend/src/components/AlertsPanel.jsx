@@ -174,7 +174,7 @@ export default function AlertsPanel() {
 
           <div role="group" aria-label="Alert direction" className="relative bg-panel-2 rounded-full p-1 grid grid-cols-2">
             <div
-              className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-full bg-accent transition-transform duration-200 ${
+              className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-full bg-primary transition-transform duration-200 ${
                 direction === "ABOVE" ? "translate-x-0" : "translate-x-[calc(100%+8px)]"
               }`}
             />
@@ -183,7 +183,7 @@ export default function AlertsPanel() {
               aria-pressed={direction === "ABOVE"}
               onClick={() => setDirection("ABOVE")}
               className={`relative z-10 py-2 text-sm font-medium transition-colors ${
-                direction === "ABOVE" ? "text-accent-ink" : "text-muted"
+                direction === "ABOVE" ? "text-on-primary" : "text-muted"
               }`}
             >
               {mode === "MOVE" ? "Rises" : "Above"}
@@ -193,7 +193,7 @@ export default function AlertsPanel() {
               aria-pressed={direction === "BELOW"}
               onClick={() => setDirection("BELOW")}
               className={`relative z-10 py-2 text-sm font-medium transition-colors ${
-                direction === "BELOW" ? "text-accent-ink" : "text-muted"
+                direction === "BELOW" ? "text-on-primary" : "text-muted"
               }`}
             >
               {mode === "MOVE" ? "Falls" : "Below"}
@@ -219,7 +219,7 @@ export default function AlertsPanel() {
           <button
             type="submit"
             disabled={submitting || !symbol || !targetPrice}
-            className="w-full py-2.5 rounded-full bg-accent hover:brightness-110 transition-all active:scale-[0.98] text-accent-ink text-sm font-medium disabled:opacity-50"
+            className="w-full py-2.5 rounded-full bg-primary hover:brightness-110 transition-all active:scale-[0.98] text-on-primary text-sm font-medium disabled:opacity-50"
           >
             {submitting ? "Creating..." : "Create alert"}
           </button>

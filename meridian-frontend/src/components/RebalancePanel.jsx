@@ -17,7 +17,7 @@ function formatQuantity(q) {
 function Bar({ current, target }) {
   return (
     <div className="relative h-1.5 rounded-full bg-panel-2 mt-2" aria-hidden="true">
-      <div className="absolute inset-y-0 left-0 rounded-full bg-accent" style={{ width: `${Math.min(100, current)}%` }} />
+      <div className="absolute inset-y-0 left-0 rounded-full bg-primary" style={{ width: `${Math.min(100, current)}%` }} />
       <div className="absolute -top-1 -bottom-1 w-0.5 rounded-full bg-bone" style={{ left: `calc(${Math.min(100, target)}% - 1px)` }} />
     </div>
   );
@@ -165,7 +165,7 @@ function Editor({ plan, onSaved, onCancel }) {
         <button
           type="submit"
           disabled={saving || over}
-          className="h-10 px-5 rounded-full bg-accent text-accent-ink text-sm font-semibold disabled:opacity-50"
+          className="h-10 px-5 rounded-full bg-primary text-on-primary text-sm font-semibold disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save targets"}
         </button>

@@ -175,7 +175,7 @@ export default function StockNotes({ ticker, liveUpdate }) {
             <button
               type="submit"
               disabled={saving}
-              className="h-10 px-5 rounded-full bg-accent text-accent-ink text-sm font-semibold disabled:opacity-50"
+              className="h-10 px-5 rounded-full bg-primary text-on-primary text-sm font-semibold disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save"}
             </button>

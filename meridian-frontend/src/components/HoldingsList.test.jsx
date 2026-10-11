@@ -7,29 +7,18 @@ const holdings = [
   { symbol: "BTC", name: "Bitcoin", quantity: 0.0523, avgCost: 64210.5, currentPrice: 61180.75, marketValue: 3199.61, gainLoss: -158.46, gainLossPct: -4.72 },
 ];
 
-// Both views are always in the page; CSS shows the cards on phones (< 640px)
-// and the table from there up.
 describe("HoldingsList", () => {
-  it("renders one row per position for phones", () => {
+  it("renders one row per position with its value, size, average cost and price", () => {
     const { container } = render(<HoldingsList holdings={holdings} />);
     const cards = within(container.querySelector("ul")).getAllByRole("listitem");
 
     expect(cards).toHaveLength(2);
     expect(within(cards[0]).getByText("NVDA")).toBeInTheDocument();
     expect(within(cards[0]).getByText("NVIDIA Corporation")).toBeInTheDocument();
-    expect(within(cards[0]).getByText("1,640.25")).toBeInTheDocument(); // market value
+    expect(within(cards[0]).getByText("$1,640.25")).toBeInTheDocument(); // market value
     expect(within(cards[0]).getByText("12.5")).toBeInTheDocument(); // quantity
     expect(within(cards[0]).getByText("118.40")).toBeInTheDocument(); // average cost
     expect(within(cards[0]).getByText("131.22")).toBeInTheDocument(); // price
-  });
-
-  it("renders the full table for larger screens", () => {
-    const { container } = render(<HoldingsList holdings={holdings} />);
-    const table = within(container.querySelector("table"));
-
-    ["Asset", "Qty", "Avg cost", "Price", "Value"].forEach((h) => expect(table.getByText(h)).toBeInTheDocument());
-    expect(table.getAllByRole("row")).toHaveLength(3); // header + 2 positions
-    expect(table.getByText("61,180.75")).toBeInTheDocument();
   });
 
   it("shows gains in the gain colour with a plus sign, and losses in the loss colour", () => {

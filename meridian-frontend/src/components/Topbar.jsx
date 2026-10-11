@@ -21,7 +21,7 @@ export default function Topbar({ title, hideTitle = false, userEmail, onSettings
             aria-label="Settings and profile"
             aria-current={settingsActive ? "page" : undefined}
             className={`lg:hidden w-10 h-10 rounded-full shrink-0 flex items-center justify-center text-sm font-semibold transition-shadow ${
-              settingsActive ? "bg-bone text-ink" : "bg-accent text-accent-ink"
+              settingsActive ? "bg-bone text-ink" : "bg-primary text-on-primary"
             }`}
           >
             {(userEmail?.[0] ?? "?").toUpperCase()}

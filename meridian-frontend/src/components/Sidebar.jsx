@@ -50,7 +50,7 @@ export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout })
       <div className="flex-1" />
 
       <div className="flex items-center gap-2.5 px-1 pt-1">
-        <div className="w-9 h-9 rounded-full bg-accent text-accent-ink flex items-center justify-center text-sm font-semibold shrink-0">
+        <div className="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center text-sm font-semibold shrink-0">
           {(userEmail?.[0] ?? "?").toUpperCase()}
         </div>
         <div className="flex-1 min-w-0 text-xs text-muted truncate" title={userEmail}>

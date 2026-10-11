@@ -22,6 +22,9 @@
   --c-control: #7c7c86;
   --c-accent: #8aa2ff;
   --c-accent-ink: #000000;
+  /* Solid buttons and selected controls: Revolut blue with white text. */
+  --c-primary: #0666eb;
+  --c-on-primary: #ffffff;
   --c-accent-soft: #1e2748;
   --c-gain: #3ddc84;
   --c-gain-soft: #10301f;
@@ -53,6 +56,9 @@
   --c-control: #7a7a7a;
   --c-accent: #1f4ff0;
   --c-accent-ink: #ffffff;
+  /* Solid buttons and selected controls: Revolut blue with white text. */
+  --c-primary: #0666eb;
+  --c-on-primary: #ffffff;
   --c-accent-soft: #e6ebff;
   --c-gain: #0a7a41;
   --c-gain-soft: #e2f5ea;
@@ -83,6 +89,8 @@
   --color-dim: var(--c-dim);
   --color-accent: var(--c-accent);
   --color-accent-ink: var(--c-accent-ink);
+  --color-primary: var(--c-primary);
+  --color-on-primary: var(--c-on-primary);
   --color-accent-dim: var(--c-accent-soft);
   --color-gain: var(--c-gain);
   --color-gain-dim: var(--c-gain-soft);

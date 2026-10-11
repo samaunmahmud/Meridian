@@ -55,7 +55,7 @@ export default function OrderNoteModal({ order, onClose, onSaved }) {
           <button type="button" onClick={onClose} className="flex-1 h-11 rounded-full bg-panel-2 text-sm font-semibold hover:brightness-110">
             Cancel
           </button>
-          <button type="submit" disabled={saving} className="flex-1 h-11 rounded-full bg-accent text-accent-ink text-sm font-semibold hover:brightness-110 disabled:opacity-50">
+          <button type="submit" disabled={saving} className="flex-1 h-11 rounded-full bg-primary text-on-primary text-sm font-semibold hover:brightness-110 disabled:opacity-50">
             {saving ? "Saving…" : "Save note"}
           </button>
         </div>

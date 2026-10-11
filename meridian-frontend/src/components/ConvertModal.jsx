@@ -117,7 +117,7 @@ export default function ConvertModal({ wallets, onClose, onConverted }) {
           <button
             type="submit"
             disabled={submitting || !amount}
-            className="w-full py-2.5 rounded-full bg-accent hover:brightness-110 transition-all active:scale-[0.98] text-accent-ink text-sm font-medium disabled:opacity-50"
+            className="w-full py-2.5 rounded-full bg-primary hover:brightness-110 transition-all active:scale-[0.98] text-on-primary text-sm font-medium disabled:opacity-50"
           >
             {submitting ? "Converting..." : "Convert"}
           </button>

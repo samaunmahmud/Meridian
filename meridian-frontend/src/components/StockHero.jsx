@@ -191,7 +191,7 @@ export default function StockHero({ ticker, liveUpdate, onTrade, tradeBesideChar
           <div className={`grid grid-cols-2 gap-3 mt-5 ${tradeBesideChart ? "hidden" : ""}`}>
             <button
               onClick={() => onTrade(ticker.symbol, "BUY")}
-              className="h-12 rounded-full bg-accent text-accent-ink text-[15px] font-semibold flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all"
+              className="h-12 rounded-full bg-primary text-on-primary text-[15px] font-semibold flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all"
             >
               <Icon name="up" size={16} strokeWidth={2.2} />
               Buy {ticker.symbol}

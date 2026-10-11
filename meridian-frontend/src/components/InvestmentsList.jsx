@@ -60,7 +60,7 @@ export default function InvestmentsList({ refreshKey, liveUpdate, onSelect, onSt
             <button
               type="button"
               onClick={onStart}
-              className="mt-3 h-10 px-5 rounded-full bg-accent text-accent-ink text-sm font-semibold hover:brightness-110 transition-all"
+              className="mt-3 h-10 px-5 rounded-full bg-primary text-on-primary text-sm font-semibold hover:brightness-110 transition-all"
             >
               Buy your first stock
             </button>

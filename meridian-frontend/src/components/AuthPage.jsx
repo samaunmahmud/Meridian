@@ -306,7 +306,7 @@ export default function AuthPage({ onAuthenticated, resetToken = null, onResetDo
             <button
               type="submit"
               disabled={submitting}
-              className="w-full h-[52px] rounded-full bg-accent text-accent-ink text-base font-semibold hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-50"
+              className="w-full h-[52px] rounded-full bg-primary text-on-primary text-base font-semibold hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-50"
             >
               {submitting ? "Please wait…" : COPY.button}
             </button>

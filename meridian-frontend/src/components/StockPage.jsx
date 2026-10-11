@@ -30,7 +30,7 @@ export default function StockPage({ ticker, liveUpdate, refreshKey, onTrade, onO
         <button
           type="button"
           onClick={() => onTrade(ticker.symbol, "BUY")}
-          className="h-12 rounded-full bg-accent text-accent-ink text-[15px] font-semibold hover:brightness-110 active:scale-[0.98] transition-all"
+          className="h-12 rounded-full bg-primary text-on-primary text-[15px] font-semibold hover:brightness-110 active:scale-[0.98] transition-all"
         >
           Buy {ticker.symbol}
         </button>

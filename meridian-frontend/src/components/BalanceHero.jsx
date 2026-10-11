@@ -10,7 +10,7 @@ import Skeleton from "./Skeleton";
 function Action({ icon, label, onClick }) {
   return (
     <button type="button" onClick={onClick} className="group flex flex-col items-center gap-2 min-w-[64px]">
-      <span className="w-12 h-12 sm:w-[52px] sm:h-[52px] rounded-full bg-panel text-bone flex items-center justify-center group-hover:bg-accent group-hover:text-accent-ink transition-colors">
+      <span className="w-12 h-12 sm:w-[52px] sm:h-[52px] rounded-full bg-panel text-bone flex items-center justify-center group-hover:bg-primary group-hover:text-on-primary transition-colors">
         <Icon name={icon} size={20} strokeWidth={2} />
       </span>
       <span className="text-[13px] font-medium whitespace-nowrap">{label}</span>

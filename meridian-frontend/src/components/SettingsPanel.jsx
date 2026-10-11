@@ -113,7 +113,7 @@ function ChangePasswordForm() {
       <button
         type="submit"
         disabled={saving || !current || !next || !confirm}
-        className="h-11 px-6 rounded-full bg-accent text-accent-ink text-sm font-semibold hover:brightness-110 transition-all disabled:opacity-50"
+        className="h-11 px-6 rounded-full bg-primary text-on-primary text-sm font-semibold hover:brightness-110 transition-all disabled:opacity-50"
       >
         {saving ? "Saving…" : "Change password"}
       </button>
@@ -232,7 +232,7 @@ export default function SettingsPanel({ session, onLogout, onDeleted }) {
   return (
     <main id="main-content" tabIndex={-1} data-ring-parent className="px-4 sm:px-6 lg:px-8 pb-8 max-w-[820px] space-y-6 fade-in">
       <section className="bg-panel rounded-[28px] p-6 flex items-center gap-4">
-        <div className="w-14 h-14 rounded-full bg-accent text-accent-ink flex items-center justify-center text-2xl font-display shrink-0">
+        <div className="w-14 h-14 rounded-full bg-primary text-on-primary flex items-center justify-center text-2xl font-display shrink-0">
           {(session.email?.[0] ?? "?").toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">

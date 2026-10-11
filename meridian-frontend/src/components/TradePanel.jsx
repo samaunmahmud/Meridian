@@ -157,7 +157,7 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
       <div role="group" aria-label="Order side" className="relative bg-panel-2 rounded-full p-1 mb-3 grid grid-cols-2">
         <div
           className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-full transition-transform duration-200 ${
-            type === "BUY" ? "bg-accent translate-x-0" : "bg-loss translate-x-[calc(100%+8px)]"
+            type === "BUY" ? "bg-primary translate-x-0" : "bg-loss translate-x-[calc(100%+8px)]"
           }`}
         />
         <button
@@ -165,7 +165,7 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
           aria-pressed={type === "BUY"}
           onClick={() => setType("BUY")}
           className={`relative z-10 py-2 text-sm font-medium transition-colors ${
-            type === "BUY" ? "text-accent-ink" : "text-muted"
+            type === "BUY" ? "text-on-primary" : "text-muted"
           }`}
         >
           Buy
@@ -340,7 +340,7 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
           type="submit"
           disabled={submitting || !symbol}
           className={`w-full h-12 rounded-full text-[15px] font-semibold disabled:opacity-50 transition-all active:scale-[0.98] ${
-            type === "BUY" ? "bg-accent text-accent-ink hover:brightness-110" : "bg-loss text-on-loss hover:brightness-110"
+            type === "BUY" ? "bg-primary text-on-primary hover:brightness-110" : "bg-loss text-on-loss hover:brightness-110"
           }`}
         >
           {submitting ? "Placing order..." : `${queued ? "Queue " : ""}${type === "BUY" ? (queued ? "buy" : "Buy") : (queued ? "sell" : "Sell")} ${symbol}`}

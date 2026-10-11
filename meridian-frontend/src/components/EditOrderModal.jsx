@@ -72,7 +72,7 @@ export default function EditOrderModal({ order, onClose, onReplaced }) {
           <button
             type="submit"
             disabled={saving || !(Number(quantity) > 0) || (field && !(Number(price) > 0))}
-            className="flex-1 h-11 rounded-full bg-accent text-accent-ink text-sm font-semibold hover:brightness-110 disabled:opacity-50"
+            className="flex-1 h-11 rounded-full bg-primary text-on-primary text-sm font-semibold hover:brightness-110 disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save changes"}
           </button>
