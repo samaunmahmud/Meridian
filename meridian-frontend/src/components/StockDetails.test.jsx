@@ -74,6 +74,16 @@ describe("StockDetails", () => {
     expect(stat("Total return")).toHaveTextContent("-$10.00 (-1.00%)");
   });
 
+  it("names the last session's day when the latest price is not from today", async () => {
+    const friday = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    getChanges.mockResolvedValue([{ symbol: "NVDA", price: 110, referencePrice: 104, recordedAt: friday.toISOString() }]);
+    render(<StockDetails ticker={nvda} />);
+
+    const label = `Change on ${friday.toLocaleDateString([], { weekday: "long" })}`;
+    expect(stat(await screen.findByText(label).then((el) => el.textContent))).toHaveTextContent("+$6.00 (+5.77%)");
+    expect(screen.queryByText("Change today")).not.toBeInTheDocument();
+  });
+
   it("uses 24-hour wording for crypto and says when nothing is owned", async () => {
     render(<StockDetails ticker={btc} />);
 

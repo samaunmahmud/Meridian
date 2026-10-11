@@ -3,6 +3,7 @@ import { cancelOrder, getAlerts, getChanges, getOrders, getPortfolio } from "../
 import { showToast } from "../lib/toast";
 import EditOrderModal from "./EditOrderModal";
 import { formatNumber } from "../lib/formatMoney";
+import { dayName, sameDay } from "../lib/sessionDay";
 
 const KIND_LABELS = { MARKET: "Market", LIMIT: "Limit", STOP_LOSS: "Stop", TRAILING_STOP: "Trailing stop" };
 
@@ -88,6 +89,13 @@ export default function StockDetails({ ticker, liveUpdate, refreshKey, onOrdersC
   const gainTone = gain == null ? "" : gain >= 0 ? "text-gain" : "text-loss";
 
   const isCrypto = ticker.assetType === "CRYPTO";
+  // A closed market's latest price is from its last session: on a weekend that is Friday, not today.
+  const now = Date.now();
+  const changeLabel = isCrypto
+    ? "Change (24 h)"
+    : change?.recordedAt && !sameDay(change.recordedAt, now)
+      ? `Change on ${dayName(change.recordedAt, now)}`
+      : "Change today";
 
   return (
     <section aria-labelledby="stock-details-heading" className="bg-panel rounded-[28px] p-5 sm:p-7 fade-in">
@@ -97,7 +105,7 @@ export default function StockDetails({ ticker, liveUpdate, refreshKey, onOrdersC
 
       <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-4">
         <Stat label={isCrypto ? "Price 24 h ago" : "Previous close"}>{reference ? `$${formatNumber(reference)}` : "—"}</Stat>
-        <Stat label={isCrypto ? "Change (24 h)" : "Change today"} tone={dayTone}>
+        <Stat label={changeLabel} tone={dayTone}>
           {dayChange == null
             ? "—"
             : `${signed(dayChange, `$${formatNumber(Math.abs(dayChange))}`)} (${signed(dayPct, `${Math.abs(dayPct).toFixed(2)}%`)})`}

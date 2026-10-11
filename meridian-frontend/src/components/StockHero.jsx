@@ -12,6 +12,7 @@ import Skeleton from "./Skeleton";
 import { useAnimatedNumber } from "../lib/useAnimatedNumber";
 import { useMarketStatus } from "../lib/useMarketStatus";
 import { formatAge, isDelayed } from "../lib/priceAge";
+import { dayName, sameDay } from "../lib/sessionDay";
 
 // Time windows, answered by the server (which thins a long history to at most CHART_POINTS points).
 // History only goes back to when the stock was first tracked, so a young stock shows the same on all.
@@ -24,16 +25,6 @@ const RANGES = [
   { key: "ALL", label: "All", words: "all time" },
 ];
 const CHART_POINTS = 500;
-
-const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
-
-// "Friday" within the past week, "3 Oct" before that.
-function dayName(at, now) {
-  const date = new Date(at);
-  return now - date.getTime() < 6 * 24 * 60 * 60 * 1000
-    ? date.toLocaleDateString([], { weekday: "long" })
-    : date.toLocaleDateString([], { day: "numeric", month: "short" });
-}
 
 const CHART_TYPES = [
   { key: "line", label: "Line" },
