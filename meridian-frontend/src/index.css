@@ -12,25 +12,25 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --c-bg: #000000;
-  --c-surface: #161618;
-  --c-surface-2: #222226;
-  --c-line: #26262b;
+  --c-surface: #1c1c1e;
+  --c-surface-2: #2c2c2e;
+  --c-line: #38383a;
   --c-text: #ffffff;
-  --c-muted: #a0a0a8;
-  --c-dim: #9a9aa3;
+  --c-muted: #c2c2c8;
+  --c-dim: #a8a8b0;
   /* Border of form fields: 3:1 against the surface (WCAG 1.4.11). --c-line stays decorative. */
-  --c-control: #6e6e78;
-  --c-accent: #7d97ff;
+  --c-control: #7c7c86;
+  --c-accent: #8aa2ff;
   --c-accent-ink: #000000;
-  --c-accent-soft: #1b2240;
-  --c-gain: #35d07f;
-  --c-gain-soft: #0e2a1c;
-  --c-loss: #ff6b6b;
-  --c-loss-soft: #3a1418;
+  --c-accent-soft: #1e2748;
+  --c-gain: #3ddc84;
+  --c-gain-soft: #10301f;
+  --c-loss: #ff7a7a;
+  --c-loss-soft: #3f171b;
   --c-on-loss: #1a0506;
   --c-cash: #4a4a52;
   /* categorical series colours (allocation, avatars) */
-  --c-s1: #7d97ff;
+  --c-s1: #8aa2ff;
   --c-s2: #f5b53f;
   --c-s3: #b18cff;
   --c-s4: #35c9d8;

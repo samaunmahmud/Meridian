@@ -86,7 +86,7 @@ export default function AlertsPanel() {
               <div
                 key={a.id}
                 className={`flex items-center justify-between py-3 px-2 rounded-xl ${
-                  a.triggered ? "opacity-50" : ""
+                  a.triggered ? "opacity-70" : ""
                 }`}
               >
                 <div className="flex items-center gap-3">
