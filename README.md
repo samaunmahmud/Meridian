@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/screenshots/hero.png" alt="Meridian on desktop and phone: the Home screen with a $10,997.07 balance up 9.97% all time, recent activity and a watchlist with sparklines, and Apple's stock page on a phone" width="100%" />
+  <img src="docs/screenshots/hero.png" alt="Meridian in dark and light: the Home screen with a $96,614 balance up 7.02% all time and a watchlist with sparklines, NVIDIA's stock page on a phone, the Portfolio page with holdings, and the trade sheet buying NVIDIA" width="100%" />
 </p>
 
 <h1 align="center">Meridian: practise investing without risking a penny</h1>
@@ -11,6 +11,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/samaunmahmud/Meridian/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/status-complete_·_v1.0.0-0666eb?style=flat-square" alt="Status: complete, v1.0.0" /></a>
   <a href="https://github.com/samaunmahmud/Meridian/actions/workflows/ci.yml"><img src="https://github.com/samaunmahmud/Meridian/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
 </p>
 
@@ -28,6 +29,9 @@
 > [!WARNING]
 > **Simulated money only. Not financial advice.** Deposits are fake and there is no connection to a real broker or payment provider. Prices come from free market data plans and may be delayed.
 
+> [!NOTE]
+> **This project is finished.** Meridian reached v1.0.0 in October 2026 and is no longer in active development. Everything described here works and is tested; see [Project status](#project-status) for what was built and where it could go next.
+
 ---
 
 ## Contents
@@ -36,6 +40,7 @@
 - [What Meridian does](#what-meridian-does)
 - [Results in numbers](#results-in-numbers)
 - [Features](#features)
+- [Screenshots](#screenshots)
 - [How it works](#how-it-works)
 - [Getting the money right](#getting-the-money-right)
 - [Security](#security)
@@ -48,6 +53,7 @@
 - [Project structure](#project-structure)
 - [Design decisions](#design-decisions)
 - [Limitations](#limitations)
+- [Project status](#project-status)
 
 ---
 
@@ -81,7 +87,7 @@ Sign up and you get a virtual account. From there:
 | **WebSocket fan-out** | a price update reaches **1,000 connected clients in about 20 ms** |
 | **Database outage** | `/api/health` answers 503 within 5 s; everything works again **2–4 s after MySQL returns**, with nobody signed out |
 | **History clean-up** | 300,000 one-minute prices (208 days) shrank to **about 12,000 rows in 12 s**, with no visible change to any chart |
-| **Tests** | **307 backend (JUnit) + 200 frontend (Vitest)**, including real-MySQL concurrency tests and accessibility checks, run by CI on every push |
+| **Tests** | **316 backend (JUnit) + 210 frontend (Vitest)**, including real-MySQL concurrency tests and accessibility checks, run by CI on every push |
 
 The load numbers come from one 8-core Mac running the load generator, the backend and MySQL together, so treat them as a floor, not production sizing. The scripts and method are in [`scripts/load-test`](scripts/load-test/README.md).
 
@@ -90,7 +96,7 @@ The load numbers come from one 8-core Mac running the load generator, the backen
 | | |
 |---|---|
 | 📈 **Stocks and crypto** | Search any ticker, add it to your watchlist, and see live prices, today's change and a sparkline for each. |
-| 🧾 **Real order types** | Market, limit, stop-loss and trailing stop (the stop follows the price up by a set percentage). Pending orders can be edited or cancelled, and each order can carry a note. |
+| 🧾 **Real order types** | Market, limit, stop-loss and trailing stop (the stop follows the price up by a set percentage). Pending orders can be edited or cancelled, and each order can carry a note. Order history reads like a bank statement, grouped by Today, Yesterday and date. |
 | 🔁 **Recurring buys** | Buy a fixed amount daily, weekly or monthly. A buy that falls due while the market is closed waits for the open. |
 | 🕰️ **Exchange hours** | 09:30–16:00 New York time, early closes and holidays worked out by rule for any year. A market order placed while the market is closed is queued and fills at the open. Crypto never closes. |
 | 💱 **Three currencies** | USD, EUR and GBP wallets. Pay for any order from any wallet; a pending limit buy reserves its money and commission. |
@@ -103,34 +109,43 @@ The load numbers come from one 8-core Mac running the load generator, the backen
 | 📰 **Company news** | Newest first on every stock page, with the source, age and (on Alpha Vantage) a bullish or bearish rating. |
 | ⌨️ **Search from anywhere** | <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> or <kbd>/</kbd> jumps to any stock, page or action. |
 | 🔐 **Account** | Sign-up with email verification, password reset, change password (signs out other devices), CSV export of orders and activity, and account deletion. |
-| 🌗 **Light and dark, phone and desktop** | A banking-app style interface that follows your device, installable on a phone's home screen. |
+| 🌗 **Light and dark, phone and desktop** | A Revolut-style interface that follows your device: high-contrast dark mode, tappable stock and wallet pickers, a large amount with a price / fee / total summary when trading, and installable on a phone's home screen. Every colour is tested against WCAG contrast in both themes. |
 
-<details>
-<summary><b>More screens:</b> Home in both themes, a stock's page with your notes and its news, you vs the market, target allocation and the phone layout</summary>
 
-<br>
+## Screenshots
 
-![You vs the market: the portfolio's time-weighted return (+9.29%) against SPY (+7.17%) over a month, and the target allocation card listing the trades that bring each holding back to its target (dark theme)](docs/screenshots/insights-dark.png)
+Every screen comes in both themes; the app follows your device's setting, and the sun / moon switch overrides it. All of them show a seeded demo account with months of trading history.
 
-| Home | A stock's page |
+| Dark | Light |
 | :---: | :---: |
-| ![Home, dark theme: balance, recent activity including a dividend, and the watchlist](docs/screenshots/home-dark.png) | ![NVIDIA's page: price chart, key stats and the trade form](docs/screenshots/stock-dark.png) |
-| **Home, light theme** | **Portfolio** |
-| ![Home, light theme](docs/screenshots/home-light.png) | ![Portfolio: total value over the past month, holdings with profit and loss, and the trade form](docs/screenshots/portfolio-light.png) |
+| **Home** | |
+| ![Home, dark theme: Balance, quick actions, recent activity, your investments and the watchlist with sparklines](docs/screenshots/home-dark.png) | ![Home, light theme](docs/screenshots/home-light.png) |
+| **A stock's page** | |
+| ![A stock's page, dark theme: Price chart, key stats and the trade form, with the stock and wallet as tappable rows](docs/screenshots/stock-dark.png) | ![A stock's page, light theme](docs/screenshots/stock-light.png) |
+| **Portfolio** | |
+| ![Portfolio, dark theme: Total value over the past month, holdings with profit and loss, and the trade form](docs/screenshots/portfolio-dark.png) | ![Portfolio, light theme](docs/screenshots/portfolio-light.png) |
+| **You vs the market and target allocation** | |
+| ![You vs the market and target allocation, dark theme: Time-weighted return against SPY, and the trades that bring each holding back to its target](docs/screenshots/insights-dark.png) | ![You vs the market and target allocation, light theme](docs/screenshots/insights-light.png) |
+| **Order history** | |
+| ![Order history, dark theme: Grouped by day like a bank statement: what each order cost or paid, its fee, status, note and profit](docs/screenshots/orders-dark.png) | ![Order history, light theme](docs/screenshots/orders-light.png) |
+| **The whole stock page** | |
+| ![The whole stock page, dark theme: Your position, open orders, notes and target price, dividends and company news](docs/screenshots/stock-full-dark.png) | ![The whole stock page, light theme](docs/screenshots/stock-full-light.png) |
 
-![A stock's full page: your position and open trailing stop, your note and target price with a one-click alert, and company news rated bullish, neutral or bearish (light theme)](docs/screenshots/stock-notes-news-light.png)
+### On a phone
 
-<p align="center">
-  <img src="docs/screenshots/phone-home-dark.png" width="200" alt="Home on a phone, dark theme" />
-  &nbsp;
-  <img src="docs/screenshots/phone-stock-light.png" width="200" alt="Apple's stock page on a phone, with Buy and Sell at the bottom" />
-  &nbsp;
-  <img src="docs/screenshots/phone-buy-light.png" width="200" alt="Buying from the trade sheet on a phone" />
-  &nbsp;
-  <img src="docs/screenshots/phone-portfolio-dark.png" width="200" alt="The portfolio on a phone, dark theme" />
+<p align="center"><b>Dark</b><br>
+  <img src="docs/screenshots/phone-home-dark.png" width="190" alt="Home on a phone, dark theme" />
+  <img src="docs/screenshots/phone-stock-dark.png" width="190" alt="NVIDIA's page on a phone, dark theme" />
+  <img src="docs/screenshots/phone-buy-dark.png" width="190" alt="Trade sheet on a phone, dark theme" />
+  <img src="docs/screenshots/phone-portfolio-dark.png" width="190" alt="Portfolio on a phone, dark theme" />
 </p>
 
-</details>
+<p align="center"><b>Light</b><br>
+  <img src="docs/screenshots/phone-home-light.png" width="190" alt="Home on a phone, light theme" />
+  <img src="docs/screenshots/phone-stock-light.png" width="190" alt="NVIDIA's page on a phone, light theme" />
+  <img src="docs/screenshots/phone-buy-light.png" width="190" alt="Trade sheet on a phone, light theme" />
+  <img src="docs/screenshots/phone-portfolio-light.png" width="190" alt="Portfolio on a phone, light theme" />
+</p>
 
 ## How it works
 
@@ -412,7 +427,7 @@ meridian-backend/src/main/java/com/meridian/backend/
 meridian-backend/src/main/resources/db/migration/   Flyway schema, V1–V13
 
 meridian-frontend/src/
-├── components/   Home, StockPage, Portfolio, trade sheet, charts, modals, command palette
+├── components/   Home, StockPage, Portfolio, trade sheet, pickers, charts, modals, command palette
 ├── lib/          API client, formatting, CSV export, target distance, contrast checks
 └── index.css     colour tokens for both themes
 
@@ -444,6 +459,38 @@ Add a new file `meridian-backend/src/main/resources/db/migration/V<n>__descripti
 - There is no monitoring or alerting beyond `/api/health` (its `priceFeed` field is what to alert on). The interface has been checked with automated tools and by keyboard, but not with a real screen reader.
 - Load numbers come from one laptop. WebSocket sessions live in the memory of one backend, so running several backends behind a load balancer would need shared messaging first.
 - Prices come from a single provider at a time (see "When the database or the price provider is down" for what happens when it fails).
+
+## Project status
+
+**Complete, v1.0.0 (October 2026).** Meridian was built from 18 September to 11 October 2026 and is now finished. The code stays here as a working, documented reference; no new features are planned.
+
+### What v1.0.0 contains
+
+- **A broker-grade order engine:** market, limit, stop-loss and trailing-stop orders, queued orders for a closed market, recurring buys, and edits as one cancel-and-replace transaction.
+- **Money that adds up:** row locks on every money path, reservations for pending orders, invariant checks after load tests and real-MySQL concurrency tests in CI.
+- **Three currencies and dividends:** USD, EUR and GBP wallets at ECB rates (Frankfurter) or Alpha Vantage, and dividends paid to whoever held the stock on the ex-date.
+- **Honest performance:** time-weighted return against any ticker, and value changes that leave out money you put in.
+- **Live everything:** prices, fills, alerts and dividends over WebSocket, with near-live quotes from Finnhub.
+- **A Revolut-style interface:** dark and light themes tested for contrast, a phone layout with a trade sheet, and day-grouped history.
+- **Ready to run:** Docker Compose with nginx, health checks, backups and restore, nightly history thinning and CI on every push.
+
+### By the numbers
+
+| | |
+|---|---|
+| Built | 18 Sep – 11 Oct 2026 |
+| Backend | about 10,000 lines of Java, 13 Flyway migrations |
+| Frontend | about 7,200 lines of React, 49 components |
+| Tests | 316 backend + 210 frontend, plus load and consistency scripts |
+
+### If it is picked up again
+
+The natural next steps, roughly in order:
+
+1. **Shared messaging for WebSockets** (Redis or a broker), so several backends can run behind a load balancer.
+2. **A second price provider as a fallback**, so an outage of one doesn't stall market orders.
+3. **Monitoring and alerting** on `/api/health`'s `priceFeed`, and a screen-reader pass on the interface.
+4. **Dividend reinvestment and more asset types** (ETFs are already tradable; options and bonds are not).
 
 <p align="center">
   Built by <a href="https://github.com/samaunmahmud">Samaun Mahmud</a> · Computer Science (AI), Brunel University London
