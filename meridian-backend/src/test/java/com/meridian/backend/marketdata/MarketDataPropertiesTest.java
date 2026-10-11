@@ -23,7 +23,7 @@ class MarketDataPropertiesTest {
         p.setProvider("finnhub");
 
         assertThat(p.getDailyRequestBudget()).isEqualTo(50_000);
-        assertThat(p.getFxPollIntervalMs()).isEqualTo(300_000L);
+        assertThat(p.getFxPollIntervalMs()).isEqualTo(3_600_000L);
         assertThat(p.getTickerPollSpacingMs()).isEqualTo(20_000L); // the configured floor
     }
 

@@ -6,6 +6,7 @@ import com.meridian.backend.client.RequestBudget;
 import com.meridian.backend.config.MarketDataProperties;
 import com.meridian.backend.dto.TickerSearchResult;
 import com.meridian.backend.exception.MarketDataUnavailableException;
+import com.meridian.backend.exception.MarketDataUnreachableException;
 import com.meridian.backend.model.SupportedCurrency;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,9 +70,42 @@ class FinnhubProviderTest {
     }
 
     @Test
-    void oneForexReplyServesEveryCurrencyOfARefresh() {
-        server.expect(ExpectedCount.once(), requestTo(containsString("/forex/rates?base=USD")))
-                .andRespond(withSuccess("{\"base\":\"USD\",\"quote\":{\"EUR\":0.8,\"GBP\":0.5}}", MediaType.APPLICATION_JSON));
+    void ratesComeFromFrankfurterWithoutTheFinnhubKey() {
+        server.expect(requestTo("https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR,GBP"))
+                .andExpect(request -> assertThat(request.getHeaders().containsKey("X-Finnhub-Token")).isFalse())
+                .andRespond(withSuccess("{\"amount\":1.0,\"base\":\"USD\",\"date\":\"2026-10-09\",\"rates\":{\"EUR\":0.8,\"GBP\":0.5}}", MediaType.APPLICATION_JSON));
+
+        assertThat(provider.fetchUsdRate(SupportedCurrency.EUR)).isEqualByComparingTo("1.25");
+        server.verify();
+    }
+
+    @Test
+    void ratesDoNotUseTheFinnhubAllowance() {
+        MarketDataProperties props = new MarketDataProperties();
+        props.setProvider("finnhub");
+        props.setDailyRequestBudget(1);
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer fx = MockRestServiceServer.bindTo(builder).build();
+        FinnhubProvider limited = new FinnhubProvider(builder, new RequestBudget(props, clock), "k", "https://finnhub.io/api/v1", clock);
+        fx.expect(requestTo(containsString("/latest"))).andRespond(withSuccess("{\"rates\":{\"EUR\":0.8}}", MediaType.APPLICATION_JSON));
+        fx.expect(requestTo(containsString("/quote"))).andRespond(withSuccess("{\"c\":10}", MediaType.APPLICATION_JSON));
+
+        limited.fetchUsdRate(SupportedCurrency.EUR);
+
+        assertThat(limited.fetchStockPrice("NVDA")).isEqualByComparingTo("10"); // the one allowed request is still there
+    }
+
+    @Test
+    void anUnreachableRateServiceIsReportedAsUnreachable() {
+        server.expect(requestTo(containsString("/latest"))).andRespond(withStatus(HttpStatus.BAD_GATEWAY));
+
+        assertThatThrownBy(() -> provider.fetchUsdRate(SupportedCurrency.EUR)).isInstanceOf(MarketDataUnreachableException.class);
+    }
+
+    @Test
+    void oneRatesReplyServesEveryCurrencyOfARefresh() {
+        server.expect(ExpectedCount.once(), requestTo(containsString("/latest?base=USD")))
+                .andRespond(withSuccess("{\"base\":\"USD\",\"rates\":{\"EUR\":0.8,\"GBP\":0.5}}", MediaType.APPLICATION_JSON));
 
         assertThat(provider.fetchUsdRate(SupportedCurrency.EUR)).isEqualByComparingTo("1.25");
         assertThat(provider.fetchUsdRate(SupportedCurrency.GBP)).isEqualByComparingTo("2");
@@ -81,10 +115,10 @@ class FinnhubProviderTest {
 
     @Test
     void theNextRefreshAsksAgain() {
-        server.expect(requestTo(containsString("/forex/rates")))
-                .andRespond(withSuccess("{\"quote\":{\"EUR\":0.8}}", MediaType.APPLICATION_JSON));
-        server.expect(requestTo(containsString("/forex/rates")))
-                .andRespond(withSuccess("{\"quote\":{\"EUR\":0.5}}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo(containsString("/latest")))
+                .andRespond(withSuccess("{\"rates\":{\"EUR\":0.8}}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo(containsString("/latest")))
+                .andRespond(withSuccess("{\"rates\":{\"EUR\":0.5}}", MediaType.APPLICATION_JSON));
 
         assertThat(provider.fetchUsdRate(SupportedCurrency.EUR)).isEqualByComparingTo("1.25");
         clock.advance(java.time.Duration.ofSeconds(61));
@@ -95,9 +129,9 @@ class FinnhubProviderTest {
 
     @Test
     void invertsTheForexQuoteIntoUsdPerUnit() {
-        // Finnhub says 0.9174... EUR per 1 USD; we need USD per 1 EUR (~1.09)
-        server.expect(requestTo(containsString("/forex/rates?base=USD")))
-                .andRespond(withSuccess("{\"base\":\"USD\",\"quote\":{\"EUR\":0.9174311926,\"GBP\":0.7874015748}}", MediaType.APPLICATION_JSON));
+        // The feed says 0.9174... EUR per 1 USD; we need USD per 1 EUR (~1.09)
+        server.expect(requestTo(containsString("/latest?base=USD")))
+                .andRespond(withSuccess("{\"base\":\"USD\",\"rates\":{\"EUR\":0.9174311926,\"GBP\":0.7874015748}}", MediaType.APPLICATION_JSON));
 
         BigDecimal eurInUsd = provider.fetchUsdRate(SupportedCurrency.EUR);
 

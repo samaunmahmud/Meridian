@@ -149,7 +149,7 @@ flowchart LR
     E --> M[Emails<br/>SMTP]
 ```
 
-1. **Prices.** A poller fetches quotes and exchange rates from Alpha Vantage or Finnhub within a daily request budget. A closed stock market isn't polled once its closing price is recorded, so nights and weekends cost nothing.
+1. **Prices.** A poller fetches quotes and exchange rates from Alpha Vantage, or quotes from Finnhub and rates from Frankfurter (ECB), within a daily request budget. A closed stock market isn't polled once its closing price is recorded, so nights and weekends cost nothing.
 2. **Orders.** Every new price runs the order engine: limit and stop orders fill only while the market is open, trailing stops ratchet up, and queued market orders fill at the first price after the open.
 3. **Background jobs** run recurring buys, pay dividends, snapshot every portfolio once a minute and thin old history every night.
 4. **Live updates.** Prices, fills, rejections, triggered alerts and dividends are pushed to the browser over a WebSocket, as small toasts and live numbers.
@@ -440,7 +440,7 @@ Add a new file `meridian-backend/src/main/resources/db/migration/V<n>__descripti
 ## Limitations
 
 - Deposits are fake. Real money would need a licensed broker or payment partner and identity checks; that isn't a code change.
-- Finnhub support is covered by unit tests and by runs against a stand-in server that speaks its documented API, but hasn't been tried with a live API key. In particular, crypto is quoted as `BINANCE:<SYMBOL>USDT` through `/quote`, and whether Finnhub's free plan serves that (and `/forex/rates`) is unconfirmed.
+- On Finnhub's free plan, stock and crypto quotes (`BINANCE:<SYMBOL>USDT`) and company news work, but exchange rates and dividends are paid features. Exchange rates therefore come from [Frankfurter](https://frankfurter.dev) (the European Central Bank's daily reference rates, free, no key), refreshed hourly; dividends show none.
 - There is no monitoring or alerting beyond `/api/health` (its `priceFeed` field is what to alert on). The interface has been checked with automated tools and by keyboard, but not with a real screen reader.
 - Load numbers come from one laptop. WebSocket sessions live in the memory of one backend, so running several backends behind a load balancer would need shared messaging first.
 - Prices come from a single provider at a time (see "When the database or the price provider is down" for what happens when it fails).

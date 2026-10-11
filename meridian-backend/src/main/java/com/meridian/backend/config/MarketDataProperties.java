@@ -27,7 +27,8 @@ public class MarketDataProperties {
     private long tickerPollIntervalMs = 20_000;
 
     // How often FX rates are refreshed. 0 or less = provider default
-    // (Alpha Vantage 6 h, because every refresh costs requests; Finnhub 5 min).
+    // (Alpha Vantage 6 h, because every refresh costs requests; Finnhub 1 h, since its rates
+    // come from the ECB's once-a-day reference rates).
     private long fxPollIntervalMs = 0;
 
     // Trades (market orders, recurring buys, currency conversions) refuse to run on a price or
@@ -104,7 +105,7 @@ public class MarketDataProperties {
     }
 
     public long getFxPollIntervalMs() {
-        return fxPollIntervalMs > 0 ? fxPollIntervalMs : (isFinnhub() ? 300_000L : 6 * 3_600_000L);
+        return fxPollIntervalMs > 0 ? fxPollIntervalMs : (isFinnhub() ? 3_600_000L : 6 * 3_600_000L);
     }
 
     public void setFxPollIntervalMs(long fxPollIntervalMs) {

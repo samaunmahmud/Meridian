@@ -31,15 +31,17 @@ import java.util.function.Function;
 // 60 calls a minute, far more than Alpha Vantage's free daily allowance.
 // Select it with marketdata.provider=finnhub and FINNHUB_API_KEY.
 //
-// Note: written against Finnhub's documented REST API and covered by tests
-// with recorded-shape responses; it has not been run against the live service.
+// Exchange rates are a paid Finnhub feature (/forex/rates answers 403 on a free
+// key), so they come from Frankfurter (https://frankfurter.dev) instead: the
+// European Central Bank's reference rates, free and keyless, published once per
+// working day. Those requests carry no Finnhub key and don't count against its budget.
 @Component
 @ConditionalOnProperty(name = "marketdata.provider", havingValue = "finnhub")
 public class FinnhubProvider implements MarketDataProvider {
 
     private static final Logger log = LoggerFactory.getLogger(FinnhubProvider.class);
     private static final int MAX_SEARCH_RESULTS = 10;
-    // One /forex/rates reply has every currency, and a refresh asks for them one after another: reuse the
+    // One rates reply has every currency, and a refresh asks for them one after another: reuse the
     // reply for this long instead of spending a request per currency. Far shorter than the FX refresh interval.
     static final Duration FOREX_REUSE = Duration.ofSeconds(60);
     // How far back company news is asked for.
@@ -52,6 +54,9 @@ public class FinnhubProvider implements MarketDataProvider {
     private Instant forexRatesAt;
 
     static final String DEFAULT_BASE_URL = "https://finnhub.io/api/v1";
+    static final String DEFAULT_FX_BASE_URL = "https://api.frankfurter.dev/v1";
+
+    private final RestClient fxClient;
 
     public FinnhubProvider(RestClient.Builder builder, RequestBudget budget, String apiKey) {
         this(builder, budget, apiKey, DEFAULT_BASE_URL, Clock.systemUTC());
@@ -61,11 +66,18 @@ public class FinnhubProvider implements MarketDataProvider {
         this(builder, budget, apiKey, baseUrl, Clock.systemUTC());
     }
 
-    // The base URL is a setting only so tests and a stand-in server can replace it.
+    public FinnhubProvider(RestClient.Builder builder, RequestBudget budget, String apiKey, String baseUrl, Clock clock) {
+        this(builder, budget, apiKey, baseUrl, DEFAULT_FX_BASE_URL, clock);
+    }
+
+    // The base URLs are settings only so tests and a stand-in server can replace them.
     @Autowired
     public FinnhubProvider(RestClient.Builder builder, RequestBudget budget, @Value("${FINNHUB_API_KEY}") String apiKey,
                            @Value("${marketdata.finnhub.base-url:" + DEFAULT_BASE_URL + "}") String baseUrl,
+                           @Value("${marketdata.fx.base-url:" + DEFAULT_FX_BASE_URL + "}") String fxBaseUrl,
                            Clock clock) {
+        // Cloned before the Finnhub key is added, so the key never goes to Frankfurter.
+        this.fxClient = builder.clone().baseUrl(fxBaseUrl).build();
         this.restClient = builder.baseUrl(baseUrl).defaultHeader("X-Finnhub-Token", apiKey).build();
         this.budget = budget;
         this.clock = clock;
@@ -109,11 +121,11 @@ public class FinnhubProvider implements MarketDataProvider {
         return BigDecimal.valueOf(current);
     }
 
-    // /forex/rates?base=USD gives "how many EUR per 1 USD"; we want USD per 1 EUR.
+    // /latest?base=USD gives "how many EUR per 1 USD"; we want USD per 1 EUR.
     @Override
     public BigDecimal fetchUsdRate(SupportedCurrency currency) {
         JsonNode body = forexRates();
-        double perUsd = body == null ? 0 : body.path("quote").path(currency.name()).asDouble(0);
+        double perUsd = body == null ? 0 : body.path("rates").path(currency.name()).asDouble(0);
         if (perUsd <= 0) {
             log.warn("No FX rate returned for {}/USD", currency);
             return null;
@@ -124,7 +136,13 @@ public class FinnhubProvider implements MarketDataProvider {
     private synchronized JsonNode forexRates() {
         Instant now = clock.instant();
         if (forexRates == null || !now.isBefore(forexRatesAt.plus(FOREX_REUSE))) {
-            forexRates = get(u -> u.path("/forex/rates").queryParam("base", "USD").build());
+            try {
+                forexRates = fxClient.get()
+                        .uri(u -> u.path("/latest").queryParam("base", "USD").queryParam("symbols", "EUR,GBP").build())
+                        .retrieve().body(JsonNode.class);
+            } catch (RestClientException e) {
+                throw new MarketDataUnreachableException("The exchange rate service is not responding. Try again in a few minutes.", e);
+            }
             forexRatesAt = now;
         }
         return forexRates;

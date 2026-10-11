@@ -14,8 +14,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 // The whole application context must start with either provider selected.
 class ProviderSelectionTest {
 
+    // Pinned to the value application.properties defaults to, so a developer's .env that
+    // chooses Finnhub (it is imported in tests too) doesn't change what this checks.
     @Nested
-    @SpringBootTest
+    @SpringBootTest(properties = "MARKETDATA_PROVIDER=alphavantage")
     @ActiveProfiles("test")
     class Default {
         @Autowired MarketDataProvider provider;

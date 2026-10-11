@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 // Refreshes the EUR/USD and GBP/USD rates. Rates move slowly and every
 // refresh costs provider requests, so the interval comes from
 // marketdata.fx-poll-interval-ms (default: every 6 hours on Alpha Vantage's
-// small free allowance, every 5 minutes on Finnhub).
+// small free allowance, hourly on Finnhub, whose rates are the ECB daily ones).
 @Component
 @ConditionalOnProperty(prefix = "meridian.scheduling", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class FxRatePollingScheduler {
