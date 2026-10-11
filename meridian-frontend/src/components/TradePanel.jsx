@@ -4,6 +4,8 @@ import { useMarketStatus } from "../lib/useMarketStatus";
 import { getTickers, getPrices, placeOrder, getWallets, getFxRates } from "../lib/api";
 import { formatMoney } from "../lib/formatMoney";
 import { showToast } from "../lib/toast";
+import Icon from "./Icon";
+import TickerAvatar from "./TickerAvatar";
 
 const KINDS = [
   { key: "MARKET", label: "Market" },
@@ -20,6 +22,35 @@ const KIND_WORDS = { LIMIT: "Limit order", STOP_LOSS: "Stop-loss order", TRAILIN
 const COMMISSION_RATE = 0.0025;
 const MINIMUM_FEE = 1;
 const FX_SPREAD = 0.005; // same markup the backend applies to every conversion
+
+const KIND_PRICE_WORDS = { LIMIT: "Limit price", STOP_LOSS: "Stop price", TRAILING_STOP: "Stop starts at" };
+const CURRENCY_SIGNS = { USD: "$", EUR: "€", GBP: "£" };
+
+// A tappable row, like Revolut's account and stock pickers. The native select lies invisibly on top of it, so
+// it keeps its label, keyboard use and the phone's own picker while the row shows what is chosen.
+function PickerRow({ id, label, value, onChange, options, children }) {
+  return (
+    <div className="relative flex items-center gap-3.5 bg-panel-2 rounded-2xl px-4 py-3 focus-within:ring-2 focus-within:ring-accent hover:brightness-110 transition">
+      {children}
+      <Icon name="chev" size={18} className="text-muted shrink-0" />
+      <label htmlFor={id} className="sr-only">{label}</label>
+      <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.text}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function SummaryRow({ term, value, strong = false }) {
+  return (
+    <div className="flex justify-between py-2">
+      <dt className="text-muted">{term}</dt>
+      <dd className={`font-mono ${strong ? "font-semibold text-bone" : "text-muted"}`}>{value}</dd>
+    </div>
+  );
+}
 
 // `bare` drops the card and heading, for use inside a sheet that has its own title.
 export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = false }) {
@@ -79,7 +110,10 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
 
   // Stocks only trade in the exchange session. A market order placed while it is closed is queued
   // and fills at the first price after the open; limit and stop orders wait for the open too.
-  const symbolType = tickers.find((t) => t.symbol === symbol)?.assetType;
+  const selectedTicker = tickers.find((t) => t.symbol === symbol);
+  const symbolType = selectedTicker?.assetType;
+  const walletOptions = wallets.length ? wallets : [{ currency: "USD", balance: 0 }];
+  const selectedWallet = wallets.find((w) => w.currency === currency);
   const marketClosed = symbolType === "STOCK" && market?.stocks && !market.stocks.open;
   const queued = marketClosed && kind === "MARKET";
   const opensWhen = marketClosed ? formatWhen(market.stocks.nextOpen) : "";
@@ -164,7 +198,7 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
           type="button"
           aria-pressed={type === "BUY"}
           onClick={() => setType("BUY")}
-          className={`relative z-10 py-2 text-sm font-medium transition-colors ${
+          className={`relative z-10 py-2 rounded-full text-sm font-medium transition-colors ${
             type === "BUY" ? "text-on-primary" : "text-muted"
           }`}
         >
@@ -174,7 +208,7 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
           type="button"
           aria-pressed={type === "SELL"}
           onClick={() => setType("SELL")}
-          className={`relative z-10 py-2 text-sm font-medium transition-colors ${
+          className={`relative z-10 py-2 rounded-full text-sm font-medium transition-colors ${
             type === "SELL" ? "text-on-loss" : "text-muted"
           }`}
         >
@@ -204,51 +238,63 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        <div>
-          <label htmlFor={`${uid}-symbol`} className="text-[13px] text-muted block mb-1.5">Symbol</label>
-          <select
-            id={`${uid}-symbol`}
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value)}
-            className="w-full bg-panel-2 border border-control rounded-2xl px-4 py-3 text-sm outline-none focus:border-accent transition-colors"
-          >
-            {tickers.map((t) => (
-              <option key={t.symbol} value={t.symbol}>
-                {t.symbol} — {t.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <PickerRow
+          id={`${uid}-symbol`}
+          label="Symbol"
+          value={symbol}
+          onChange={setSymbol}
+          options={tickers.map((t) => ({ value: t.symbol, text: `${t.symbol} — ${t.name}` }))}
+        >
+          {symbol ? <TickerAvatar symbol={symbol} size={40} /> : <div className="w-10 h-10 rounded-full bg-panel shrink-0" />}
+          <div className="flex-1 min-w-0">
+            <div className="text-[15px] font-semibold">{symbol || "Choose a stock"}</div>
+            <div className="text-[13px] text-muted truncate">{selectedTicker?.name ?? ""}</div>
+          </div>
+          {lastPrice != null && <div className="font-mono text-[15px] font-semibold">{formatMoney(lastPrice)}</div>}
+        </PickerRow>
 
-        <div>
-          <label htmlFor={`${uid}-quantity`} className="text-[13px] text-muted block mb-1.5">Quantity</label>
+        <div className="text-center py-3">
+          <label htmlFor={`${uid}-quantity`} className="text-[13px] text-muted block">Quantity</label>
           <input
             id={`${uid}-quantity`}
             type="number"
             min="0.0001"
             step="0.0001"
+            inputMode="decimal"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            className="w-full bg-panel-2 border border-control rounded-2xl px-4 py-3 text-sm font-mono outline-none focus:border-accent transition-colors"
+            aria-describedby={`${uid}-worth`}
+            className="no-spin w-full bg-transparent text-center text-[44px] leading-tight font-semibold font-mono tracking-tight outline-none rounded-2xl focus-visible:ring-2 focus-visible:ring-accent"
           />
+          <div id={`${uid}-worth`} className="text-[15px] text-muted font-mono">
+            {notional != null ? `≈ ${formatMoney(notional)}` : "\u00a0"}
+          </div>
         </div>
 
-        <div>
-          <label htmlFor={`${uid}-currency`} className="text-[13px] text-muted block mb-1.5">{type === "BUY" ? "Pay with" : "Receive in"}</label>
-          <select
-            id={`${uid}-currency`}
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            className="w-full bg-panel-2 border border-control rounded-2xl px-4 py-3 text-sm outline-none focus:border-accent transition-colors"
-          >
-            {(wallets.length ? wallets : [{ currency: "USD", balance: 0 }]).map((w) => (
-              <option key={w.currency} value={w.currency}>
-                {w.currency} — {formatMoney(w.available ?? w.balance, w.currency)}
-                {type === "BUY" ? " available" : ""}
-              </option>
-            ))}
-          </select>
-        </div>
+        <PickerRow
+          id={`${uid}-currency`}
+          label={type === "BUY" ? "Pay with" : "Receive in"}
+          value={currency}
+          onChange={setCurrency}
+          options={walletOptions.map((w) => ({
+            value: w.currency,
+            text: `${w.currency} — ${formatMoney(w.available ?? w.balance, w.currency)}${type === "BUY" ? " available" : ""}`,
+          }))}
+        >
+          <div className="w-10 h-10 rounded-full bg-panel flex items-center justify-center text-sm font-semibold shrink-0" aria-hidden="true">
+            {CURRENCY_SIGNS[currency] ?? currency.slice(0, 1)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] text-muted">{type === "BUY" ? "Pay with" : "Receive in"}</div>
+            <div className="text-[15px] font-semibold">{currency} wallet</div>
+          </div>
+          {selectedWallet && (
+            <div className="text-right">
+              <div className="font-mono text-[15px] font-semibold">{formatMoney(selectedWallet.available ?? selectedWallet.balance, currency)}</div>
+              <div className="text-[13px] text-muted">available</div>
+            </div>
+          )}
+        </PickerRow>
 
         {kind === "LIMIT" && (
           <div>
@@ -317,9 +363,15 @@ export default function TradePanel({ onOrderPlaced, prefill, refreshKey, bare = 
         )}
 
         {estimatedFee != null && (
-          <div className="text-xs text-dim">
-            Est. commission: <span className="font-mono text-muted">${estimatedFee.toFixed(2)}</span>
-          </div>
+          <dl className="text-[13px] divide-y divide-line border-y border-line">
+            <SummaryRow term={kind === "MARKET" ? "Last price" : KIND_PRICE_WORDS[kind]} value={formatMoney(referencePrice)} />
+            <SummaryRow term="Est. commission" value={formatMoney(estimatedFee)} />
+            <SummaryRow
+              term={type === "BUY" ? "Est. total" : "Est. you get"}
+              value={formatMoney(type === "BUY" ? notional + estimatedFee : notional - estimatedFee)}
+              strong
+            />
+          </dl>
         )}
 
         {settleCurrency !== "USD" && settlementEstimate != null && (

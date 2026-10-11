@@ -166,3 +166,20 @@ describe("TradePanel: trailing stop", () => {
     expect(onOrderPlaced).toHaveBeenCalled();
   });
 });
+
+describe("TradePanel: the amount and what it adds up to", () => {
+  it("shows what the shares are worth and a total with the commission", async () => {
+    await renderPanel();
+    await userEvent.clear(screen.getByLabelText("Quantity"));
+    await userEvent.type(screen.getByLabelText("Quantity"), "2");
+
+    expect(screen.getByLabelText("Quantity")).toHaveAccessibleDescription("≈ $240.00");
+    const summary = screen.getByText("Est. total").closest("dl");
+    expect(within(summary).getByText("Last price").nextElementSibling).toHaveTextContent("$120.00");
+    expect(within(summary).getByText("Est. commission").nextElementSibling).toHaveTextContent("$1.00");
+    expect(within(summary).getByText("Est. total").nextElementSibling).toHaveTextContent("$241.00");
+
+    await userEvent.click(screen.getByRole("button", { name: "Sell" }));
+    expect(within(summary).getByText("Est. you get").nextElementSibling).toHaveTextContent("$239.00");
+  });
+});
